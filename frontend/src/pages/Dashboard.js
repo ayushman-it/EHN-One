@@ -8,8 +8,13 @@ function Dashboard({ showLowStockOnly = false }) {
   const loadStats = useCallback(() => {
     setLoading(true);
     getStats()
-      .then((res) => setStats(res.data))
-      .catch(() => {})
+      .then((res) => {
+        const data = res.data || res;
+        setStats(data);
+      })
+      .catch(() => {
+        setStats(null);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -124,7 +129,7 @@ function Dashboard({ showLowStockOnly = false }) {
       </div>
 
       {/* Low Stock Table */}
-      <LowStockTable items={stats.lowStockItems} />
+      <LowStockTable items={stats.lowStockItems || []} />
 
       {/* Summary Row */}
       <div className="row g-3 mt-1">
@@ -140,13 +145,13 @@ function Dashboard({ showLowStockOnly = false }) {
                   <tr>
                     <td className="text-muted" style={{ fontSize: '0.85rem' }}>Out of Stock Items</td>
                     <td className="text-end fw-bold" style={{ color: 'var(--danger)' }}>
-                      {stats.lowStockItems.filter((i) => i.quantity === 0).length}
+                      {(stats.lowStockItems || []).filter((i) => i.quantity === 0).length}
                     </td>
                   </tr>
                   <tr>
                     <td className="text-muted" style={{ fontSize: '0.85rem' }}>Low Stock Items</td>
                     <td className="text-end fw-bold" style={{ color: 'var(--warning)' }}>
-                      {stats.lowStockItems.filter((i) => i.quantity > 0).length}
+                      {(stats.lowStockItems || []).filter((i) => i.quantity > 0).length}
                     </td>
                   </tr>
                   <tr>

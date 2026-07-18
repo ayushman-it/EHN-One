@@ -38,8 +38,15 @@ export default function Products() {
   const load = useCallback(() => {
     setLoading(true);
     getProducts(search)
-      .then((r) => setProducts(r.data))
-      .catch(() => setError('Failed to load products.'))
+      .then((r) => {
+        // Handle different response formats
+        const data = r.data || r;
+        setProducts(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        setError('Failed to load products.');
+        setProducts([]); // Set empty array on error
+      })
       .finally(() => setLoading(false));
   }, [search]);
 
