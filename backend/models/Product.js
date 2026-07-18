@@ -17,8 +17,7 @@ const productSchema = new mongoose.Schema({
     default: '',
   },
   category: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Category',
+    type: String, // Changed to String to accept category names directly
     required: true,
   },
   price: {
@@ -42,17 +41,20 @@ const productSchema = new mongoose.Schema({
     default: 10,
     min: 0,
   },
+  lowStockThreshold: { // Add this field for frontend compatibility
+    type: Number,
+    default: 10,
+    min: 0,
+  },
   unit: {
     type: String,
     default: 'pcs',
   },
   supplier: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Supplier',
+    type: String, // Changed to String for frontend compatibility
   },
   warehouse: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Warehouse',
+    type: String, // Changed to String for frontend compatibility
   },
   barcode: String,
   image: String,
@@ -70,8 +72,9 @@ const productSchema = new mongoose.Schema({
 
 // Virtual for stock status
 productSchema.virtual('stockStatus').get(function() {
+  const threshold = this.lowStockThreshold || this.minStock || 10;
   if (this.quantity === 0) return 'out_of_stock';
-  if (this.quantity <= this.minStock) return 'low_stock';
+  if (this.quantity <= threshold) return 'low_stock';
   return 'in_stock';
 });
 
