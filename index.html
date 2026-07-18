@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+</head>
+<body>
+    <div class="layout-wrapper">
+        <div class="layout-container">
+            <!-- Sidebar -->
+            <aside id="layout-menu" class="layout-menu menu-vertical menu">
+                <div class="app-brand">
+                    <a href="#" class="app-brand-link">
+                        <span class="app-brand-logo">
+                            <svg width="32" height="22" viewBox="0 0 32 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path fill-rule="evenodd" clip-rule="evenodd" d="M0.00172773 0V6.85398C0.00172773 6.85398 -0.133178 9.01207 1.98092 10.8388L13.6912 21.9964L19.7809 21.9181L18.8042 9.88248L16.4951 7.17289L9.23799 0H0.00172773Z" fill="#7367f0"/>
+                                <path opacity="0.06" fill-rule="evenodd" clip-rule="evenodd" d="M7.69824 16.4364L12.5199 3.23696L16.5541 7.25596L7.69824 16.4364Z" fill="#161616"/>
+                                <path opacity="0.06" fill-rule="evenodd" clip-rule="evenodd" d="M8.07751 15.9175L13.9419 4.63989L16.5849 7.28475L8.07751 15.9175Z" fill="#161616"/>
+                                <path fill-rule="evenodd" clip-rule="evenodd" d="M7.77295 16.3566L23.6563 0H32V6.88383C32 6.88383 31.8262 9.17836 30.6591 10.4057L19.7824 22H13.6938L7.77295 16.3566Z" fill="#7367f0"/>
+                            </svg>
+                        </span>
+                        <span class="app-brand-text">Vuexy</span>
+                    </a>
+                </div>
+                <div class="menu-inner py-1">
+                    <!-- Dashboards -->
+                    <li class="menu-item active open">
+                        <a href="javascript:void(0);" class="menu-link menu-toggle">
+                            <i class="bi bi-house-door"></i>
+                            <div>Dashboards</div>
+                            <div class="badge bg-danger rounded-pill ms-auto">5</div>
+                        </a>
+                        <ul class="menu-sub">
+                            <li class="menu-item">
+                                <a href="#" class="menu-link">
+                                    <div>Analytics</div>
+                                </a>
+                            </li>
+                            <li class="menu-item active">
+                                <a href="#" class="menu-link">
+                                    <div>CRM</div>
+                                </a>
+                            </li>
+                            <li class="menu-item">
+                                <a href="#" class="menu-link">
+                                    <div>eCommerce</div>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+
+                    <!-- Apps & Pages -->
+                    <li class="menu-header"><span class="menu-header-text">APPS & PAGES</span></li>
+                    <li class="menu-item">
+                        <a href="#" class="menu-link">
+                            <i class="bi bi-envelope"></i>
+                            <div>Email</div>
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="#" class="menu-link">
+                            <i class="bi bi-chat-dots"></i>
+                            <div>Chat</div>
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="#" class="menu-link">
+                            <i class="bi bi-calendar"></i>
+                            <div>Calendar</div>
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="#" class="menu-link">
+                            <i class="bi bi-kanban"></i>
+                            <div>Kanban</div>
+                        </a>
+                    </li>
+
+                    <!-- Pages -->
+                    <li class="menu-header"><span class="menu-header-text">PAGES</span></li>
+                    <li class="menu-item">
+                        <a href="javascript:void(0);" class="menu-link menu-toggle">
+                            <i class="bi bi-person"></i>
+                            <div>User Profile</div>
+                        </a>
+                        <ul class="menu-sub">
+                            <li class="menu-item"><a href="#" class="menu-link"><div>Profile</div></a></li>
+                            <li class="menu-item"><a href="#" class="menu-link"><div>Teams</div></a></li>
+                            <li class="menu-item"><a href="#" class="menu-link"><div>Projects</div></a></li>
+                        </ul>
+                    </li>
+                    <li class="menu-item">
+                        <a href="javascript:void(0);" class="menu-link menu-toggle">
+                            <i class="bi bi-gear"></i>
+                            <div>Account Settings</div>
+                        </a>
+                        <ul class="menu-sub">
+                            <li class="menu-item"><a href="#" class="menu-link"><div>Account</div></a></li>
+                            <li class="menu-item"><a href="#" class="menu-link"><div>Security</div></a></li>
+                            <li class="menu-item"><a href="#" class="menu-link"><div>Billing</div></a></li>
+                        </ul>
+                    </li>
+
+                    <!-- Components -->
+                    <li class="menu-header"><span class="menu-header-text">COMPONENTS</span></li>
+                    <li class="menu-item">
+                        <a href="javascript:void(0);" class="menu-link menu-toggle">
+                            <i class="bi bi-credit-card"></i>
+                            <div>Cards</div>
+                        </a>
+                        <ul class="menu-sub">
+                            <li class="menu-item"><a href="#" class="menu-link"><div>Basic</div></a></li>
+                            <li class="menu-item"><a href="#" class="menu-link"><div>Advance</div></a></li>
+                            <li class="menu-item"><a href="#" class="menu-link"><div>Statistics</div></a></li>
+                        </ul>
+                    </li>
+                    <li class="menu-item">
+                        <a href="javascript:void(0);" class="menu-link menu-toggle">
+                            <i class="bi bi-palette"></i>
+                            <div>User Interface</div>
+                        </a>
+                        <ul class="menu-sub">
+                            <li class="menu-item"><a href="#" class="menu-link"><div>Accordion</div></a></li>
+                            <li class="menu-item"><a href="#" class="menu-link"><div>Alerts</div></a></li>
+                            <li class="menu-item"><a href="#" class="menu-link"><div>Buttons</div></a></li>
+                            <li class="menu-item"><a href="#" class="menu-link"><div>Modals</div></a></li>
+                        </ul>
+                    </li>
+                </div>
+            </aside>
+
+            <!-- Layout page -->
+            <div class="layout-page">
+                <!-- Navbar -->
+                <nav class="layout-navbar navbar navbar-expand-xl align-items-center bg-navbar-theme">
+                    <div class="layout-menu-toggle navbar-nav align-items-xl-center me-3 me-xl-0 d-xl-none">
+                        <a class="nav-item nav-link px-0" href="javascript:void(0)">
+                            <i class="bi bi-list fs-4"></i>
+                        </a>
+                    </div>
+                    <div class="navbar-nav align-items-center ms-auto">
+                        <div class="nav-item navbar-dropdown dropdown me-3">
+                            <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0)">
+                                <i class="bi bi-search"></i>
+                            </a>
+                        </div>
+                        <div class="nav-item navbar-dropdown dropdown me-3">
+                            <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0)" data-bs-toggle="dropdown">
+                                <i class="bi bi-sun"></i>
+                            </a>
+                        </div>
+                        <div class="nav-item navbar-dropdown dropdown me-3">
+                            <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0)" data-bs-toggle="dropdown">
+                                <i class="bi bi-bell"></i>
+                                <span class="badge bg-danger rounded-pill badge-notifications">3</span>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="#">Notification 1</a></li>
+                                <li><a class="dropdown-item" href="#">Notification 2</a></li>
+                            </ul>
+                        </div>
+                        <div class="nav-item navbar-dropdown dropdown me-3">
+                            <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0)" data-bs-toggle="dropdown">
+                                <i class="bi bi-translate"></i>
+                            </a>
+                        </div>
+                        <div class="nav-item navbar-dropdown dropdown">
+                            <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0)" data-bs-toggle="dropdown">
+                                <div class="avatar avatar-online">
+                                    <img src="https://i.pravatar.cc/150?img=12" alt="Avatar" class="rounded-circle">
+                                </div>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="#"><i class="bi bi-person me-2"></i>My Profile</a></li>
+                                <li><a class="dropdown-item" href="#"><i class="bi bi-gear me-2"></i>Settings</a></li>
+                                <li><a class="dropdown-item" href="#"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </nav>
+
+                <!-- Content -->
+                <div class="content-wrapper">
+                    <div class="container-xxl flex-grow-1 container-p-y">
+                        <div class="row gy-4">
+                            <!-- Stat Cards -->
+                            <div class="col-xxl-2 col-md-3 col-6">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <div class="badge bg-label-primary p-2 rounded">
+                                                <i class="bi bi-globe fs-5"></i>
+                                            </div>
+                                            <span class="text-success fw-medium">+29.1%</span>
+                                        </div>
+                                        <h5 class="card-title mb-1">Sessions</h5>
+                                        <p class="card-subtitle text-body-secondary">Last Week</p>
+                                        <div class="d-flex justify-content-between align-items-center mt-3">
+                                            <h4 class="mb-0">64.3k</h4>
+                                            <div class="sparkline-chart" id="sessionsChart"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-xxl-2 col-md-3 col-6">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <div class="badge bg-label-success p-2 rounded">
+                                                <i class="bi bi-envelope-plus fs-5"></i>
+                                            </div>
+                                            <span class="text-danger fw-medium">-18.2%</span>
+                                        </div>
+                                        <h5 class="card-title mb-1">Leads</h5>
+                                        <p class="card-subtitle text-body-secondary">Last Week</p>
+                                        <div class="d-flex justify-content-between align-items-center mt-3">
+                                            <h4 class="mb-0">28.5k</h4>
+                                            <div class="sparkline-chart" id="leadsChart"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-xxl-2 col-md-3 col-6">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <div class="badge bg-label-warning p-2 rounded">
+                                                <i class="bi bi-bag fs-5"></i>
+                                            </div>
+                                            <span class="text-success fw-medium">+12.4%</span>
+                                        </div>
+                                        <h5 class="card-title mb-1">Sales</h5>
+                                        <p class="card-subtitle text-body-secondary">Last Year</p>
+                                        <div class="d-flex justify-content-between align-items-center mt-3">
+                                            <h4 class="mb-0">175k</h4>
+                                            <div class="sparkline-chart" id="salesChart"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-xxl-2 col-md-3 col-6">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <div class="badge bg-label-danger mb-3 rounded">
+                                            <i class="bi bi-credit-card fs-5"></i>
+                                        </div>
+                                        <h5 class="card-title mb-1">Total Profit</h5>
+                                        <p class="card-subtitle text-body-secondary">Last week</p>
+                                        <p class="fw-semibold mb-3 mt-2">1.28k</p>
+                                        <span class="badge bg-label-danger">-12.2%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-xxl-2 col-md-3 col-6">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <div class="badge bg-label-success mb-3 rounded">
+                                            <i class="bi bi-currency-dollar fs-5"></i>
+                                        </div>
+                                        <h5 class="card-title mb-1">Total Sales</h5>
+                                        <p class="card-subtitle text-body-secondary">Last week</p>
+                                        <p class="fw-semibold mb-3 mt-2">24.67k</p>
+                                        <span class="badge bg-label-success">+24.5%</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Revenue Growth -->
+                            <div class="col-xxl-4 col-xl-5 col-md-6 col-sm-8 col-12 mb-md-0">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-4">
+                                                <h5 class="mb-2 text-nowrap">Revenue Growth</h5>
+                                                <p class="mb-0 text-body-secondary">Weekly Report</p>
+                                                <h3 class="card-title mb-1 mt-3">$4,673</h3>
+                                                <span class="badge bg-label-success">+15.2%</span>
+                                            </div>
+                                            <div class="col-8">
+                                                <canvas id="revenueGrowthChart"></canvas>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Earning Reports -->
+                            <div class="col-xxl-8 col-12">
+                                <div class="card h-100">
+                                    <div class="card-header d-flex justify-content-between">
+                                        <div>
+                                            <h5 class="mb-1">Earning Reports</h5>
+                                            <p class="card-subtitle text-body-secondary">Yearly Earnings Overview</p>
+                                        </div>
+                                        <div class="dropdown">
+                                            <button class="btn btn-text-secondary border-0 p-2" data-bs-toggle="dropdown">
+                                                <i class="bi bi-three-dots-vertical"></i>
+                                            </button>
+                                            <div class="dropdown-menu dropdown-menu-end">
+                                                <a class="dropdown-item" href="#">View More</a>
+                                                <a class="dropdown-item" href="#">Delete</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <ul class="nav nav-tabs widget-nav-tabs gap-4 mx-1 mb-3" role="tablist">
+                                            <li class="nav-item">
+                                                <a href="#" class="nav-link btn active d-flex flex-column align-items-center" data-bs-toggle="tab">
+                                                    <div class="badge bg-label-secondary rounded p-2"><i class="bi bi-cart3"></i></div>
+                                                    <h6 class="tab-widget-title mb-0 mt-2">Orders</h6>
+                                                </a>
+                                            </li>
+                                            <li class="nav-item">
+                                                <a href="#" class="nav-link btn d-flex flex-column align-items-center" data-bs-toggle="tab">
+                                                    <div class="badge bg-label-secondary rounded p-2"><i class="bi bi-bar-chart"></i></div>
+                                                    <h6 class="tab-widget-title mb-0 mt-2">Sales</h6>
+                                                </a>
+                                            </li>
+                                            <li class="nav-item">
+                                                <a href="#" class="nav-link btn d-flex flex-column align-items-center" data-bs-toggle="tab">
+                                                    <div class="badge bg-label-secondary rounded p-2"><i class="bi bi-currency-dollar"></i></div>
+                                                    <h6 class="tab-widget-title mb-0 mt-2">Profit</h6>
+                                                </a>
+                                            </li>
+                                            <li class="nav-item">
+                                                <a href="#" class="nav-link btn d-flex flex-column align-items-center" data-bs-toggle="tab">
+                                                    <div class="badge bg-label-secondary rounded p-2"><i class="bi bi-pie-chart"></i></div>
+                                                    <h6 class="tab-widget-title mb-0 mt-2">Income</h6>
+                                                </a>
+                                            </li>
+                                        </ul>
+                                        <canvas id="earningReportsChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Sales Last 6 Months -->
+                            <div class="col-xl-4 col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-header d-flex justify-content-between pb-4">
+                                        <div>
+                                            <h5 class="mb-1">Sales</h5>
+                                            <p class="card-subtitle text-body-secondary">Last 6 Months</p>
+                                        </div>
+                                        <div class="dropdown">
+                                            <button class="btn btn-text-secondary border-0 p-2" data-bs-toggle="dropdown">
+                                                <i class="bi bi-three-dots-vertical"></i>
+                                            </button>
+                                            <div class="dropdown-menu dropdown-menu-end">
+                                                <a class="dropdown-item" href="#">View More</a>
+                                                <a class="dropdown-item" href="#">Delete</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body pt-0">
+                                        <canvas id="salesLastMonthChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Sales By Country -->
+                            <div class="col-xxl-4 col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-header d-flex justify-content-between">
+                                        <div>
+                                            <h5 class="mb-1">Sales by Countries</h5>
+                                            <p class="card-subtitle text-body-secondary">Monthly Sales Overview</p>
+                                        </div>
+                                        <div class="dropdown">
+                                            <button class="btn btn-text-secondary border-0" data-bs-toggle="dropdown">
+                                                <i class="bi bi-three-dots-vertical"></i>
+                                            </button>
+                                            <div class="dropdown-menu dropdown-menu-end">
+                                                <a class="dropdown-item" href="#">Download</a>
+                                                <a class="dropdown-item" href="#">Refresh</a>
+                                                <a class="dropdown-item" href="#">Share</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <ul class="list-unstyled mb-0">
+                                            <li class="d-flex align-items-center mb-4">
+                                                <div class="avatar flex-shrink-0 me-4">
+                                                    <img src="https://flagcdn.com/w40/us.png" alt="US" class="rounded-circle" width="32" height="32">
+                                                </div>
+                                                <div class="d-flex w-100 flex-wrap align-items-center justify-content-between gap-2">
+                                                    <div class="me-2">
+                                                        <h6 class="mb-0">$8,567k</h6>
+                                                        <small class="text-body-secondary">United States</small>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-success fw-medium mb-0"><i class="bi bi-chevron-up"></i> 25.8%</p>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                            <li class="d-flex align-items-center mb-4">
+                                                <div class="avatar flex-shrink-0 me-4">
+                                                    <img src="https://flagcdn.com/w40/br.png" alt="BR" class="rounded-circle" width="32" height="32">
+                                                </div>
+                                                <div class="d-flex w-100 flex-wrap align-items-center justify-content-between gap-2">
+                                                    <div class="me-2">
+                                                        <h6 class="mb-0">$2,415k</h6>
+                                                        <small class="text-body-secondary">Brazil</small>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-danger fw-medium mb-0"><i class="bi bi-chevron-down"></i> 6.2%</p>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                            <li class="d-flex align-items-center mb-4">
+                                                <div class="avatar flex-shrink-0 me-4">
+                                                    <img src="https://flagcdn.com/w40/in.png" alt="IN" class="rounded-circle" width="32" height="32">
+                                                </div>
+                                                <div class="d-flex w-100 flex-wrap align-items-center justify-content-between gap-2">
+                                                    <div class="me-2">
+                                                        <h6 class="mb-0">$865k</h6>
+                                                        <small class="text-body-secondary">India</small>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-success fw-medium mb-0"><i class="bi bi-chevron-up"></i> 12.4%</p>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                            <li class="d-flex align-items-center mb-4">
+                                                <div class="avatar flex-shrink-0 me-4">
+                                                    <img src="https://flagcdn.com/w40/au.png" alt="AU" class="rounded-circle" width="32" height="32">
+                                                </div>
+                                                <div class="d-flex w-100 flex-wrap align-items-center justify-content-between gap-2">
+                                                    <div class="me-2">
+                                                        <h6 class="mb-0">$745k</h6>
+                                                        <small class="text-body-secondary">Australia</small>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-danger fw-medium mb-0"><i class="bi bi-chevron-down"></i> 11.9%</p>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                            <li class="d-flex align-items-center">
+                                                <div class="avatar flex-shrink-0 me-4">
+                                                    <img src="https://flagcdn.com/w40/fr.png" alt="FR" class="rounded-circle" width="32" height="32">
+                                                </div>
+                                                <div class="d-flex w-100 flex-wrap align-items-center justify-content-between gap-2">
+                                                    <div class="me-2">
+                                                        <h6 class="mb-0">$45k</h6>
+                                                        <small class="text-body-secondary">France</small>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-success fw-medium mb-0"><i class="bi bi-chevron-up"></i> 16.2%</p>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Project Status -->
+                            <div class="col-12 col-md-6 col-xxl-4">
+                                <div class="card h-100">
+                                    <div class="card-header d-flex justify-content-between">
+                                        <h5 class="mb-0">Project Status</h5>
+                                        <div class="dropdown">
+                                            <button class="btn btn-text-secondary border-0 p-2" data-bs-toggle="dropdown">
+                                                <i class="bi bi-three-dots-vertical"></i>
+                                            </button>
+                                            <div class="dropdown-menu dropdown-menu-end">
+                                                <a class="dropdown-item" href="#">View More</a>
+                                                <a class="dropdown-item" href="#">Delete</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-start mb-3">
+                                            <div class="badge bg-label-warning p-2 me-3 rounded"><i class="bi bi-currency-dollar fs-5"></i></div>
+                                            <div class="d-flex justify-content-between w-100 gap-2 align-items-center">
+                                                <div class="me-2">
+                                                    <h6 class="mb-0">$43,742</h6>
+                                                    <small class="text-body-secondary">Your Earnings</small>
+                                                </div>
+                                                <h6 class="mb-0 text-success">+10.2%</h6>
+                                            </div>
+                                        </div>
+                                        <canvas id="projectStatusChart" height="180"></canvas>
+                                        <div class="d-flex justify-content-between mb-3 mt-3">
+                                            <h6 class="mb-0">Donates</h6>
+                                            <div class="d-flex">
+                                                <p class="mb-0 me-3">$756.26</p>
+                                                <p class="mb-0 text-danger">-$139.34</p>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex justify-content-between">
+                                            <h6 class="mb-0">Podcasts</h6>
+                                            <div class="d-flex">
+                                                <p class="mb-0 me-3">$2,207.03</p>
+                                                <p class="mb-0 text-success">+$576.24</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Active Projects -->
+                            <div class="col-xxl-4 col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-header d-flex justify-content-between">
+                                        <div>
+                                            <h5 class="mb-1">Active Project</h5>
+                                            <p class="card-subtitle text-body-secondary">Average 72% Completed</p>
+                                        </div>
+                                        <div class="dropdown">
+                                            <button class="btn btn-text-secondary border-0 p-2" data-bs-toggle="dropdown">
+                                                <i class="bi bi-three-dots-vertical"></i>
+                                            </button>
+                                            <div class="dropdown-menu dropdown-menu-end">
+                                                <a class="dropdown-item" href="#">Refresh</a>
+                                                <a class="dropdown-item" href="#">Download</a>
+                                                <a class="dropdown-item" href="#">View All</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <ul class="list-unstyled mb-0">
+                                            <li class="mb-4 d-flex align-items-center">
+                                                <div class="d-flex align-items-center me-4" style="min-width: 140px;">
+                                                    <div class="project-icon bg-label-danger me-3"><i class="bi bi-code-slash text-danger"></i></div>
+                                                    <div>
+                                                        <h6 class="mb-0">Laravel</h6>
+                                                        <small class="text-body-secondary">eCommerce</small>
+                                                    </div>
+                                                </div>
+                                                <div class="d-flex flex-grow-1 align-items-center">
+                                                    <div class="progress w-100 me-3" style="height: 8px;">
+                                                        <div class="progress-bar bg-danger" style="width: 65%"></div>
+                                                    </div>
+                                                    <span class="text-body-secondary">65%</span>
+                                                </div>
+                                            </li>
+                                            <li class="mb-4 d-flex align-items-center">
+                                                <div class="d-flex align-items-center me-4" style="min-width: 140px;">
+                                                    <div class="project-icon bg-label-primary me-3"><i class="bi bi-palette text-primary"></i></div>
+                                                    <div>
+                                                        <h6 class="mb-0">Figma</h6>
+                                                        <small class="text-body-secondary">App UI Kit</small>
+                                                    </div>
+                                                </div>
+                                                <div class="d-flex flex-grow-1 align-items-center">
+                                                    <div class="progress w-100 me-3" style="height: 8px;">
+                                                        <div class="progress-bar bg-primary" style="width: 86%"></div>
+                                                    </div>
+                                                    <span class="text-body-secondary">86%</span>
+                                                </div>
+                                            </li>
+                                            <li class="mb-4 d-flex align-items-center">
+                                                <div class="d-flex align-items-center me-4" style="min-width: 140px;">
+                                                    <div class="project-icon bg-label-success me-3"><i class="bi bi-check-circle text-success"></i></div>
+                                                    <div>
+                                                        <h6 class="mb-0">VueJs</h6>
+                                                        <small class="text-body-secondary">Calendar App</small>
+                                                    </div>
+                                                </div>
+                                                <div class="d-flex flex-grow-1 align-items-center">
+                                                    <div class="progress w-100 me-3" style="height: 8px;">
+                                                        <div class="progress-bar bg-success" style="width: 90%"></div>
+                                                    </div>
+                                                    <span class="text-body-secondary">90%</span>
+                                                </div>
+                                            </li>
+                                            <li class="mb-4 d-flex align-items-center">
+                                                <div class="d-flex align-items-center me-4" style="min-width: 140px;">
+                                                    <div class="project-icon bg-label-info me-3"><i class="bi bi-globe text-info"></i></div>
+                                                    <div>
+                                                        <h6 class="mb-0">React</h6>
+                                                        <small class="text-body-secondary">Dashboard</small>
+                                                    </div>
+                                                </div>
+                                                <div class="d-flex flex-grow-1 align-items-center">
+                                                    <div class="progress w-100 me-3" style="height: 8px;">
+                                                        <div class="progress-bar bg-info" style="width: 37%"></div>
+                                                    </div>
+                                                    <span class="text-body-secondary">37%</span>
+                                                </div>
+                                            </li>
+                                            <li class="mb-4 d-flex align-items-center">
+                                                <div class="d-flex align-items-center me-4" style="min-width: 140px;">
+                                                    <div class="project-icon bg-label-primary me-3"><i class="bi bi-bootstrap text-primary"></i></div>
+                                                    <div>
+                                                        <h6 class="mb-0">Bootstrap</h6>
+                                                        <small class="text-body-secondary">Website</small>
+                                                    </div>
+                                                </div>
+                                                <div class="d-flex flex-grow-1 align-items-center">
+                                                    <div class="progress w-100 me-3" style="height: 8px;">
+                                                        <div class="progress-bar bg-primary" style="width: 22%"></div>
+                                                    </div>
+                                                    <span class="text-body-secondary">22%</span>
+                                                </div>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Last Transaction -->
+                            <div class="col-md-6 col-12">
+                                <div class="card h-100">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h5 class="card-title m-0">Last Transaction</h5>
+                                        <div class="dropdown">
+                                            <button class="btn btn-text-secondary border-0 p-2" data-bs-toggle="dropdown">
+                                                <i class="bi bi-three-dots-vertical"></i>
+                                            </button>
+                                            <div class="dropdown-menu dropdown-menu-end">
+                                                <a class="dropdown-item" href="#">Download</a>
+                                                <a class="dropdown-item" href="#">Refresh</a>
+                                                <a class="dropdown-item" href="#">Share</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="table-responsive">
+                                        <table class="table table-borderless">
+                                            <thead class="border-bottom">
+                                                <tr>
+                                                    <th>CARD</th>
+                                                    <th>DATE</th>
+                                                    <th>STATUS</th>
+                                                    <th>TREND</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td>
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="payment-icon bg-primary-subtle me-3 p-2 rounded">
+                                                                <i class="bi bi-credit-card text-primary"></i>
+                                                            </div>
+                                                            <div>
+                                                                <p class="mb-0 fw-medium">*4230</p>
+                                                                <small class="text-body-secondary">Credit</small>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <p class="mb-0 fw-medium">Sent</p>
+                                                        <small class="text-body-secondary">17 Mar 2022</small>
+                                                    </td>
+                                                    <td><span class="badge bg-label-success">Verified</span></td>
+                                                    <td><p class="mb-0 fw-medium">+$1,678</p></td>
+                                                </tr>
+                                                <tr>
+                                                    <td>
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="payment-icon bg-warning-subtle me-3 p-2 rounded">
+                                                                <i class="bi bi-credit-card text-warning"></i>
+                                                            </div>
+                                                            <div>
+                                                                <p class="mb-0 fw-medium">*5578</p>
+                                                                <small class="text-body-secondary">Credit</small>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <p class="mb-0 fw-medium">Sent</p>
+                                                        <small class="text-body-secondary">12 Feb 2022</small>
+                                                    </td>
+                                                    <td><span class="badge bg-label-danger">Rejected</span></td>
+                                                    <td><p class="mb-0 fw-medium">-$839</p></td>
+                                                </tr>
+                                                <tr>
+                                                    <td>
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="payment-icon bg-info-subtle me-3 p-2 rounded">
+                                                                <i class="bi bi-credit-card text-info"></i>
+                                                            </div>
+                                                            <div>
+                                                                <p class="mb-0 fw-medium">*4567</p>
+                                                                <small class="text-body-secondary">ATM</small>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <p class="mb-0 fw-medium">Sent</p>
+                                                        <small class="text-body-secondary">28 Feb 2022</small>
+                                                    </td>
+                                                    <td><span class="badge bg-label-success">Verified</span></td>
+                                                    <td><p class="mb-0 fw-medium">+$435</p></td>
+                                                </tr>
+                                                <tr>
+                                                    <td>
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="payment-icon bg-success-subtle me-3 p-2 rounded">
+                                                                <i class="bi bi-credit-card text-success"></i>
+                                                            </div>
+                                                            <div>
+                                                                <p class="mb-0 fw-medium">*5699</p>
+                                                                <small class="text-body-secondary">Credit</small>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <p class="mb-0 fw-medium">Sent</p>
+                                                        <small class="text-body-secondary">8 Jan 2022</small>
+                                                    </td>
+                                                    <td><span class="badge bg-label-secondary">Pending</span></td>
+                                                    <td><p class="mb-0 fw-medium">+$2,345</p></td>
+                                                </tr>
+                                                <tr>
+                                                    <td>
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="payment-icon bg-primary-subtle me-3 p-2 rounded">
+                                                                <i class="bi bi-credit-card text-primary"></i>
+                                                            </div>
+                                                            <div>
+                                                                <p class="mb-0 fw-medium">*5699</p>
+                                                                <small class="text-body-secondary">Credit</small>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <p class="mb-0 fw-medium">Sent</p>
+                                                        <small class="text-body-secondary">8 Jan 2022</small>
+                                                    </td>
+                                                    <td><span class="badge bg-label-danger">Rejected</span></td>
+                                                    <td><p class="mb-0 fw-medium">-$234</p></td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Activity Timeline -->
+                            <div class="col-xxl-6">
+                                <div class="card h-100">
+                                    <div class="card-header d-flex justify-content-between">
+                                        <h5 class="card-title m-0 pt-1 d-flex align-items-center">
+                                            <i class="bi bi-list-task me-2"></i> Activity Timeline
+                                        </h5>
+                                        <div class="dropdown">
+                                            <button class="btn btn-text-secondary border-0 p-2" data-bs-toggle="dropdown">
+                                                <i class="bi bi-three-dots-vertical"></i>
+                                            </button>
+                                            <div class="dropdown-menu dropdown-menu-end">
+                                                <a class="dropdown-item" href="#">Download</a>
+                                                <a class="dropdown-item" href="#">Refresh</a>
+                                                <a class="dropdown-item" href="#">Share</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="timeline mb-0">
+                                            <div class="timeline-item">
+                                                <span class="timeline-point bg-primary"></span>
+                                                <div class="timeline-event">
+                                                    <div class="timeline-header mb-3">
+                                                        <h6 class="mb-0">12 Invoices have been paid</h6>
+                                                        <small class="text-body-secondary">12 min ago</small>
+                                                    </div>
+                                                    <p class="mb-2 text-body-secondary">Invoices have been paid to the company</p>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="badge bg-light text-dark rounded-3 p-2">
+                                                            <i class="bi bi-file-earmark-pdf text-danger me-2"></i>
+                                                            <span class="fw-medium">invoices.pdf</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="timeline-item">
+                                                <span class="timeline-point bg-success"></span>
+                                                <div class="timeline-event">
+                                                    <div class="timeline-header mb-3">
+                                                        <h6 class="mb-0">Client Meeting</h6>
+                                                        <small class="text-body-secondary">45 min ago</small>
+                                                    </div>
+                                                    <p class="mb-2 text-body-secondary">Project meeting with john @10:15am</p>
+                                                    <div class="d-flex align-items-center">
+                                                        <img src="https://i.pravatar.cc/150?img=12" alt="Avatar" class="rounded-circle me-2" width="32" height="32">
+                                                        <div>
+                                                            <p class="mb-0 small fw-medium">Lester McCarthy (Client)</p>
+                                                            <small class="text-body-secondary">CEO of Pixinvent</small>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="timeline-item">
+                                                <span class="timeline-point bg-info"></span>
+                                                <div class="timeline-event">
+                                                    <div class="timeline-header mb-3">
+                                                        <h6 class="mb-0">Create a new project for client</h6>
+                                                        <small class="text-body-secondary">2 Day Ago</small>
+                                                    </div>
+                                                    <p class="mb-2 text-body-secondary">6 team members in a project</p>
+                                                    <div class="d-flex">
+                                                        <img src="https://i.pravatar.cc/150?img=1" alt="Avatar" class="rounded-circle me-2" width="32" height="32">
+                                                        <img src="https://i.pravatar.cc/150?img=5" alt="Avatar" class="rounded-circle me-2" width="32" height="32">
+                                                        <img src="https://i.pravatar.cc/150?img=8" alt="Avatar" class="rounded-circle me-2" width="32" height="32">
+                                                        <span class="avatar-initial rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-size: 12px;">+3</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <footer class="content-footer footer bg-footer-theme">
+                        <div class="container-xxl">
+                            <div class="footer-container d-flex align-items-center justify-content-between py-4 flex-md-row flex-column">
+                                <div class="text-body-secondary">
+                                    &copy; 2024, made with ❤️ by <a href="#" class="footer-link text-primary">Pixinvent</a>
+                                </div>
+                                <div class="d-none d-lg-inline-block">
+                                    <a href="#" class="footer-link me-4">License</a>
+                                    <a href="#" class="footer-link me-4">More Themes</a>
+                                    <a href="#" class="footer-link me-4">Documentation</a>
+                                    <a href="#" class="footer-link">Support</a>
+                                </div>
+                            </div>
+                        </div>
+                    </footer>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
