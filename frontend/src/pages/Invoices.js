@@ -1,72 +1,13 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
-/* Mock Customers Database */
-const customersDB = [
-  { id: 'CUST-001', name: 'ABC Electronics', email: 'abc@electronics.com', address: '123 Business Park, Mumbai', phone: '+91 98765 43210' },
-  { id: 'CUST-002', name: 'XYZ Retail', email: 'contact@xyzretail.com', address: '456 Market Street, Delhi', phone: '+91 98765 43211' },
-  { id: 'CUST-003', name: 'Tech Solutions', email: 'info@techsol.com', address: '789 Tech Hub, Bangalore', phone: '+91 98765 43212' },
-  { id: 'CUST-004', name: 'Office Supplies Co', email: 'sales@officesupplies.com', address: '321 Corporate Ave, Pune', phone: '+91 98765 43213' },
-  { id: 'CUST-005', name: 'Smart Gadgets Ltd', email: 'orders@smartgadgets.com', address: '555 Innovation Street, Hyderabad', phone: '+91 98765 43214' },
-  { id: 'CUST-006', name: 'Digital World', email: 'hello@digitalworld.com', address: '888 Tech Park, Chennai', phone: '+91 98765 43215' },
-  { id: 'CUST-007', name: 'Modern Enterprises', email: 'info@modernent.com', address: '999 Business Tower, Kolkata', phone: '+91 98765 43216' },
-];
+/* Customers Database */
+const customersDB = [];
 
-/* Mock Invoices Database */
-let invoicesDB = [
-  { 
-    id: 'INV-001', invoiceNumber: 'INV-001', customer: { name: 'ABC Electronics', email: 'abc@electronics.com', address: '123 Business Park, Mumbai', phone: '+91 98765 43210' },
-    issueDate: new Date('2024-06-01'), dueDate: new Date('2024-06-15'), 
-    status: 'paid', items: [
-      { product: 'Wireless Mouse', quantity: 50, price: 799, total: 39950 },
-      { product: 'Mechanical Keyboard', quantity: 25, price: 2499, total: 62475 },
-    ],
-    subtotal: 102425, tax: 18438, discount: 0, total: 120863, notes: 'Thank you for your business',
-    createdBy: 'Arjun Sharma', createdAt: new Date('2024-06-01T10:00:00')
-  },
-  { 
-    id: 'INV-002', invoiceNumber: 'INV-002', customer: { name: 'XYZ Retail', email: 'contact@xyzretail.com', address: '456 Market Street, Delhi', phone: '+91 98765 43211' },
-    issueDate: new Date('2024-06-05'), dueDate: new Date('2024-06-19'),
-    status: 'pending', items: [
-      { product: 'USB-C Hub', quantity: 100, price: 1299, total: 129900 },
-      { product: 'HDMI Cable', quantity: 200, price: 299, total: 59800 },
-    ],
-    subtotal: 189700, tax: 34146, discount: 5000, total: 218846, notes: 'Discount applied for bulk order',
-    createdBy: 'Priya Mehta', createdAt: new Date('2024-06-05T14:30:00')
-  },
-  { 
-    id: 'INV-003', invoiceNumber: 'INV-003', customer: { name: 'Tech Solutions', email: 'info@techsol.com', address: '789 Tech Hub, Bangalore', phone: '+91 98765 43212' },
-    issueDate: new Date('2024-06-10'), dueDate: new Date('2024-06-24'),
-    status: 'overdue', items: [
-      { product: 'Webcam 1080p', quantity: 15, price: 3499, total: 52485 },
-      { product: 'Monitor Stand', quantity: 20, price: 1899, total: 37980 },
-    ],
-    subtotal: 90465, tax: 16283, discount: 0, total: 106748, notes: '',
-    createdBy: 'Arjun Sharma', createdAt: new Date('2024-06-10T09:15:00')
-  },
-  { 
-    id: 'INV-004', invoiceNumber: 'INV-004', customer: { name: 'Office Supplies Co', email: 'sales@officesupplies.com', address: '321 Corporate Ave, Pune', phone: '+91 98765 43213' },
-    issueDate: new Date('2024-06-12'), dueDate: new Date('2024-06-26'),
-    status: 'draft', items: [
-      { product: 'Desk Lamp LED', quantity: 80, price: 549, total: 43920 },
-      { product: 'Cable Organiser', quantity: 150, price: 349, total: 52350 },
-    ],
-    subtotal: 96270, tax: 17328, discount: 2000, total: 111598, notes: 'Draft - pending approval',
-    createdBy: 'Priya Mehta', createdAt: new Date('2024-06-12T11:45:00')
-  },
-  { 
-    id: 'INV-005', invoiceNumber: 'INV-005', customer: { name: 'Smart Gadgets Ltd', email: 'orders@smartgadgets.com', address: '555 Innovation Street, Hyderabad', phone: '+91 98765 43214' },
-    issueDate: new Date('2024-06-15'), dueDate: new Date('2024-06-29'),
-    status: 'sent', items: [
-      { product: 'Portable SSD 1TB', quantity: 30, price: 7499, total: 224970 },
-      { product: 'Noise Cancelling Headphones', quantity: 20, price: 6999, total: 139980 },
-    ],
-    subtotal: 364950, tax: 65691, discount: 10000, total: 420641, notes: 'Priority delivery requested',
-    createdBy: 'Sneha Patel', createdAt: new Date('2024-06-15T16:20:00')
-  },
-];
+/* Invoices Database */
+let invoicesDB = [];
 
-let nextInvoiceNum = 6;
+let nextInvoiceNum = 1;
 
 export default function Invoices() {
   const { can } = useAuth();
