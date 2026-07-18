@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, NavLink, useLocation, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, NavLink, useLocation, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth, ROLES } from './context/AuthContext';
 import NotificationDropdown from './components/NotificationDropdown';
 import Dashboard    from './pages/Dashboard';
@@ -68,18 +68,9 @@ const MENU = [
 function ProtectedRoute({ permission, children }) {
   const { user, can } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
-  if (permission && !can(permission)) return <AccessDenied />;
+  // If user doesn't have permission, redirect to dashboard instead of showing Access Denied
+  if (permission && !can(permission)) return <Navigate to="/" replace />;
   return children;
-}
-
-function AccessDenied() {
-  return (
-    <div className="empty-state-v" style={{ paddingTop: 80 }}>
-      <i className="bi bi-shield-x" style={{ color: 'var(--danger)', fontSize: '3.5rem' }}></i>
-      <h5>Access Denied</h5>
-      <p>You don't have permission to view this page.</p>
-    </div>
-  );
 }
 
 function ComingSoon() {
@@ -311,7 +302,7 @@ function AppInner() {
             <Route path="/automations" element={<ProtectedRoute permission="settings.view"><Automations /></ProtectedRoute>} />
             <Route path="/settings"   element={<ProtectedRoute permission="settings.view"><Settings /></ProtectedRoute>} />
             <Route path="/users"      element={<ProtectedRoute permission="users.view"><Users /></ProtectedRoute>} />
-            <Route path="*"           element={<AccessDenied />} />
+            <Route path="*"           element={<Navigate to="/" replace />} />
           </Routes>
         </main>
       </div>
