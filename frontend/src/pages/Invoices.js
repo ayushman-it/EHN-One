@@ -2,12 +2,41 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 /* Customers Database */
-const customersDB = [];
+const customersDB = [
+  { id: 'CUST-001', name: 'ABC Electronics', email: 'abc@electronics.com', address: '123 Business Park, Mumbai', phone: '+91 98765 43210' },
+  { id: 'CUST-002', name: 'XYZ Retail', email: 'contact@xyzretail.com', address: '456 Market Street, Delhi', phone: '+91 98765 43211' },
+  { id: 'CUST-003', name: 'Tech Solutions', email: 'info@techsol.com', address: '789 Tech Hub, Bangalore', phone: '+91 98765 43212' },
+  { id: 'CUST-004', name: 'Office Supplies Co', email: 'sales@officesupplies.com', address: '321 Corporate Ave, Pune', phone: '+91 98765 43213' },
+];
 
 /* Invoices Database */
-let invoicesDB = [];
+let invoicesDB = [
+  { 
+    id: 'INV-001', invoiceNumber: 'INV-001', 
+    customer: { name: 'ABC Electronics', email: 'abc@electronics.com', address: '123 Business Park, Mumbai', phone: '+91 98765 43210' },
+    issueDate: new Date('2024-06-01'), dueDate: new Date('2024-06-15'), 
+    status: 'paid', 
+    items: [
+      { product: 'Wireless Mouse', quantity: 50, price: 799, total: 39950 },
+      { product: 'Mechanical Keyboard', quantity: 25, price: 2499, total: 62475 },
+    ],
+    subtotal: 102425, tax: 18438, discount: 0, total: 120863, notes: 'Thank you for your business',
+    createdBy: 'Admin', createdAt: new Date('2024-06-01')
+  },
+  { 
+    id: 'INV-002', invoiceNumber: 'INV-002',
+    customer: { name: 'XYZ Retail', email: 'contact@xyzretail.com', address: '456 Market Street, Delhi', phone: '+91 98765 43211' },
+    issueDate: new Date('2024-06-05'), dueDate: new Date('2024-06-19'),
+    status: 'pending', 
+    items: [
+      { product: 'USB-C Hub', quantity: 100, price: 1299, total: 129900 },
+    ],
+    subtotal: 129900, tax: 23382, discount: 5000, total: 148282, notes: 'Bulk order discount',
+    createdBy: 'Manager', createdAt: new Date('2024-06-05')
+  },
+];
 
-let nextInvoiceNum = 1;
+let nextInvoiceNum = 3;
 
 export default function Invoices() {
   const { can } = useAuth();

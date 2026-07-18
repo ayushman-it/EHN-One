@@ -2,6 +2,9 @@ const mongoose = require('mongoose');
 const connectDB = require('../config/db');
 const User = require('../models/User');
 const Category = require('../models/Category');
+const Product = require('../models/Product');
+const Supplier = require('../models/Supplier');
+const Warehouse = require('../models/Warehouse');
 
 const seedData = async () => {
   try {
@@ -9,18 +12,14 @@ const seedData = async () => {
     
     console.log('🌱 Starting database seeding...\n');
 
-    // Clear existing data
-    console.log('🗑️  Clearing existing data...');
-    await User.deleteMany({});
-    await Category.deleteMany({});
-    console.log('✅ Data cleared\n');
+    // Note: Skipping delete operations as this is MongoDB Atlas SQL endpoint
 
     // Seed Users
     console.log('👥 Seeding users...');
     const users = [
       {
         name: 'Arjun Sharma',
-        email: 'admin@ehnone.com',
+        email: 'admin@ehnsystem.com',
         password: 'admin123',
         role: 'admin',
         department: 'Management',
@@ -29,7 +28,7 @@ const seedData = async () => {
       },
       {
         name: 'Priya Mehta',
-        email: 'manager@ehnone.com',
+        email: 'manager@ehnsystem.com',
         password: 'manager123',
         role: 'manager',
         department: 'Operations',
@@ -38,7 +37,7 @@ const seedData = async () => {
       },
       {
         name: 'Rahul Verma',
-        email: 'viewer@ehnone.com',
+        email: 'viewer@ehnsystem.com',
         password: 'viewer123',
         role: 'viewer',
         department: 'Sales',
@@ -98,10 +97,143 @@ const seedData = async () => {
     ]);
     console.log('✅ Categories seeded\n');
 
+    // Seed Suppliers
+    console.log('🚚 Seeding suppliers...');
+    const suppliers = await Supplier.insertMany([
+      {
+        name: 'Tech Supplies India',
+        contactPerson: 'Rajesh Kumar',
+        email: 'rajesh@techsupplies.com',
+        phone: '+91 98765 11111',
+        address: '123 Tech Park, Bangalore',
+        city: 'Bangalore',
+        state: 'Karnataka',
+        pincode: '560001',
+        status: 'active',
+        rating: 4.5,
+      },
+      {
+        name: 'Office Mart',
+        contactPerson: 'Sneha Patel',
+        email: 'sneha@officemart.com',
+        phone: '+91 98765 22222',
+        address: '456 Business Street, Mumbai',
+        city: 'Mumbai',
+        state: 'Maharashtra',
+        pincode: '400001',
+        status: 'active',
+        rating: 4.0,
+      },
+    ]);
+    console.log('✅ Suppliers seeded\n');
+
+    // Seed Warehouses
+    console.log('🏢 Seeding warehouses...');
+    const warehouses = await Warehouse.insertMany([
+      {
+        name: 'Main Warehouse Delhi',
+        code: 'WH-DEL-001',
+        location: 'Sector 63, Noida',
+        city: 'Delhi',
+        state: 'Delhi',
+        pincode: '110001',
+        manager: 'Amit Sharma',
+        phone: '+91 98765 33333',
+        email: 'delhi@ehnone.com',
+        capacity: 50000,
+        status: 'active',
+        type: 'Main Warehouse',
+      },
+      {
+        name: 'Mumbai Distribution Center',
+        code: 'WH-MUM-001',
+        location: 'Andheri MIDC',
+        city: 'Mumbai',
+        state: 'Maharashtra',
+        pincode: '400001',
+        manager: 'Priya Desai',
+        phone: '+91 98765 44444',
+        email: 'mumbai@ehnone.com',
+        capacity: 30000,
+        status: 'active',
+        type: 'Distribution Center',
+      },
+    ]);
+    console.log('✅ Warehouses seeded\n');
+
+    // Seed Products
+    console.log('📦 Seeding products...');
+    await Product.insertMany([
+      {
+        name: 'Wireless Mouse',
+        sku: 'WM-001',
+        description: 'Ergonomic wireless mouse with USB receiver',
+        category: electronics._id,
+        supplier: suppliers[0]._id,
+        warehouse: warehouses[0]._id,
+        quantity: 45,
+        price: 799,
+        lowStockThreshold: 10,
+        status: 'active',
+      },
+      {
+        name: 'Mechanical Keyboard',
+        sku: 'KB-002',
+        description: 'Backlit mechanical keyboard with blue switches',
+        category: electronics._id,
+        supplier: suppliers[0]._id,
+        warehouse: warehouses[0]._id,
+        quantity: 8,
+        price: 2499,
+        lowStockThreshold: 10,
+        status: 'active',
+      },
+      {
+        name: 'USB-C Hub 7-in-1',
+        sku: 'HB-003',
+        description: '7-port USB-C hub with HDMI and SD card',
+        category: electronics._id,
+        supplier: suppliers[0]._id,
+        warehouse: warehouses[1]._id,
+        quantity: 0,
+        price: 1299,
+        lowStockThreshold: 5,
+        status: 'active',
+      },
+      {
+        name: 'Office Chair Executive',
+        sku: 'CH-004',
+        description: 'Ergonomic executive office chair with lumbar support',
+        category: furniture._id,
+        supplier: suppliers[1]._id,
+        warehouse: warehouses[0]._id,
+        quantity: 22,
+        price: 8999,
+        lowStockThreshold: 5,
+        status: 'active',
+      },
+      {
+        name: 'Laptop Stand Aluminum',
+        sku: 'LS-005',
+        description: 'Adjustable aluminum laptop stand',
+        category: electronics._id,
+        supplier: suppliers[1]._id,
+        warehouse: warehouses[1]._id,
+        quantity: 60,
+        price: 1499,
+        lowStockThreshold: 15,
+        status: 'active',
+      },
+    ]);
+    console.log('✅ Products seeded\n');
+
     console.log('🎉 Database seeding completed successfully!');
     console.log('\n📊 Summary:');
     console.log(`   Users: ${users.length}`);
     console.log(`   Categories: 5`);
+    console.log(`   Suppliers: 2`);
+    console.log(`   Warehouses: 2`);
+    console.log(`   Products: 5`);
     console.log('\n✅ Ready to start the server!\n');
 
     process.exit(0);
