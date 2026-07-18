@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
-// MongoDB Atlas connection string with all options
-const MONGODB_URI = 'mongodb+srv://anshchourasia768_db_user:It98g2KAWace3sSG@cluster0.7et62zj.mongodb.net/ehnone_inventory?retryWrites=true&w=majority&appName=Cluster0';
+// MongoDB Atlas connection string
+const MONGODB_URI = 'mongodb://anshchourasia768_db_user:It98g2KAWace3sSG@atlas-sql-6a5b7703c51e79adf2ecb006-enpmyj.a.query.mongodb.net/EHN?ssl=true&authSource=admin';
 
 const connectDB = async () => {
   try {
