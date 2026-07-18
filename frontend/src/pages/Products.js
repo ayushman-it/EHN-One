@@ -130,7 +130,11 @@ export default function Products() {
                      lowStockThreshold: Number(form.lowStockThreshold) };
       if (editId) await updateProduct(editId, data); else await addProduct(data);
       setShowModal(false); load();
-    } catch (err) { setError(err.response?.data?.error || 'Something went wrong'); }
+    } catch (err) { 
+      const errorMsg = err.response?.data?.error || err.response?.data?.message || err.message || 'Something went wrong';
+      setError(errorMsg);
+      console.error('Add/Update error:', err);
+    }
     finally { setSaving(false); }
   };
 

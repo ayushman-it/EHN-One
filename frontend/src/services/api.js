@@ -1,5 +1,5 @@
 /* ============================================================
-   EHN One - Real Backend API Integration
+   EHN One - Hybrid API (Backend + LocalStorage Fallback)
    ============================================================ */
 
 import axios from 'axios';
@@ -7,13 +7,16 @@ import axios from 'axios';
 // Base API URL - change for production
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
+// Check if backend is available
+let backendAvailable = true;
+
 // Create axios instance with default config
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000, // 10 seconds
+  timeout: 5000, // 5 seconds
 });
 
 // Request interceptor - add auth token if available
@@ -32,18 +35,40 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response.data,
   (error) => {
+    if (error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED') {
+      backendAvailable = false;
+    }
     if (error.response) {
       // Server responded with error
       const message = error.response.data?.message || error.response.data?.error || 'Something went wrong';
       throw new Error(message);
     } else if (error.request) {
-      // Request made but no response
-      throw new Error('Unable to connect to server. Please check your internet connection.');
+      // Request made but no response - backend not available
+      backendAvailable = false;
+      throw new Error('Backend not available. Using local storage.');
     } else {
       throw new Error(error.message || 'An unexpected error occurred');
     }
   }
 );
+
+// LocalStorage helpers
+const getFromStorage = (key, defaultValue = []) => {
+  try {
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : defaultValue;
+  } catch {
+    return defaultValue;
+  }
+};
+
+const saveToStorage = (key, data) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (e) {
+    console.error('Failed to save to localStorage:', e);
+  }
+};
 
 const delay = (ms = 300) => new Promise((r) => setTimeout(r, ms));
 
@@ -64,26 +89,86 @@ export const register = async (userData) => {
    ═══════════════════════════════════════════════════════════ */
 
 export const getProducts = async (search, category) => {
-  const params = {};
-  if (search) params.search = search;
-  if (category) params.category = category;
-  return api.get('/products', { params });
+  try {
+    const params = {};
+    if (search) params.search = search;
+    if (category) params.category = category;
+    const response = await api.get('/products', { params });
+    return response;
+  } catch (error) {
+    // Fallback to localStorage
+    await delay();
+    const products = getFromStorage('products', []);
+    let filtered = products;
+    if (search) {
+      const q = search.toLowerCase();
+      filtered = filtered.filter(p => 
+        p.name.toLowerCase().includes(q) || 
+        p.sku.toLowerCase().includes(q) ||
+        (p.category && p.category.toLowerCase().includes(q))
+      );
+    }
+    if (category) {
+      filtered = filtered.filter(p => p.category === category);
+    }
+    return { data: filtered };
+  }
 };
 
 export const getProduct = async (id) => {
-  return api.get(`/products/${id}`);
+  try {
+    return await api.get(`/products/${id}`);
+  } catch (error) {
+    await delay();
+    const products = getFromStorage('products', []);
+    const product = products.find(p => p._id === id);
+    if (!product) throw new Error('Product not found');
+    return { data: product };
+  }
 };
 
 export const addProduct = async (data) => {
-  return api.post('/products', data);
+  try {
+    return await api.post('/products', data);
+  } catch (error) {
+    await delay();
+    const products = getFromStorage('products', []);
+    const newProduct = {
+      ...data,
+      _id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    products.unshift(newProduct);
+    saveToStorage('products', products);
+    return { data: newProduct };
+  }
 };
 
 export const updateProduct = async (id, data) => {
-  return api.put(`/products/${id}`, data);
+  try {
+    return await api.put(`/products/${id}`, data);
+  } catch (error) {
+    await delay();
+    const products = getFromStorage('products', []);
+    const index = products.findIndex(p => p._id === id);
+    if (index === -1) throw new Error('Product not found');
+    products[index] = { ...products[index], ...data, updatedAt: new Date().toISOString() };
+    saveToStorage('products', products);
+    return { data: products[index] };
+  }
 };
 
 export const deleteProduct = async (id) => {
-  return api.delete(`/products/${id}`);
+  try {
+    return await api.delete(`/products/${id}`);
+  } catch (error) {
+    await delay();
+    const products = getFromStorage('products', []);
+    const filtered = products.filter(p => p._id !== id);
+    saveToStorage('products', filtered);
+    return { data: { message: 'Deleted' } };
+  }
 };
 
 /* ═══════════════════════════════════════════════════════════
@@ -296,7 +381,26 @@ export const clearAllNotifications = async () => {
    ═══════════════════════════════════════════════════════════ */
 
 export const getStats = async () => {
-  return api.get('/dashboard/stats');
+  try {
+    return await api.get('/dashboard/stats');
+  } catch (error) {
+    await delay();
+    const products = getFromStorage('products', []);
+    const totalProducts = products.length;
+    const totalStock = products.reduce((sum, p) => sum + (p.quantity || 0), 0);
+    const lowStockItems = products.filter(p => p.quantity <= (p.lowStockThreshold || 10));
+    const totalValue = products.reduce((sum, p) => sum + ((p.price || 0) * (p.quantity || 0)), 0);
+    
+    return {
+      data: {
+        totalProducts,
+        totalStock,
+        lowStockCount: lowStockItems.length,
+        lowStockItems,
+        totalValue,
+      }
+    };
+  }
 };
 
 export const getLowStockProducts = async () => {
