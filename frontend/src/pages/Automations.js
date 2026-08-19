@@ -61,8 +61,23 @@ let automationsDB = [
     includeInvoice: true,
     messageTemplate: 'order_confirmation',
     customMessage: '✅ *Order Confirmed*\n\nThank you {{customer_name}}!\n\nOrder ID: {{order_id}}\nTotal Amount: ₹{{amount}}\nDelivery Date: {{delivery_date}}\n\nYour invoice is attached.\n\n_EHN One - Thank you for your business!_',
-    lastTriggered: new Date('2024-06-15T14:20:00'),
+    lastTriggered: new Date('2026-08-13T14:20:00'),
     triggeredCount: 89,
+  },
+  {
+    id: 'AUTO-005',
+    type: 'today_summary',
+    name: 'Daily Business Summary Report',
+    description: 'Automated daily report of total sales, collections, and pending dues sent to Admin at scheduled time',
+    enabled: true,
+    channel: 'whatsapp',
+    phone: '+91 98765 43210',
+    frequency: 'daily',
+    time: '20:00',
+    messageTemplate: 'today_summary',
+    customMessage: '📊 *DAILY BUSINESS SUMMARY REPORT - EHN One*\n\n📅 Date: {{date}}\n\n🧾 Today\'s Invoices Created: {{invoices_count}}\n💰 Total Sales Revenue: ₹{{total_revenue}}\n✅ Cash / Payment Collected: ₹{{paid_amount}}\n⏳ Pending / Credit Amount: ₹{{pending_amount}}\n\n_Automated Daily Summary Report_',
+    lastTriggered: new Date('2026-08-13T20:00:00'),
+    triggeredCount: 64,
   },
 ];
 
@@ -337,20 +352,33 @@ export default function Automations() {
                   </div>
                 </div>
               </div>
-              <div className="automation-card-footer">
-                <button className="btn-v-text primary" onClick={() => setViewAutomation(auto)}>
-                  <i className="bi bi-eye"></i> View Details
+              <div className="automation-card-footer d-flex align-items-center justify-content-between">
+                <div className="d-flex align-items-center gap-2">
+                  <button className="btn-v-text primary" onClick={() => setViewAutomation(auto)}>
+                    <i className="bi bi-eye"></i> Details
+                  </button>
+                  {can('settings.edit') && (
+                    <>
+                      <button className="btn-v-text primary" onClick={() => setEditAutomation(auto)}>
+                        <i className="bi bi-pencil"></i> Edit
+                      </button>
+                      <button className="btn-v-text danger" onClick={() => handleDelete(auto.id)}>
+                        <i className="bi bi-trash"></i> Delete
+                      </button>
+                    </>
+                  )}
+                </div>
+                <button 
+                  className="btn-v outline-success btn-sm px-2 py-1"
+                  style={{ fontSize: '0.78rem' }}
+                  onClick={async () => {
+                    alert(`🚀 Triggered Scheduled Automation Job "${auto.name}". Running dynamic report generator...`);
+                    setAutomations(prev => prev.map(a => a.id === auto.id ? { ...a, lastTriggered: new Date(), triggeredCount: (a.triggeredCount || 0) + 1 } : a));
+                  }}
+                  title="Run Job Now (Instant Scheduled Execution Test)"
+                >
+                  <i className="bi bi-play-fill me-1"></i> Run Job Now
                 </button>
-                {can('settings.edit') && (
-                  <>
-                    <button className="btn-v-text primary" onClick={() => setEditAutomation(auto)}>
-                      <i className="bi bi-pencil"></i> Edit
-                    </button>
-                    <button className="btn-v-text danger" onClick={() => handleDelete(auto.id)}>
-                      <i className="bi bi-trash"></i> Delete
-                    </button>
-                  </>
-                )}
               </div>
             </div>
           </div>

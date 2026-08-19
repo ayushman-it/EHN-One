@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EHN_One_System_Architecture_and_RBAC_Report</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 15mm;
+    }
+    @media print {
+      body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .page-break {
+        page-break-before: always;
+      }
+    }
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #1e293b;
+      background: #ffffff;
+      margin: 0;
+      padding: 24px;
+    }
+    .print-btn-bar {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      padding: 12px 20px;
+      border-radius: 8px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .btn-print {
+      background: #7367f0;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(115, 103, 240, 0.3);
+    }
+    .btn-print:hover {
+      background: #5e50ee;
+    }
+    .header {
+      border-bottom: 3px solid #7367f0;
+      padding-bottom: 16px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .brand-title {
+      font-size: 24px;
+      font-weight: 800;
+      color: #7367f0;
+      letter-spacing: -0.5px;
+    }
+    .brand-sub {
+      font-size: 13px;
+      color: #64748b;
+      margin-top: 4px;
+      font-weight: 500;
+    }
+    .meta-box {
+      text-align: right;
+      font-size: 12px;
+      color: #64748b;
+    }
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
+      border-left: 4px solid #7367f0;
+      padding-left: 10px;
+      margin-top: 28px;
+      margin-bottom: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .arch-diagram {
+      background: #0f172a;
+      color: #f8fafc;
+      font-family: 'Courier New', Courier, monospace;
+      padding: 16px;
+      border-radius: 8px;
+      font-size: 12px;
+      line-height: 1.4;
+      margin-bottom: 20px;
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      margin-bottom: 20px;
+    }
+    th {
+      background: #f8fafc;
+      color: #475569;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 12px;
+    }
+    tr:nth-child(even) td {
+      background: #fafafa;
+    }
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      font-size: 10px;
+      font-weight: 700;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+    .badge-success { background: #dcfce7; color: #15803d; }
+    .badge-primary { background: #e0e7ff; color: #4338ca; }
+    .badge-warning { background: #fef3c7; color: #b45309; }
+    .badge-danger  { background: #fee2e2; color: #b91c1c; }
+    .badge-secondary { background: #f1f5f9; color: #64748b; }
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .feature-card {
+      border: 1px solid #e2e8f0;
+      background: #ffffff;
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .feature-title {
+      font-weight: 700;
+      color: #7367f0;
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+    .footer-box {
+      margin-top: 40px;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 16px;
+      display: flex;
+      justify-content: space-between;
+      color: #64748b;
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Print Button Bar (Hidden in Print Mode) -->
+  <div class="print-btn-bar no-print">
+    <div>
+      <strong>EHN One Executive System Architecture & RBAC Report</strong>
+      <div style="font-size: 12px; color: #64748b;">Click the button on the right to open PDF Print Preview / Save as PDF</div>
+    </div>
+    <button className="btn-print" onclick="window.print()">
+      🖨️ Save as PDF / Print
+    </button>
+  </div>
+
+  <!-- Document Header -->
+  <div class="header">
+    <div>
+      <div class="brand-title">EHN One - ERP System Blueprint</div>
+      <div class="brand-sub">Complete Architecture, Module Hierarchy & Role Permissions Matrix</div>
+    </div>
+    <div class="meta-box">
+      <div><strong>Document ID:</strong> EHN-SPEC-2026</div>
+      <div><strong>Date:</strong> 14th August 2026</div>
+      <div><strong>Tally Prime Match:</strong> 92% Compatibility</div>
+    </div>
+  </div>
+
+  <!-- Section 1: Architecture -->
+  <div class="section-title">1. High-Level System Architecture & Data Flow</div>
+  <div class="arch-diagram">
+[ Web Browser / Mobile ] ──(HTTP/HTTPS)──> [ React 18 SPA Frontend ]
+                                                   │
+                                            (RESTful API Calls)
+                                                   │
+                                                   ▼
+                                        [ Express.js Backend ]
+                                         │       │         │
+                 ┌───────────────────────┘       │         └───────────────────────┐
+                 ▼                               ▼                                 ▼
+      [ MongoDB Database ]             [ WhatsApp Scheduler ]             [ Tally XML Engine ]
+   (Products, Invoices, Ledgers,       (Background CRON Job        (Direct Voucher & Master XML
+   Audit Logs, Automations, Users)     Every Minute Execution)           Export Stream API)
+  </div>
+
+  <!-- Section 2: Component Hierarchy -->
+  <div class="section-title">2. Complete Application Modules & Component Breakdown</div>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="feature-title">📊 Executive Dashboard (Dashboard.js)</div>
+      <div>Real-time turnover metrics, cash collections, stock valuation, low stock warnings, recent inventory activity stream.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-title">📦 Inventory & Warehouse (Products.js, Warehouse.js)</div>
+      <div>SKU tracking, UQC units (Pcs, Kg, Box), HSN codes, GST % rates (0-28%), multi-godown location allocation.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-title">👥 Debtors & Creditors (Customers.js, Suppliers.js)</div>
+      <div>Sundry Debtors/Creditors masters, bill-by-bill tracking, default credit period (days), TDS (194C/194Q), Party Khata Ledgers.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-title">🧾 GST Invoicing Engine (Invoices.js)</div>
+      <div>A4 GST Tax Invoices, auto CGST/SGST vs IGST state calculation, auto inventory deduction/restoration, thermal print.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-title">🔄 Tally Prime XML Integration (tallyIntegration.js)</div>
+      <div>1-Click native Tally XML exporter for vouchers, debtors, creditors, and stock items with zero manual re-entry.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-title">🤖 WhatsApp Business Automation (whatsappScheduler.js)</div>
+      <div>Background CRON auto-scheduler for Daily Summary (8:00 PM), Daily Stock (9:00 AM), Low Stock Alerts & Dues Reminders.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-title">📈 Reports & Analytics (Reports.js)</div>
+      <div>GSTR-1 tax returns, Stock Valuation (Cost vs Retail), Debtors/Creditors Aging ($0-30$, $31-60$, $>90$ Days), 1-Click CSV/PDF exports.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-title">🛡️ Security & Support (Users.js, Support.js)</div>
+      <div>Granular RBAC permission matrix, Security Audit Logs Explorer with IP tracking, Helpdesk Ticket Management.</div>
+    </div>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- Section 3: RBAC Matrix -->
+  <div class="section-title">3. Admin & User Role-Based Access Control (RBAC) Matrix</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Module / Permission Scope</th>
+        <th>Administrator</th>
+        <th>Manager</th>
+        <th>Accountant</th>
+        <th>Staff</th>
+        <th>Viewer</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Executive Dashboard</strong></td>
+        <td><span class="badge badge-success">Full Access</span></td>
+        <td><span class="badge badge-success">Full Access</span></td>
+        <td><span class="badge badge-success">Full Access</span></td>
+        <td><span class="badge badge-success">Full Access</span></td>
+        <td><span class="badge badge-primary">View Only</span></td>
+      </tr>
+      <tr>
+        <td><strong>Product Catalog & Stock</strong></td>
+        <td><span class="badge badge-success">Full CRUD</span></td>
+        <td><span class="badge badge-success">Add & Edit</span></td>
+        <td><span class="badge badge-secondary">Restricted</span></td>
+        <td><span class="badge badge-secondary">Restricted</span></td>
+        <td><span class="badge badge-primary">View Only</span></td>
+      </tr>
+      <tr>
+        <td><strong>Product Delete Permission</strong></td>
+        <td><span class="badge badge-danger">Full Delete</span></td>
+        <td><span class="badge badge-secondary">Restricted</span></td>
+        <td><span class="badge badge-secondary">Restricted</span></td>
+        <td><span class="badge badge-secondary">Restricted</span></td>
+        <td><span class="badge badge-secondary">Restricted</span></td>
+      </tr>
+      <tr>
+        <td><strong>Stock Transactions</strong></td>
+        <td><span class="badge badge-success">Full Access</span></td>
+        <td><span class="badge badge-success">Stock In/Out</span></td>
+        <td><span class="badge badge-primary">Stock In Only</span></td>
+        <td><span class="badge badge-primary">Stock Out Only</span></td>
+        <td><span class="badge badge-secondary">Restricted</span></td>
+      </tr>
+      <tr>
+        <td><strong>GST Tax Invoicing</strong></td>
+        <td><span class="badge badge-success">Full Billing</span></td>
+        <td><span class="badge badge-success">Full Billing</span></td>
+        <td><span class="badge badge-success">Full Billing</span></td>
+        <td><span class="badge badge-warning">Create Only</span></td>
+        <td><span class="badge badge-secondary">Restricted</span></td>
+      </tr>
+      <tr>
+        <td><strong>Party Debtors & Creditors</strong></td>
+        <td><span class="badge badge-success">Full Access</span></td>
+        <td><span class="badge badge-success">Full Access</span></td>
+        <td><span class="badge badge-success">Full Access</span></td>
+        <td><span class="badge badge-primary">View Only</span></td>
+        <td><span class="badge badge-secondary">Restricted</span></td>
+      </tr>
+      <tr>
+        <td><strong>Reports & Financial Analytics</strong></td>
+        <td><span class="badge badge-success">Full Access</span></td>
+        <td><span class="badge badge-success">Full Access</span></td>
+        <td><span class="badge badge-success">Full Access</span></td>
+        <td><span class="badge badge-secondary">Restricted</span></td>
+        <td><span class="badge badge-primary">Overview Only</span></td>
+      </tr>
+      <tr>
+        <td><strong>Automations & Background Engine</strong></td>
+        <td><span class="badge badge-success">Full Edit</span></td>
+        <td><span class="badge badge-primary">View Status</span></td>
+        <td><span class="badge badge-secondary">Restricted</span></td>
+        <td><span class="badge badge-secondary">Restricted</span></td>
+        <td><span class="badge badge-secondary">Restricted</span></td>
+      </tr>
+      <tr>
+        <td><strong>User Management & Roles</strong></td>
+        <td><span class="badge badge-success">Full Access</span></td>
+        <td><span class="badge badge-secondary">Restricted</span></td>
+        <td><span class="badge badge-secondary">Restricted</span></td>
+        <td><span class="badge badge-secondary">Restricted</span></td>
+        <td><span class="badge badge-secondary">Restricted</span></td>
+      </tr>
+      <tr>
+        <td><strong>Security Audit Logs Explorer</strong></td>
+        <td><span class="badge badge-success">Full Audit</span></td>
+        <td><span class="badge badge-secondary">Restricted</span></td>
+        <td><span class="badge badge-secondary">Restricted</span></td>
+        <td><span class="badge badge-secondary">Restricted</span></td>
+        <td><span class="badge badge-secondary">Restricted</span></td>
+      </tr>
+      <tr>
+        <td><strong>System Settings</strong></td>
+        <td><span class="badge badge-success">Full Config</span></td>
+        <td><span class="badge badge-secondary">Restricted</span></td>
+        <td><span class="badge badge-secondary">Restricted</span></td>
+        <td><span class="badge badge-secondary">Restricted</span></td>
+        <td><span class="badge badge-secondary">Restricted</span></td>
+      </tr>
+      <tr>
+        <td><strong>My Profile & Password Security</strong></td>
+        <td><span class="badge badge-danger">Edit Identity</span></td>
+        <td><span class="badge badge-primary">View & Pass</span></td>
+        <td><span class="badge badge-primary">View & Pass</span></td>
+        <td><span class="badge badge-primary">View & Pass</span></td>
+        <td><span class="badge badge-primary">View & Pass</span></td>
+      </tr>
+      <tr>
+        <td><strong>Helpdesk & Support Center</strong></td>
+        <td><span class="badge badge-success">Manage/Assign</span></td>
+        <td><span class="badge badge-warning">Raise Ticket</span></td>
+        <td><span class="badge badge-warning">Raise Ticket</span></td>
+        <td><span class="badge badge-warning">Raise Ticket</span></td>
+        <td><span class="badge badge-warning">Raise Ticket</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Section 4: Security Rules -->
+  <div class="section-title">4. Security & Data Protection Policies</div>
+  <ul>
+    <li><strong>Identity Protection:</strong> Full Name, Email, Role, and Department are strictly read-only for non-admin accounts. Only Administrators can alter user identities.</li>
+    <li><strong>Self-Service Controls:</strong> All authenticated users can upload their own profile avatar and update password securely.</li>
+    <li><strong>Immutable Audit Logging:</strong> Every sensitive action (logins, role updates, invoice cancellations, stock edits) is recorded with IP address, user ID, timestamp, and severity level.</li>
+  </ul>
+
+  <!-- Document Footer -->
+  <div class="footer-box">
+    <div>Generated by EHN One ERP System Specifications Engine</div>
+    <div>Confidential & Proprietary Corporate Document</div>
+  </div>
+
+</body>
+</html>

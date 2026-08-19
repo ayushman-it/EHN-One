@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { exportTallyLedgers } from '../services/api';
+import LedgerStatementModal from '../components/LedgerStatementModal';
+import { sendSupplierPayableWhatsApp } from '../utils/whatsappHelper';
 
-/* Mock Suppliers Database */
+/* Mock Suppliers Database with Tally Sundry Creditors attributes */
 let suppliersDB = [
   { 
     id: 'SUP-001', 
@@ -10,8 +13,19 @@ let suppliersDB = [
     email: 'rajesh@techdist.com', 
     phone: '+91 98765 43210',
     address: '123 Electronics Hub, Nehru Place, Delhi',
+    state: 'Delhi',
+    pincode: '110019',
+    group: 'Sundry Creditors',
     category: 'Electronics',
     gst: '07AAAAA1234A1Z5',
+    pan: 'AAAAA1234A',
+    maintainBillByBill: true,
+    defaultCreditPeriod: 30,
+    tdsApplicable: true,
+    tdsSection: '194Q',
+    bankDetails: { accountNo: '112233445566', ifsc: 'SBIN0000123', bankName: 'SBI' },
+    openingBalance: 45000,
+    openingBalanceType: 'Cr',
     rating: 4.5,
     totalOrders: 145,
     totalAmount: 2450000,
@@ -26,8 +40,19 @@ let suppliersDB = [
     email: 'priya@globalsupply.com', 
     phone: '+91 98765 43211',
     address: '456 Trade Center, Andheri, Mumbai',
+    state: 'Maharashtra',
+    pincode: '400069',
+    group: 'Sundry Creditors',
     category: 'Office Supplies',
     gst: '27BBBBB5678B2Z6',
+    pan: 'BBBBB5678B',
+    maintainBillByBill: true,
+    defaultCreditPeriod: 45,
+    tdsApplicable: false,
+    tdsSection: '194C',
+    bankDetails: { accountNo: '998877665544', ifsc: 'HDFC0000456', bankName: 'HDFC Bank' },
+    openingBalance: 12000,
+    openingBalanceType: 'Cr',
     rating: 4.8,
     totalOrders: 230,
     totalAmount: 1850000,
@@ -42,50 +67,38 @@ let suppliersDB = [
     email: 'amit@qualityhw.com', 
     phone: '+91 98765 43212',
     address: '789 Industrial Area, Whitefield, Bangalore',
+    state: 'Karnataka',
+    pincode: '560066',
+    group: 'Sundry Creditors',
     category: 'Hardware',
     gst: '29CCCCC9101C3Z7',
+    pan: 'CCCCC9101C',
+    maintainBillByBill: true,
+    defaultCreditPeriod: 30,
+    tdsApplicable: true,
+    tdsSection: '194Q',
+    bankDetails: { accountNo: '554433221100', ifsc: 'ICIC0000789', bankName: 'ICICI Bank' },
+    openingBalance: 35000,
+    openingBalanceType: 'Cr',
     rating: 4.2,
     totalOrders: 98,
     totalAmount: 3200000,
     status: 'active',
     joinDate: new Date('2023-03-10'),
     products: ['Networking', 'Storage', 'Servers']
-  },
-  { 
-    id: 'SUP-004', 
-    name: 'Smart Components Pvt Ltd', 
-    contact: 'Sneha Patel', 
-    email: 'sneha@smartcomp.com', 
-    phone: '+91 98765 43213',
-    address: '321 Tech Park, Hinjewadi, Pune',
-    category: 'Electronics',
-    gst: '27DDDDD2345D4Z8',
-    rating: 3.9,
-    totalOrders: 67,
-    totalAmount: 890000,
-    status: 'inactive',
-    joinDate: new Date('2023-06-05'),
-    products: ['Components', 'Cables', 'Tools']
-  },
-  { 
-    id: 'SUP-005', 
-    name: 'Metro Wholesale', 
-    contact: 'Vikram Reddy', 
-    email: 'vikram@metrowhole.com', 
-    phone: '+91 98765 43214',
-    address: '555 Business District, Madhapur, Hyderabad',
-    category: 'General',
-    gst: '36EEEEE6789E5Z9',
-    rating: 4.6,
-    totalOrders: 189,
-    totalAmount: 1650000,
-    status: 'active',
-    joinDate: new Date('2022-11-12'),
-    products: ['Mixed Goods', 'Bulk Items']
-  },
+  }
 ];
 
-let nextSupplierNum = 6;
+let nextSupplierNum = 4;
+
+const INDIAN_STATES = [
+  'Andaman and Nicobar Islands', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar',
+  'Chandigarh', 'Chhattisgarh', 'Dadra and Nagar Haveli', 'Daman and Diu', 'Delhi', 'Goa',
+  'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jammu and Kashmir', 'Jharkhand', 'Karnataka',
+  'Kerala', 'Ladakh', 'Lakshadweep', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya',
+  'Mizoram', 'Nagaland', 'Odisha', 'Puducherry', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
+  'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal'
+];
 
 export default function Suppliers() {
   const { can } = useAuth();
@@ -95,6 +108,7 @@ export default function Suppliers() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [viewSupplier, setViewSupplier] = useState(null);
   const [editSupplier, setEditSupplier] = useState(null);
+  const [selectedLedgerParty, setSelectedLedgerParty] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Filter logic
@@ -104,7 +118,8 @@ export default function Suppliers() {
       sup.name.toLowerCase().includes(q) || 
       sup.contact.toLowerCase().includes(q) ||
       sup.email.toLowerCase().includes(q) ||
-      sup.category.toLowerCase().includes(q);
+      sup.category.toLowerCase().includes(q) ||
+      (sup.gst && sup.gst.toLowerCase().includes(q));
     const matchStatus = statusFilter === 'all' || sup.status === statusFilter;
     const matchCategory = categoryFilter === 'all' || sup.category === categoryFilter;
     return matchSearch && matchStatus && matchCategory;
@@ -115,7 +130,7 @@ export default function Suppliers() {
     total: suppliers.length,
     active: suppliers.filter((s) => s.status === 'active').length,
     totalOrders: suppliers.reduce((sum, s) => sum + s.totalOrders, 0),
-    totalAmount: suppliers.reduce((sum, s) => sum + s.totalAmount, 0),
+    totalPayables: suppliers.reduce((sum, s) => sum + (Number(s.openingBalance) || 0), 0),
   };
 
   const categories = ['All', 'Electronics', 'Office Supplies', 'Hardware', 'General'];
@@ -129,20 +144,6 @@ export default function Suppliers() {
     return <span className={`badge-v ${s.color}`}><i className={`bi ${s.icon}`}></i> {s.label}</span>;
   };
 
-  const getRatingStars = (rating) => {
-    const stars = [];
-    for (let i = 1; i <= 5; i++) {
-      if (i <= Math.floor(rating)) {
-        stars.push(<i key={i} className="bi bi-star-fill" style={{ color: '#ff9f43', fontSize: '0.8rem' }}></i>);
-      } else if (i === Math.ceil(rating) && rating % 1 !== 0) {
-        stars.push(<i key={i} className="bi bi-star-half" style={{ color: '#ff9f43', fontSize: '0.8rem' }}></i>);
-      } else {
-        stars.push(<i key={i} className="bi bi-star" style={{ color: '#ddd', fontSize: '0.8rem' }}></i>);
-      }
-    }
-    return <span className="d-inline-flex gap-1">{stars}</span>;
-  };
-
   const handleDelete = (id) => {
     if (window.confirm('Delete this supplier? This action cannot be undone.')) {
       setSuppliers(suppliers.filter((s) => s.id !== id));
@@ -154,6 +155,7 @@ export default function Suppliers() {
     const supplier = {
       ...newSupplier,
       id: `SUP-${String(nextSupplierNum++).padStart(3, '0')}`,
+      group: 'Sundry Creditors',
       totalOrders: 0,
       totalAmount: 0,
       joinDate: new Date(),
@@ -183,18 +185,24 @@ export default function Suppliers() {
       <div className="page-header">
         <div className="page-header-top">
           <div>
-            <h1 className="page-title">
-              <i className="bi bi-truck me-2" style={{ color: 'var(--primary)' }}></i>
-              Suppliers
+            <h1 className="page-title d-flex align-items-center gap-2">
+              <i className="bi bi-truck" style={{ color: 'var(--primary)' }}></i>
+              Suppliers Master (Sundry Creditors)
             </h1>
-            <p className="page-subtitle">Manage supplier relationships and contacts</p>
+            <p className="page-subtitle">Manage vendor ledgers, TDS applicability, credit days, and Tally Prime sync</p>
           </div>
-          {can('suppliers.add') && (
-            <button className="btn-v primary" onClick={() => setShowCreateModal(true)}>
-              <i className="bi bi-plus-lg"></i>
-              <span>Add Supplier</span>
+          <div className="d-flex align-items-center gap-2">
+            <button className="btn-v outline-success" onClick={exportTallyLedgers} title="Export Tally XML">
+              <i className="bi bi-file-earmark-code-fill"></i>
+              <span>Export Tally XML</span>
             </button>
-          )}
+            {can('suppliers.add') && (
+              <button className="btn-v primary" onClick={() => setShowCreateModal(true)}>
+                <i className="bi bi-plus-lg"></i>
+                <span>Add Supplier</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -206,7 +214,7 @@ export default function Suppliers() {
               <i className="bi bi-truck"></i>
             </div>
             <div className="stat-card-body">
-              <div className="stat-card-label">Total Suppliers</div>
+              <div className="stat-card-label">Total Vendors</div>
               <div className="stat-card-value">{stats.total}</div>
             </div>
           </div>
@@ -217,7 +225,7 @@ export default function Suppliers() {
               <i className="bi bi-check-circle"></i>
             </div>
             <div className="stat-card-body">
-              <div className="stat-card-label">Active Suppliers</div>
+              <div className="stat-card-label">Active Creditors</div>
               <div className="stat-card-value">{stats.active}</div>
             </div>
           </div>
@@ -239,8 +247,8 @@ export default function Suppliers() {
               <i className="bi bi-currency-rupee"></i>
             </div>
             <div className="stat-card-body">
-              <div className="stat-card-label">Total Value</div>
-              <div className="stat-card-value">₹{(stats.totalAmount / 100000).toFixed(1)}L</div>
+              <div className="stat-card-label">Opening Payables</div>
+              <div className="stat-card-value">₹{(stats.totalPayables).toLocaleString('en-IN')}</div>
             </div>
           </div>
         </div>
@@ -256,13 +264,13 @@ export default function Suppliers() {
                 <input
                   type="text"
                   className="form-control"
-                  placeholder="Search suppliers, contacts…"
+                  placeholder="Search suppliers, GSTIN, contacts…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
             </div>
-            <div className="col-md-2">
+            <div className="col-md-3">
               <label className="form-label mb-1" style={{ fontSize: '0.75rem' }}>Category</label>
               <select className="form-select" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
                 <option value="all">All Categories</option>
@@ -271,7 +279,7 @@ export default function Suppliers() {
                 ))}
               </select>
             </div>
-            <div className="col-md-2">
+            <div className="col-md-3">
               <label className="form-label mb-1" style={{ fontSize: '0.75rem' }}>Status</label>
               <select className="form-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
                 <option value="all">All Status</option>
@@ -284,11 +292,6 @@ export default function Suppliers() {
                 <i className="bi bi-x-lg"></i> Clear
               </button>
             </div>
-            <div className="col-md-2">
-              <button className="btn-v light w-100" style={{ justifyContent: 'center' }} title="Export">
-                <i className="bi bi-download"></i> Export
-              </button>
-            </div>
           </div>
         </div>
       </div>
@@ -296,8 +299,8 @@ export default function Suppliers() {
       {/* Suppliers Table */}
       <div className="v-card">
         <div className="v-card-header">
-          <i className="bi bi-table"></i>
-          All Suppliers
+          <i className="bi bi-journal-bookmark"></i>
+          Sundry Creditors List
           <span className="badge-v secondary ms-auto">{filteredSuppliers.length}</span>
         </div>
         <div className="v-card-body p-0" style={{ overflowX: 'auto' }}>
@@ -305,18 +308,17 @@ export default function Suppliers() {
             <div className="empty-state-v">
               <i className="bi bi-inbox"></i>
               <h5>No Suppliers Found</h5>
-              <p>{search || statusFilter !== 'all' || categoryFilter !== 'all' ? 'Try adjusting filters' : 'Click "Add Supplier" to get started'}</p>
             </div>
           ) : (
             <table className="v-table">
               <thead>
                 <tr>
-                  <th>Supplier</th>
+                  <th>Supplier Name</th>
                   <th>Contact Person</th>
-                  <th>Category</th>
-                  <th>Rating</th>
-                  <th>Orders</th>
-                  <th>Total Value</th>
+                  <th>State & GSTIN</th>
+                  <th>Credit Period</th>
+                  <th>TDS & Bank Info</th>
+                  <th>Opening Bal.</th>
                   <th>Status</th>
                   <th className="text-end">Actions</th>
                 </tr>
@@ -337,21 +339,42 @@ export default function Suppliers() {
                       </div>
                     </td>
                     <td>
-                      <span className="badge-v light" style={{ fontSize: '0.8rem' }}>
-                        {sup.category}
+                      <span className="badge-v light me-1" style={{ fontSize: '0.75rem' }}>
+                        {sup.state || 'Delhi'}
                       </span>
+                      {sup.gst ? (
+                        <span className="badge-v success" style={{ fontSize: '0.72rem' }}>{sup.gst}</span>
+                      ) : (
+                        <span className="badge-v secondary" style={{ fontSize: '0.72rem' }}>Unregistered</span>
+                      )}
                     </td>
                     <td>
-                      <div>{getRatingStars(sup.rating)}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                        {sup.rating.toFixed(1)}/5.0
-                      </div>
+                      <span className="fw-bold text-info">{sup.defaultCreditPeriod || 30} Days</span>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Bill-by-Bill: Yes</div>
                     </td>
-                    <td className="fw-semibold">{sup.totalOrders}</td>
-                    <td className="fw-bold">₹{(sup.totalAmount / 100000).toFixed(1)}L</td>
+                    <td>
+                      {sup.tdsApplicable ? (
+                        <span className="badge-v warning d-inline-block mb-1" style={{ fontSize: '0.7rem' }}>
+                          TDS {sup.tdsSection || '194Q'}
+                        </span>
+                      ) : (
+                        <span className="badge-v secondary d-inline-block mb-1" style={{ fontSize: '0.7rem' }}>No TDS</span>
+                      )}
+                      {sup.bankDetails?.accountNo && (
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                          <i className="bi bi-bank me-1"></i>{sup.bankDetails.bankName}: {sup.bankDetails.accountNo}
+                        </div>
+                      )}
+                    </td>
+                    <td className="fw-bold">
+                      ₹{(Number(sup.openingBalance) || 0).toLocaleString('en-IN')} <small className="text-muted">({sup.openingBalanceType || 'Cr'})</small>
+                    </td>
                     <td>{getStatusBadge(sup.status)}</td>
                     <td className="text-end">
                       <div className="d-flex justify-content-end gap-2">
+                        <button className="btn-v outline-primary" onClick={() => setSelectedLedgerParty(sup)} title="View Account Ledger">
+                          <i className="bi bi-journal-bookmark-fill me-1"></i> Ledger
+                        </button>
                         <button className="btn-v outline-primary icon-only" onClick={() => setViewSupplier(sup)} title="View">
                           <i className="bi bi-eye"></i>
                         </button>
@@ -378,6 +401,15 @@ export default function Suppliers() {
       {/* View Supplier Modal */}
       {viewSupplier && <ViewSupplierModal supplier={viewSupplier} onClose={() => setViewSupplier(null)} />}
 
+      {/* Ledger Statement Modal */}
+      {selectedLedgerParty && (
+        <LedgerStatementModal
+          party={selectedLedgerParty}
+          partyType="Creditor"
+          onClose={() => setSelectedLedgerParty(null)}
+        />
+      )}
+
       {/* Create/Edit Supplier Modal */}
       {showCreateModal && <SupplierFormModal onClose={() => setShowCreateModal(false)} onSave={handleCreate} />}
       {editSupplier && <SupplierFormModal supplier={editSupplier} onClose={() => setEditSupplier(null)} onSave={handleUpdate} />}
@@ -385,108 +417,52 @@ export default function Suppliers() {
   );
 }
 
-/* ═══════════════════════════════════════════════════════════
-   VIEW SUPPLIER MODAL
-═══════════════════════════════════════════════════════════ */
+/* VIEW SUPPLIER MODAL */
 function ViewSupplierModal({ supplier, onClose }) {
   return (
     <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal-box" style={{ maxWidth: 700 }}>
         <div className="modal-box-header">
           <i className="bi bi-truck" style={{ color: 'var(--primary)' }}></i>
-          Supplier Details
+          Supplier Details (Sundry Creditor)
           <button className="close-btn" onClick={onClose}>
             <i className="bi bi-x-lg"></i>
           </button>
         </div>
         <div className="modal-box-body">
-          {/* Basic Info */}
-          <div className="row g-3 mb-3">
-            <div className="col-12">
-              <div className="v-card" style={{ background: 'rgba(115,103,240,0.04)', border: '1px solid rgba(115,103,240,0.2)' }}>
-                <div className="v-card-body" style={{ padding: '20px' }}>
-                  <div className="d-flex justify-content-between align-items-start mb-3">
-                    <div>
-                      <h5 className="mb-1" style={{ color: 'var(--primary)' }}>{supplier.name}</h5>
-                      <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{supplier.id}</div>
-                    </div>
-                    <span className={`badge-v ${supplier.status === 'active' ? 'success' : 'secondary'}`}>
-                      {supplier.status === 'active' ? 'Active' : 'Inactive'}
-                    </span>
-                  </div>
-                  <div className="row g-2">
-                    <div className="col-md-4">
-                      <div className="text-muted" style={{ fontSize: '0.75rem' }}>Rating</div>
-                      <div className="d-flex align-items-center gap-2 mt-1">
-                        {[1,2,3,4,5].map(i => (
-                          <i key={i} className={`bi bi-star${i <= Math.floor(supplier.rating) ? '-fill' : ''}`} style={{ color: i <= supplier.rating ? '#ff9f43' : '#ddd', fontSize: '1rem' }}></i>
-                        ))}
-                        <span className="fw-bold">{supplier.rating}</span>
-                      </div>
-                    </div>
-                    <div className="col-md-4">
-                      <div className="text-muted" style={{ fontSize: '0.75rem' }}>Total Orders</div>
-                      <div className="fw-bold" style={{ fontSize: '1.2rem', marginTop: '4px' }}>{supplier.totalOrders}</div>
-                    </div>
-                    <div className="col-md-4">
-                      <div className="text-muted" style={{ fontSize: '0.75rem' }}>Total Value</div>
-                      <div className="fw-bold" style={{ fontSize: '1.2rem', marginTop: '4px', color: 'var(--success)' }}>
-                        ₹{supplier.totalAmount.toLocaleString('en-IN')}
-                      </div>
-                    </div>
-                  </div>
-                </div>
+          <div className="v-card mb-3" style={{ background: 'rgba(115,103,240,0.04)', border: '1px solid rgba(115,103,240,0.2)' }}>
+            <div className="v-card-body p-3">
+              <h5 className="mb-1" style={{ color: 'var(--primary)' }}>{supplier.name}</h5>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                Tally Group: Sundry Creditors • {supplier.state || 'Delhi'}
               </div>
             </div>
           </div>
-
-          {/* Contact Information */}
-          <div className="form-section-title mb-2">
-            <i className="bi bi-person-circle"></i> Contact Information
-          </div>
-          <div className="row g-3 mb-3">
+          <div className="row g-3">
             <div className="col-md-6">
               <label className="form-label">Contact Person</label>
-              <div className="info-box">{supplier.contact}</div>
+              <div className="info-box">{supplier.contact} ({supplier.phone})</div>
             </div>
             <div className="col-md-6">
-              <label className="form-label">Category</label>
-              <div className="info-box">{supplier.category}</div>
+              <label className="form-label">GSTIN / PAN</label>
+              <div className="info-box">{supplier.gst || 'Unregistered'} / {supplier.pan || '-'}</div>
             </div>
             <div className="col-md-6">
-              <label className="form-label">Email</label>
-              <div className="info-box">{supplier.email}</div>
+              <label className="form-label">Credit Period</label>
+              <div className="info-box">{supplier.defaultCreditPeriod || 30} Days (Bill-by-Bill: Yes)</div>
             </div>
             <div className="col-md-6">
-              <label className="form-label">Phone</label>
-              <div className="info-box">{supplier.phone}</div>
-            </div>
-            <div className="col-12">
-              <label className="form-label">Address</label>
-              <div className="info-box">{supplier.address}</div>
+              <label className="form-label">TDS Applicability</label>
+              <div className="info-box">{supplier.tdsApplicable ? `Yes (${supplier.tdsSection || '194Q'})` : 'No'}</div>
             </div>
             <div className="col-md-6">
-              <label className="form-label">GST Number</label>
-              <div className="info-box">{supplier.gst}</div>
+              <label className="form-label">Opening Balance</label>
+              <div className="info-box">₹{supplier.openingBalance || 0} ({supplier.openingBalanceType || 'Cr'})</div>
             </div>
             <div className="col-md-6">
-              <label className="form-label">Join Date</label>
-              <div className="info-box">
-                {new Date(supplier.joinDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-              </div>
+              <label className="form-label">Bank Account</label>
+              <div className="info-box">{supplier.bankDetails?.bankName} - {supplier.bankDetails?.accountNo} ({supplier.bankDetails?.ifsc})</div>
             </div>
-          </div>
-
-          {/* Products */}
-          <div className="form-section-title mb-2">
-            <i className="bi bi-box-seam"></i> Products Supplied
-          </div>
-          <div className="d-flex flex-wrap gap-2">
-            {supplier.products.map((product, idx) => (
-              <span key={idx} className="badge-v info" style={{ fontSize: '0.85rem', padding: '6px 12px' }}>
-                {product}
-              </span>
-            ))}
           </div>
         </div>
         <div className="modal-box-footer">
@@ -497,9 +473,7 @@ function ViewSupplierModal({ supplier, onClose }) {
   );
 }
 
-/* ═══════════════════════════════════════════════════════════
-   SUPPLIER FORM MODAL (Create/Edit)
-═══════════════════════════════════════════════════════════ */
+/* SUPPLIER FORM MODAL (Create/Edit) */
 function SupplierFormModal({ supplier, onClose, onSave }) {
   const [form, setForm] = useState(supplier || {
     name: '',
@@ -507,204 +481,138 @@ function SupplierFormModal({ supplier, onClose, onSave }) {
     email: '',
     phone: '',
     address: '',
+    state: 'Delhi',
+    pincode: '',
+    group: 'Sundry Creditors',
     category: 'Electronics',
     gst: '',
-    rating: 4.0,
+    pan: '',
+    maintainBillByBill: true,
+    defaultCreditPeriod: 30,
+    tdsApplicable: false,
+    tdsSection: '194Q',
+    bankDetails: { accountNo: '', ifsc: '', bankName: '' },
+    openingBalance: 0,
+    openingBalanceType: 'Cr',
     status: 'active',
     products: [],
   });
-  const [productInput, setProductInput] = useState('');
   const [error, setError] = useState('');
-
-  const categories = ['Electronics', 'Office Supplies', 'Hardware', 'General'];
-
-  const handleAddProduct = () => {
-    if (productInput.trim()) {
-      setForm({ ...form, products: [...form.products, productInput.trim()] });
-      setProductInput('');
-    }
-  };
-
-  const handleRemoveProduct = (index) => {
-    setForm({ ...form, products: form.products.filter((_, i) => i !== index) });
-  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    setError('');
-
-    if (!form.name || !form.contact || !form.email || !form.phone) {
-      setError('Please fill all required fields');
+    if (!form.name || !form.contact || !form.phone) {
+      setError('Please fill required fields (Name, Contact Person, Phone)');
       return;
     }
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-      setError('Please enter a valid email address');
-      return;
-    }
-
     onSave(form);
     onClose();
   };
 
   return (
     <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal-box" style={{ maxWidth: 700 }}>
+      <div className="modal-box" style={{ maxWidth: 750 }}>
         <div className="modal-box-header">
           <i className="bi bi-truck" style={{ color: 'var(--primary)' }}></i>
-          {supplier ? 'Edit Supplier' : 'Add New Supplier'}
+          {supplier ? 'Edit Supplier (Sundry Creditor)' : 'Add New Supplier (Sundry Creditor)'}
           <button className="close-btn" onClick={onClose}>
             <i className="bi bi-x-lg"></i>
           </button>
         </div>
         <form onSubmit={handleSubmit}>
-          <div className="modal-box-body">
-            {error && (
-              <div className="alert-v danger mb-3">
-                <i className="bi bi-exclamation-circle"></i> {error}
-              </div>
-            )}
+          <div className="modal-box-body" style={{ maxHeight: '68vh', overflowY: 'auto' }}>
+            {error && <div className="alert-v danger mb-3">{error}</div>}
 
-            {/* Basic Info */}
-            <div className="form-section-title mb-2">
-              <i className="bi bi-building"></i> Basic Information
-            </div>
+            <div className="form-section-title mb-2"><i className="bi bi-building"></i> Basic & Tally Info</div>
             <div className="row g-3 mb-3">
               <div className="col-md-6">
                 <label className="form-label">Supplier Name *</label>
-                <input
-                  className="form-control"
-                  placeholder="e.g. Tech Distributors"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  required
-                />
+                <input className="form-control" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
               </div>
               <div className="col-md-6">
-                <label className="form-label">Category *</label>
-                <select className="form-select" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} required>
-                  {categories.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
+                <label className="form-label">Tally Group</label>
+                <input className="form-control bg-light" value="Sundry Creditors" disabled />
               </div>
               <div className="col-md-6">
                 <label className="form-label">Contact Person *</label>
-                <input
-                  className="form-control"
-                  placeholder="e.g. Rajesh Kumar"
-                  value={form.contact}
-                  onChange={(e) => setForm({ ...form, contact: e.target.value })}
-                  required
-                />
+                <input className="form-control" value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} required />
               </div>
               <div className="col-md-6">
-                <label className="form-label">Status</label>
-                <select className="form-select" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
+                <label className="form-label">Phone *</label>
+                <input className="form-control" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} required />
+              </div>
+              <div className="col-md-6">
+                <label className="form-label">Email</label>
+                <input className="form-control" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+              </div>
+              <div className="col-md-6">
+                <label className="form-label">State *</label>
+                <select className="form-select" value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })}>
+                  {INDIAN_STATES.map(st => <option key={st} value={st}>{st}</option>)}
                 </select>
               </div>
             </div>
 
             <div className="form-divider"></div>
 
-            {/* Contact Info */}
-            <div className="form-section-title mb-2">
-              <i className="bi bi-telephone"></i> Contact Details
-            </div>
+            <div className="form-section-title mb-2"><i className="bi bi-receipt"></i> Tax, TDS & Credit Settings</div>
             <div className="row g-3 mb-3">
               <div className="col-md-6">
-                <label className="form-label">Email *</label>
-                <input
-                  className="form-control"
-                  type="email"
-                  placeholder="supplier@example.com"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  required
-                />
+                <label className="form-label">GSTIN / UIN</label>
+                <input className="form-control text-uppercase" placeholder="e.g. 07AAAAA1234A1Z5" value={form.gst} onChange={(e) => setForm({ ...form, gst: e.target.value.toUpperCase() })} />
               </div>
               <div className="col-md-6">
-                <label className="form-label">Phone *</label>
-                <input
-                  className="form-control"
-                  placeholder="+91 98765 43210"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="col-12">
-                <label className="form-label">Address</label>
-                <textarea
-                  className="form-control"
-                  rows="2"
-                  placeholder="Full address"
-                  value={form.address}
-                  onChange={(e) => setForm({ ...form, address: e.target.value })}
-                ></textarea>
+                <label className="form-label">PAN Number</label>
+                <input className="form-control text-uppercase" placeholder="e.g. AAAAA1234A" value={form.pan} onChange={(e) => setForm({ ...form, pan: e.target.value.toUpperCase() })} />
               </div>
               <div className="col-md-6">
-                <label className="form-label">GST Number</label>
-                <input
-                  className="form-control"
-                  placeholder="e.g. 07AAAAA1234A1Z5"
-                  value={form.gst}
-                  onChange={(e) => setForm({ ...form, gst: e.target.value })}
-                />
+                <label className="form-label">Credit Period (Days)</label>
+                <input type="number" className="form-control" value={form.defaultCreditPeriod} onChange={(e) => setForm({ ...form, defaultCreditPeriod: Number(e.target.value) })} />
               </div>
               <div className="col-md-6">
-                <label className="form-label">Rating (1-5)</label>
-                <input
-                  className="form-control"
-                  type="number"
-                  min="1"
-                  max="5"
-                  step="0.1"
-                  value={form.rating}
-                  onChange={(e) => setForm({ ...form, rating: parseFloat(e.target.value) || 4.0 })}
-                />
+                <label className="form-label">TDS Section</label>
+                <select className="form-select" value={form.tdsSection} onChange={(e) => setForm({ ...form, tdsSection: e.target.value, tdsApplicable: true })}>
+                  <option value="194Q">Sec 194Q (Purchase of Goods)</option>
+                  <option value="194C">Sec 194C (Contractor)</option>
+                  <option value="194J">Sec 194J (Professional Fee)</option>
+                </select>
+              </div>
+              <div className="col-md-6">
+                <label className="form-label">Opening Balance (₹)</label>
+                <input type="number" className="form-control" value={form.openingBalance} onChange={(e) => setForm({ ...form, openingBalance: Number(e.target.value) })} />
+              </div>
+              <div className="col-md-6">
+                <label className="form-label">Balance Type</label>
+                <select className="form-select" value={form.openingBalanceType} onChange={(e) => setForm({ ...form, openingBalanceType: e.target.value })}>
+                  <option value="Cr">Credit (Cr - Payable)</option>
+                  <option value="Dr">Debit (Dr - Advance Given)</option>
+                </select>
               </div>
             </div>
 
             <div className="form-divider"></div>
 
-            {/* Products */}
-            <div className="form-section-title mb-2">
-              <i className="bi bi-box-seam"></i> Products Supplied
-            </div>
-            <div className="row g-2 mb-2">
-              <div className="col-9">
-                <input
-                  className="form-control"
-                  placeholder="Enter product name"
-                  value={productInput}
-                  onChange={(e) => setProductInput(e.target.value)}
-                  onKeyPress={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddProduct(); } }}
-                />
+            <div className="form-section-title mb-2"><i className="bi bi-bank"></i> Bank Details for e-Payments</div>
+            <div className="row g-3">
+              <div className="col-md-4">
+                <label className="form-label">Bank Name</label>
+                <input className="form-control" placeholder="SBI / HDFC" value={form.bankDetails?.bankName} onChange={(e) => setForm({ ...form, bankDetails: { ...form.bankDetails, bankName: e.target.value } })} />
               </div>
-              <div className="col-3">
-                <button type="button" className="btn-v light w-100" onClick={handleAddProduct} style={{ justifyContent: 'center' }}>
-                  <i className="bi bi-plus-lg"></i> Add
-                </button>
+              <div className="col-md-4">
+                <label className="form-label">Account No</label>
+                <input className="form-control" placeholder="Account Number" value={form.bankDetails?.accountNo} onChange={(e) => setForm({ ...form, bankDetails: { ...form.bankDetails, accountNo: e.target.value } })} />
+              </div>
+              <div className="col-md-4">
+                <label className="form-label">IFSC Code</label>
+                <input className="form-control text-uppercase" placeholder="SBIN0000123" value={form.bankDetails?.ifsc} onChange={(e) => setForm({ ...form, bankDetails: { ...form.bankDetails, ifsc: e.target.value.toUpperCase() } })} />
               </div>
             </div>
-            {form.products.length > 0 && (
-              <div className="d-flex flex-wrap gap-2">
-                {form.products.map((product, idx) => (
-                  <span key={idx} className="badge-v info d-flex align-items-center gap-2" style={{ fontSize: '0.85rem', padding: '6px 12px' }}>
-                    {product}
-                    <i className="bi bi-x-circle" style={{ cursor: 'pointer' }} onClick={() => handleRemoveProduct(idx)}></i>
-                  </span>
-                ))}
-              </div>
-            )}
           </div>
+
           <div className="modal-box-footer">
             <button className="btn-v light" type="button" onClick={onClose}>Cancel</button>
             <button className="btn-v primary" type="submit">
-              <i className="bi bi-check-circle"></i> {supplier ? 'Update' : 'Create'} Supplier
+              <i className="bi bi-check-circle"></i> {supplier ? 'Update' : 'Save'} Supplier Master
             </button>
           </div>
         </form>

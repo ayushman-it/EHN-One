@@ -1,37 +1,45 @@
 const mongoose = require('mongoose');
 
-const supplierSchema = new mongoose.Schema({
+const customerSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
     trim: true,
   },
-  contact: {
+  contactPerson: {
     type: String,
-    required: true,
+    default: '',
   },
   email: {
     type: String,
-    required: true,
+    default: '',
     lowercase: true,
+    trim: true,
   },
   phone: {
     type: String,
     required: true,
+    trim: true,
   },
-  address: String,
+  address: {
+    type: String,
+    default: '',
+  },
   state: {
     type: String,
     default: 'Delhi',
   },
-  pincode: String,
+  pincode: {
+    type: String,
+    default: '',
+  },
   country: {
     type: String,
     default: 'India',
   },
   group: {
     type: String,
-    default: 'Sundry Creditors',
+    default: 'Sundry Debtors',
   },
   maintainBillByBill: {
     type: Boolean,
@@ -41,25 +49,32 @@ const supplierSchema = new mongoose.Schema({
     type: Number,
     default: 30, // in days
   },
+  creditLimit: {
+    type: Number,
+    default: 0,
+  },
   gstRegistrationType: {
     type: String,
-    enum: ['Regular', 'Composition', 'Unregistered'],
-    default: 'Regular',
+    enum: ['Regular', 'Composition', 'Unregistered', 'Consumer'],
+    default: 'Unregistered',
   },
-  gst: String,
-  pan: String,
-  tdsApplicable: {
-    type: Boolean,
-    default: false,
-  },
-  tdsSection: {
+  gstin: {
     type: String,
-    default: '194Q',
+    default: '',
+    trim: true,
+    uppercase: true,
+  },
+  pan: {
+    type: String,
+    default: '',
+    trim: true,
+    uppercase: true,
   },
   bankDetails: {
     accountNo: { type: String, default: '' },
     ifsc: { type: String, default: '' },
     bankName: { type: String, default: '' },
+    branch: { type: String, default: '' },
   },
   openingBalance: {
     type: Number,
@@ -67,37 +82,14 @@ const supplierSchema = new mongoose.Schema({
   },
   openingBalanceType: {
     type: String,
-    enum: ['Cr', 'Dr'],
-    default: 'Cr',
-  },
-  category: {
-    type: String,
-    default: 'General',
-  },
-  rating: {
-    type: Number,
-    min: 0,
-    max: 5,
-    default: 4.0,
-  },
-  totalOrders: {
-    type: Number,
-    default: 0,
-  },
-  totalAmount: {
-    type: Number,
-    default: 0,
+    enum: ['Dr', 'Cr'],
+    default: 'Dr',
   },
   status: {
     type: String,
     enum: ['active', 'inactive'],
     default: 'active',
   },
-  products: [String],
-  joinDate: {
-    type: Date,
-    default: Date.now,
-  },
 }, { timestamps: true });
 
-module.exports = mongoose.model('Supplier', supplierSchema);
+module.exports = mongoose.model('Customer', customerSchema);

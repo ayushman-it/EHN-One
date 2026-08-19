@@ -196,6 +196,144 @@ export const deleteCategory = async (id) => {
 };
 
 /* ═══════════════════════════════════════════════════════════
+   CUSTOMERS API (Sundry Debtors)
+   ═══════════════════════════════════════════════════════════ */
+
+export const getCustomers = async (search) => {
+  try {
+    const params = search ? { search } : {};
+    return await api.get('/customers', { params });
+  } catch (error) {
+    await delay();
+    const defaultCusts = [
+      {
+        _id: 'cust-1',
+        name: 'Sharma Electronics',
+        contactPerson: 'Rahul Sharma',
+        phone: '9876543210',
+        email: 'rahul@sharmaelec.com',
+        address: '102 Connaught Place',
+        state: 'Delhi',
+        pincode: '110001',
+        country: 'India',
+        group: 'Sundry Debtors',
+        maintainBillByBill: true,
+        defaultCreditPeriod: 30,
+        creditLimit: 100000,
+        gstRegistrationType: 'Regular',
+        gstin: '07AAAAA0000A1Z5',
+        pan: 'AAAAA0000A',
+        bankDetails: { accountNo: '987654321012', ifsc: 'SBIN0001234', bankName: 'SBI', branch: 'CP Delhi' },
+        openingBalance: 15000,
+        openingBalanceType: 'Dr',
+        status: 'active'
+      },
+      {
+        _id: 'cust-2',
+        name: 'Verma Digital Store',
+        contactPerson: 'Amit Verma',
+        phone: '9811223344',
+        email: 'info@vermadigital.in',
+        address: '45 MG Road',
+        state: 'Haryana',
+        pincode: '122001',
+        country: 'India',
+        group: 'Sundry Debtors',
+        maintainBillByBill: true,
+        defaultCreditPeriod: 15,
+        creditLimit: 50000,
+        gstRegistrationType: 'Regular',
+        gstin: '06BBBBA1111B1Z2',
+        pan: 'BBBBA1111B',
+        bankDetails: { accountNo: '456789012345', ifsc: 'HDFC0000123', bankName: 'HDFC Bank', branch: 'Gurugram' },
+        openingBalance: 8500,
+        openingBalanceType: 'Dr',
+        status: 'active'
+      }
+    ];
+    const customers = getFromStorage('customers', defaultCusts);
+    let filtered = customers;
+    if (search) {
+      const q = search.toLowerCase();
+      filtered = filtered.filter(c => 
+        c.name.toLowerCase().includes(q) || 
+        (c.gstin && c.gstin.toLowerCase().includes(q)) ||
+        (c.phone && c.phone.includes(q))
+      );
+    }
+    return { success: true, data: filtered };
+  }
+};
+
+export const getCustomer = async (id) => {
+  try {
+    return await api.get(`/customers/${id}`);
+  } catch (error) {
+    await delay();
+    const customers = getFromStorage('customers', []);
+    const customer = customers.find(c => c._id === id);
+    if (!customer) throw new Error('Customer not found');
+    return { success: true, data: customer };
+  }
+};
+
+export const addCustomer = async (data) => {
+  try {
+    return await api.post('/customers', data);
+  } catch (error) {
+    await delay();
+    const customers = getFromStorage('customers', []);
+    const newCust = {
+      ...data,
+      _id: 'cust-' + Date.now(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    customers.unshift(newCust);
+    saveToStorage('customers', customers);
+    return { success: true, data: newCust };
+  }
+};
+
+export const updateCustomer = async (id, data) => {
+  try {
+    return await api.put(`/customers/${id}`, data);
+  } catch (error) {
+    await delay();
+    const customers = getFromStorage('customers', []);
+    const index = customers.findIndex(c => c._id === id);
+    if (index === -1) throw new Error('Customer not found');
+    customers[index] = { ...customers[index], ...data, updatedAt: new Date().toISOString() };
+    saveToStorage('customers', customers);
+    return { success: true, data: customers[index] };
+  }
+};
+
+export const deleteCustomer = async (id) => {
+  try {
+    return await api.delete(`/customers/${id}`);
+  } catch (error) {
+    await delay();
+    const customers = getFromStorage('customers', []);
+    const filtered = customers.filter(c => c._id !== id);
+    saveToStorage('customers', filtered);
+    return { success: true, message: 'Customer deleted' };
+  }
+};
+
+/* ═══════════════════════════════════════════════════════════
+   TALLY EXPORT API
+   ═══════════════════════════════════════════════════════════ */
+
+export const exportTallyLedgers = () => {
+  window.open(`${API_BASE_URL}/tally/export/ledgers`, '_blank');
+};
+
+export const exportTallyItems = () => {
+  window.open(`${API_BASE_URL}/tally/export/items`, '_blank');
+};
+
+/* ═══════════════════════════════════════════════════════════
    SUPPLIERS API
    ═══════════════════════════════════════════════════════════ */
 
@@ -277,15 +415,74 @@ export const getInvoice = async (id) => {
 };
 
 export const addInvoice = async (data) => {
-  return api.post('/invoices', data);
+  try {
+    return await api.post('/invoices', data);
+  } catch (error) {
+    await delay();
+    const invoices = getFromStorage('invoices', []);
+    const products = getFromStorage('products', []);
+    const newInv = {
+      ...data,
+      _id: 'inv-' + Date.now(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    // Auto deduct stock in fallback mode
+    if (data.items && Array.isArray(data.items)) {
+      data.items.forEach(item => {
+        const prod = products.find(p => p._id === item.product || p.name === item.product || p.name === item.name);
+        if (prod) {
+          prod.quantity = Math.max(0, (prod.quantity || 0) - (Number(item.quantity) || 0));
+        }
+      });
+      saveToStorage('products', products);
+    }
+
+    invoices.unshift(newInv);
+    saveToStorage('invoices', invoices);
+    return { success: true, data: newInv };
+  }
 };
 
 export const updateInvoice = async (id, data) => {
-  return api.put(`/invoices/${id}`, data);
+  try {
+    return await api.put(`/invoices/${id}`, data);
+  } catch (error) {
+    await delay();
+    const invoices = getFromStorage('invoices', []);
+    const index = invoices.findIndex(i => i._id === id || i.id === id);
+    if (index === -1) throw new Error('Invoice not found');
+    invoices[index] = { ...invoices[index], ...data, updatedAt: new Date().toISOString() };
+    saveToStorage('invoices', invoices);
+    return { success: true, data: invoices[index] };
+  }
 };
 
 export const deleteInvoice = async (id) => {
-  return api.delete(`/invoices/${id}`);
+  try {
+    return await api.delete(`/invoices/${id}`);
+  } catch (error) {
+    await delay();
+    const invoices = getFromStorage('invoices', []);
+    const products = getFromStorage('products', []);
+    const invToDelete = invoices.find(i => i._id === id || i.id === id);
+
+    // Auto restore stock in fallback mode
+    if (invToDelete && invToDelete.items && Array.isArray(invToDelete.items)) {
+      invToDelete.items.forEach(item => {
+        const prod = products.find(p => p._id === item.product || p.name === item.product || p.name === item.name);
+        if (prod) {
+          prod.quantity = (prod.quantity || 0) + (Number(item.quantity) || 0);
+        }
+      });
+      saveToStorage('products', products);
+    }
+
+    const filtered = invoices.filter(i => i._id !== id && i.id !== id);
+    saveToStorage('invoices', filtered);
+    return { success: true, message: 'Invoice deleted' };
+  }
 };
 
 /* ═══════════════════════════════════════════════════════════

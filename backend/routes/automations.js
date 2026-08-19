@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Automation = require('../models/Automation');
+const { executeAutomationJob } = require('../services/whatsappScheduler');
 
 // Get all automations
 router.get('/', async (req, res) => {
@@ -57,6 +58,21 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Automation not found' });
     }
     res.json({ success: true, message: 'Automation deleted' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/automations/:id/trigger - Trigger automation job on demand (Run Now)
+router.post('/:id/trigger', async (req, res) => {
+  try {
+    const automation = await Automation.findById(req.params.id);
+    if (!automation) {
+      return res.status(404).json({ success: false, message: 'Automation job not found' });
+    }
+
+    const result = await executeAutomationJob(automation);
+    res.json({ success: true, message: `Automation "${automation.name}" executed successfully!`, data: result });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

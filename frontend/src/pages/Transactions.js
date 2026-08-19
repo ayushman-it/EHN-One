@@ -17,9 +17,14 @@ export default function Transactions({ defaultType = 'in' }) {
     setLoading(true);
     try {
       const [t, p] = await Promise.all([getTransactions(), getProducts()]);
-      setTransactions(t.data);
-      setProducts(p.data);
-    } catch { /* ignore */ }
+      const txnList = Array.isArray(t?.data) ? t.data : Array.isArray(t) ? t : [];
+      const prodList = Array.isArray(p?.data) ? p.data : Array.isArray(p) ? p : [];
+      setTransactions(txnList);
+      setProducts(prodList);
+    } catch {
+      setTransactions([]);
+      setProducts([]);
+    }
     finally { setLoading(false); }
   }, []);
 
@@ -37,11 +42,13 @@ export default function Transactions({ defaultType = 'in' }) {
       setForm({ productId: '', quantity: '', notes: '' });
       setSuccess(type === 'in' ? '✓ Stock added successfully!' : '✓ Stock removed successfully!');
       loadData();
-    } catch (err) { setError(err.response?.data?.error || 'Transaction failed'); }
+    } catch (err) { setError(err.response?.data?.error || err.message || 'Transaction failed'); }
     finally { setSaving(false); }
   };
 
-  const selectedProduct = products.find((p) => p._id === form.productId);
+  const selectedProduct = Array.isArray(products)
+    ? products.find((p) => (p._id || p.id) === form.productId)
+    : null;
   const afterQty = selectedProduct
     ? selectedProduct.quantity + (type === 'in' ? 1 : -1) * Number(form.quantity || 0)
     : null;
@@ -104,8 +111,8 @@ export default function Transactions({ defaultType = 'in' }) {
                   required
                 >
                   <option value="">— Choose product —</option>
-                  {products.map((p) => (
-                    <option key={p._id} value={p._id}>
+                  {(products || []).map((p) => (
+                    <option key={p._id || p.id} value={p._id || p.id}>
                       {p.name} ({p.sku}) — Stock: {p.quantity}
                     </option>
                   ))}
@@ -221,8 +228,8 @@ export default function Transactions({ defaultType = 'in' }) {
                 </tr>
               </thead>
               <tbody>
-                {transactions.map((t) => (
-                  <tr key={t._id}>
+                {(transactions || []).map((t) => (
+                  <tr key={t._id || t.id}>
                     <td>
                       <div style={{ fontSize: '0.85rem' }}>{new Date(t.createdAt).toLocaleDateString('en-IN')}</div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{new Date(t.createdAt).toLocaleTimeString('en-IN')}</div>

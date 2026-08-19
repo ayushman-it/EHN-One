@@ -41,17 +41,30 @@ let globalSettings = {
 
 export default function Settings() {
   const { can, user } = useAuth();
-  const [activeSection, setActiveSection] = useState('whatsapp');
+  const [activeSection, setActiveSection] = useState('profile');
   const [settings, setSettings] = useState(globalSettings);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
   const [saved, setSaved] = useState(false);
+  const [profileAvatar, setProfileAvatar] = useState(user?.avatar || null);
+  const [profileName, setProfileName] = useState(user?.name || 'Arjun Sharma');
+  const [profileEmail, setProfileEmail] = useState(user?.email || 'admin@ehnsystem.com');
+  const [profileDept, setProfileDept] = useState(user?.department || 'Operations');
+  const [currPass, setCurrPass] = useState('');
+  const [newPass, setNewPass] = useState('');
+  const [confirmPass, setConfirmPass] = useState('');
+
+  const isAdmin = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'administrator';
+  const canSettings = can('settings.view') || isAdmin;
 
   const sections = [
-    { id: 'whatsapp', label: 'WhatsApp API', icon: 'bi-whatsapp', color: '#25D366' },
-    { id: 'company', label: 'Company Info', icon: 'bi-building', color: 'var(--primary)' },
-    { id: 'email', label: 'Email Settings', icon: 'bi-envelope', color: 'var(--info)' },
-    { id: 'notifications', label: 'Notifications', icon: 'bi-bell', color: 'var(--warning)' },
+    { id: 'profile', label: 'My Profile & Security', icon: 'bi-person-circle', color: 'var(--primary)' },
+    ...(canSettings ? [
+      { id: 'whatsapp', label: 'WhatsApp API', icon: 'bi-whatsapp', color: '#25D366' },
+      { id: 'company', label: 'Company Info', icon: 'bi-building', color: 'var(--primary)' },
+      { id: 'email', label: 'Email Settings', icon: 'bi-envelope', color: 'var(--info)' },
+      { id: 'notifications', label: 'Notifications', icon: 'bi-bell', color: 'var(--warning)' },
+    ] : [])
   ];
 
   const handleSave = () => {
@@ -100,12 +113,12 @@ export default function Settings() {
     }, 2000);
   };
 
-  if (!can('settings.view')) {
+  if (!user) {
     return (
       <div className="empty-state-v" style={{ paddingTop: 80 }}>
         <i className="bi bi-shield-x" style={{ color: 'var(--danger)' }}></i>
         <h5>Access Denied</h5>
-        <p>You don't have permission to view settings.</p>
+        <p>Please log in to view your profile settings.</p>
       </div>
     );
   }
@@ -494,6 +507,174 @@ export default function Settings() {
                       </button>
                     </div>
                   )}
+                </>
+              )}
+
+              {/* Profile & Security Section */}
+              {activeSection === 'profile' && (
+                <>
+                  <div className="settings-section-header">
+                    <i className="bi bi-person-circle" style={{ color: 'var(--primary)' }}></i>
+                    <div>
+                      <h4>My Profile & Security Settings</h4>
+                      <p>Update your personal profile picture, account details, and security password</p>
+                    </div>
+                  </div>
+
+                  {/* Profile Avatar Upload */}
+                  <div className="p-3 bg-light rounded-3 border mb-4">
+                    <div className="d-flex align-items-center gap-3">
+                      <div 
+                        className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold overflow-hidden shadow-sm"
+                        style={{ width: 72, height: 72, background: 'var(--primary)', fontSize: '1.8rem' }}
+                      >
+                        {profileAvatar ? (
+                          <img src={profileAvatar} alt="Profile Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          user?.name?.charAt(0).toUpperCase() || 'U'
+                        )}
+                      </div>
+                      <div>
+                        <h6 className="mb-1 fw-bold">{user?.name || 'User Profile'}</h6>
+                        <span className="badge-v primary mb-2">{user?.role || 'Staff Member'}</span>
+                        <div className="d-flex gap-2">
+                          <label className="btn-v outline-primary btn-sm mb-0 style-cursor">
+                            <i className="bi bi-camera me-1"></i> Upload New Avatar
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              className="d-none" 
+                              onChange={(e) => {
+                                const file = e.target.files[0];
+                                if (file) {
+                                  const reader = new FileReader();
+                                  reader.onloadend = () => setProfileAvatar(reader.result);
+                                  reader.readAsDataURL(file);
+                                }
+                              }} 
+                            />
+                          </label>
+                          {profileAvatar && (
+                            <button className="btn-v light btn-sm" onClick={() => setProfileAvatar(null)}>
+                              Remove Avatar
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Account Information */}
+                  <div className="form-section-title mb-2 d-flex justify-content-between align-items-center">
+                    <span><i className="bi bi-shield-lock me-1"></i> Account Details & Protection</span>
+                    {(user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'administrator') && (
+                      <span className="badge-v success"><i className="bi bi-shield-check me-1"></i> Admin Edit Privileges Unlocked</span>
+                    )}
+                  </div>
+
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!profileName.trim()) return alert('Please enter a valid name.');
+                    alert(`✅ Profile updated! Full Name set to "${profileName}".`);
+                  }}>
+                    <div className="row g-3 mb-3">
+                      <div className="col-md-6">
+                        <label className="form-label">
+                          Full Name {(user?.role?.toLowerCase() !== 'admin' && user?.role?.toLowerCase() !== 'administrator') && <small className="text-muted">(Only Admin can change)</small>}
+                        </label>
+                        <input
+                          className={`form-control ${(user?.role?.toLowerCase() !== 'admin' && user?.role?.toLowerCase() !== 'administrator') ? 'bg-light' : ''}`}
+                          value={profileName}
+                          onChange={(e) => setProfileName(e.target.value)}
+                          disabled={user?.role?.toLowerCase() !== 'admin' && user?.role?.toLowerCase() !== 'administrator'}
+                          required
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label">
+                          Email Address {(user?.role?.toLowerCase() !== 'admin' && user?.role?.toLowerCase() !== 'administrator') && <small className="text-muted">(Only Admin can change)</small>}
+                        </label>
+                        <input
+                          className={`form-control ${(user?.role?.toLowerCase() !== 'admin' && user?.role?.toLowerCase() !== 'administrator') ? 'bg-light' : ''}`}
+                          value={profileEmail}
+                          onChange={(e) => setProfileEmail(e.target.value)}
+                          disabled={user?.role?.toLowerCase() !== 'admin' && user?.role?.toLowerCase() !== 'administrator'}
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label">Account Role</label>
+                        <input
+                          className="form-control bg-light text-capitalize"
+                          value={user?.role || 'admin'}
+                          disabled
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label">Assigned Department</label>
+                        <input
+                          className="form-control"
+                          value={profileDept}
+                          onChange={(e) => setProfileDept(e.target.value)}
+                          disabled={user?.role?.toLowerCase() !== 'admin' && user?.role?.toLowerCase() !== 'administrator'}
+                        />
+                      </div>
+                    </div>
+                    {(user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'administrator') && (
+                      <button type="submit" className="btn-v primary mb-4">
+                        <i className="bi bi-save me-1"></i> Save Profile Details
+                      </button>
+                    )}
+                  </form>
+
+                  <div className="form-divider mb-4"></div>
+
+                  {/* Password Change Form */}
+                  <div className="form-section-title mb-2">
+                    <i className="bi bi-key me-1"></i> Update Security Password
+                  </div>
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!newPass) return alert('Please enter a new password.');
+                    if (newPass !== confirmPass) return alert('New Password and Confirm Password do not match.');
+                    alert('✅ Password updated successfully!');
+                    setCurrPass(''); setNewPass(''); setConfirmPass('');
+                  }}>
+                    <div className="row g-3 mb-3">
+                      <div className="col-md-4">
+                        <label className="form-label">Current Password</label>
+                        <input
+                          type="password"
+                          className="form-control"
+                          placeholder="••••••••"
+                          value={currPass}
+                          onChange={(e) => setCurrPass(e.target.value)}
+                        />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label">New Password</label>
+                        <input
+                          type="password"
+                          className="form-control"
+                          placeholder="Minimum 6 characters"
+                          value={newPass}
+                          onChange={(e) => setNewPass(e.target.value)}
+                        />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label">Confirm New Password</label>
+                        <input
+                          type="password"
+                          className="form-control"
+                          placeholder="Re-enter new password"
+                          value={confirmPass}
+                          onChange={(e) => setConfirmPass(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <button type="submit" className="btn-v primary">
+                      <i className="bi bi-check-circle me-1"></i> Update Password
+                    </button>
+                  </form>
                 </>
               )}
 

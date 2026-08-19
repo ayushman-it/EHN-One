@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
@@ -6,6 +7,10 @@ const app = express();
 
 // Connect to MongoDB
 connectDB();
+
+// Start Automated WhatsApp Scheduler
+const { startScheduler } = require('./services/whatsappScheduler');
+startScheduler();
 
 // Middleware
 app.use(cors());
@@ -16,6 +21,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/products', require('./routes/products'));
 app.use('/api/categories', require('./routes/categories'));
 app.use('/api/suppliers', require('./routes/suppliers'));
+app.use('/api/customers', require('./routes/customers'));
+app.use('/api/tally', require('./routes/tallyIntegration'));
 app.use('/api/warehouses', require('./routes/warehouses'));
 app.use('/api/transactions', require('./routes/transactions'));
 app.use('/api/invoices', require('./routes/invoices'));
@@ -25,6 +32,9 @@ app.use('/api/settings', require('./routes/settings'));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/audit-logs', require('./routes/auditLogs'));
+app.use('/api/reports', require('./routes/reports'));
+app.use('/api/tickets', require('./routes/tickets'));
 
 // Welcome Route
 app.get('/', (req, res) => {
@@ -37,6 +47,8 @@ app.get('/', (req, res) => {
       products: '/api/products',
       categories: '/api/categories',
       suppliers: '/api/suppliers',
+      customers: '/api/customers',
+      tally: '/api/tally',
       warehouses: '/api/warehouses',
       transactions: '/api/transactions',
       invoices: '/api/invoices',

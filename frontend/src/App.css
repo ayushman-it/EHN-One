@@ -3218,3 +3218,545 @@ body {
     width: auto;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   1:1 EXACT INVOICE TEMPLATE STYLES & PRINT STYLES
+   ═══════════════════════════════════════════════════════════ */
+
+.invoice-exact-paper {
+  background: #ffffff;
+  color: #000000;
+  font-family: 'Times New Roman', Times, serif, Arial, sans-serif;
+  padding: 30px 40px;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  font-size: 14px;
+  line-height: 1.4;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border-radius: 4px;
+}
+
+.invoice-exact-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.invoice-exact-invno {
+  font-size: 14px;
+  width: 25%;
+}
+
+.invoice-exact-company {
+  text-align: center;
+  width: 50%;
+}
+
+.invoice-exact-company .company-title {
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.invoice-exact-company .company-addr {
+  font-size: 13px;
+}
+
+.invoice-exact-company .company-mob {
+  font-size: 13px;
+}
+
+.invoice-exact-company .company-mob.underline {
+  text-decoration: underline;
+}
+
+.invoice-main-title {
+  font-size: 18px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  margin-top: 12px;
+  text-align: center;
+}
+
+.invoice-exact-date {
+  font-size: 14px;
+  text-align: right;
+  width: 25%;
+}
+
+.invoice-exact-party {
+  margin-top: 10px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.invoice-exact-party .party-label {
+  font-size: 15px;
+}
+
+.invoice-exact-party .party-name {
+  font-size: 15px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.invoice-exact-party .party-location {
+  font-size: 14px;
+  font-weight: bold;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+/* Grid Table */
+.invoice-exact-table-container {
+  border: 2px solid #000000;
+  margin-bottom: 12px;
+}
+
+.invoice-exact-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.invoice-exact-table th,
+.invoice-exact-table td {
+  border-right: 1px solid #000000;
+  border-bottom: 1px solid #000000;
+  padding: 5px 8px;
+  font-size: 13px;
+  vertical-align: top;
+  color: #000000;
+}
+
+.invoice-exact-table th:last-child,
+.invoice-exact-table td:last-child {
+  border-right: none;
+}
+
+.invoice-exact-table thead th {
+  border-bottom: 2px solid #000000;
+  font-weight: normal;
+  text-align: center;
+  background: #ffffff;
+}
+
+.invoice-exact-table th.col-desc,
+.invoice-exact-table td.col-desc {
+  width: 50%;
+  text-align: left;
+}
+
+.invoice-exact-table th.col-qty,
+.invoice-exact-table td.col-qty {
+  width: 13%;
+  text-align: right;
+}
+
+.invoice-exact-table th.col-rate,
+.invoice-exact-table td.col-rate {
+  width: 12%;
+  text-align: right;
+}
+
+.invoice-exact-table th.col-per,
+.invoice-exact-table td.col-per {
+  width: 9%;
+  text-align: center;
+}
+
+.invoice-exact-table th.col-amount,
+.invoice-exact-table td.col-amount {
+  width: 16%;
+  text-align: right;
+}
+
+.invoice-exact-table tr.empty-row td {
+  height: 24px;
+  border-bottom: none;
+}
+
+.invoice-exact-table tr.total-row td {
+  border-top: 2px solid #000000;
+  border-bottom: none;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.invoice-exact-table .total-label {
+  padding-right: 20px;
+}
+
+.invoice-exact-table .total-value {
+  font-size: 15px;
+}
+
+/* Footer Section */
+.invoice-exact-footer-section {
+  margin-top: 10px;
+  font-size: 13px;
+}
+
+.chargeable-label {
+  font-size: 12px;
+  color: #333333;
+}
+
+.chargeable-words {
+  font-size: 14px;
+  font-weight: bold;
+  margin-top: 2px;
+}
+
+.eoe-tag {
+  font-style: italic;
+  font-size: 13px;
+}
+
+.company-for {
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.sig-space {
+  height: 45px;
+}
+
+.sig-text {
+  font-size: 13px;
+}
+
+.computer-gen-text {
+  font-size: 13px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   OPTIMIZED A4 PRINT & PDF STYLES
+   ═══════════════════════════════════════════════════════════ */
+
+@page {
+  size: A4 portrait;
+  margin: 10mm 15mm 10mm 15mm;
+}
+
+@media print {
+  /* Reset document for clean printing */
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide app layout navigation and sidebars */
+  .layout-wrapper,
+  .sidebar,
+  .layout-navbar,
+  .page-header,
+  .v-card:not(.invoice-modal),
+  .modal-box-header,
+  .modal-box-footer,
+  .close-btn,
+  .btn-v {
+    display: none !important;
+  }
+
+  /* Reset modal containers so parents remain visible to print engine */
+  .modal-overlay {
+    position: relative !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    box-shadow: none !important;
+    border: none !important;
+    overflow: visible !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  .modal-box,
+  .modal-box-body {
+    position: relative !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    visibility: visible !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    box-shadow: none !important;
+    border: none !important;
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+  }
+
+  /* Invoice Paper */
+  #invoice-printable-area,
+  .invoice-exact-paper {
+    position: relative !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    margin: 0 auto !important;
+    padding: 5px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #ffffff !important;
+    font-family: 'Times New Roman', Times, serif !important;
+    color: #000000 !important;
+  }
+
+  /* Ensure table borders render sharp black */
+  .invoice-exact-table-container {
+    border: 2px solid #000000 !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .invoice-exact-table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+
+  .invoice-exact-table th,
+  .invoice-exact-table td {
+    border-right: 1px solid #000000 !important;
+    border-bottom: 1px solid #000000 !important;
+    color: #000000 !important;
+  }
+
+  .invoice-exact-table th:last-child,
+  .invoice-exact-table td:last-child {
+    border-right: none !important;
+  }
+
+  .invoice-exact-table tr.total-row td {
+    border-top: 2px solid #000000 !important;
+    border-bottom: none !important;
+  }
+
+  .invoice-exact-footer-section {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+}
+
+/* ============================================================
+   ERP SOFTWARE STYLING & LEDGER EXTENSIONS
+   ============================================================ */
+
+.erp-card {
+  background: #ffffff;
+  border-radius: 10px;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease-in-out;
+}
+
+.erp-card:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+}
+
+.badge-v.primary { background: rgba(115, 103, 240, 0.12); color: #7367f0; border: 1px solid rgba(115, 103, 240, 0.25); }
+.badge-v.success { background: rgba(40, 199, 111, 0.12); color: #28c76f; border: 1px solid rgba(40, 199, 111, 0.25); }
+.badge-v.warning { background: rgba(255, 159, 67, 0.12); color: #ff9f43; border: 1px solid rgba(255, 159, 67, 0.25); }
+.badge-v.info { background: rgba(0, 207, 232, 0.12); color: #00cfe8; border: 1px solid rgba(0, 207, 232, 0.25); }
+
+.v-table th {
+  letter-spacing: 0.5px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  background-color: #f8fafc;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.v-table td {
+  font-size: 0.85rem;
+  padding: 12px 16px;
+  vertical-align: middle;
+}
+
+.table-hover tbody tr:hover {
+  background-color: rgba(115, 103, 240, 0.03) !important;
+}
+
+.btn-v.outline-primary {
+  border: 1px solid rgba(115, 103, 240, 0.4);
+  color: #7367f0;
+  background: transparent;
+  transition: all 0.2s ease;
+}
+
+.btn-v.outline-primary:hover {
+  background: #7367f0;
+  color: #ffffff;
+}
+
+.btn-v.outline-success {
+  border: 1px solid rgba(40, 199, 111, 0.4);
+  color: #28c76f;
+  background: transparent;
+  transition: all 0.2s ease;
+}
+
+.btn-v.outline-success:hover {
+  background: #28c76f;
+  color: #ffffff;
+}
+
+/* ============================================================
+   MOBILE RESPONSIVENESS & TOUCH OPTIMIZATIONS
+   ============================================================ */
+
+@media (max-width: 768px) {
+  .modal-overlay {
+    padding: 10px 8px !important;
+    align-items: flex-start !important;
+  }
+
+  .modal-box {
+    width: 98% !important;
+    max-width: 100% !important;
+    max-height: 94vh !important;
+    border-radius: 12px !important;
+    margin: 8px auto !important;
+  }
+
+  .modal-box-header {
+    padding: 12px 16px !important;
+  }
+
+  .modal-box-body {
+    padding: 14px 16px !important;
+  }
+
+  .modal-box-footer {
+    padding: 12px 16px !important;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .page-header-top {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+
+  .page-header-top > div {
+    width: 100%;
+  }
+
+  .page-title {
+    font-size: 1.25rem !important;
+  }
+
+  .page-subtitle {
+    font-size: 0.8rem !important;
+  }
+
+  .stat-card {
+    padding: 12px 14px !important;
+  }
+
+  .stat-card-value {
+    font-size: 1.2rem !important;
+  }
+
+  .v-table th {
+    font-size: 0.72rem !important;
+    padding: 8px 10px !important;
+    white-space: nowrap;
+  }
+
+  .v-table td {
+    font-size: 0.78rem !important;
+    padding: 8px 10px !important;
+    white-space: nowrap;
+  }
+
+  .search-box-v {
+    width: 100% !important;
+  }
+
+  .btn-v {
+    min-height: 38px;
+    padding: 6px 12px;
+    font-size: 0.82rem;
+  }
+
+  .table-responsive, .v-card-body {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Mobile Invoice Preview Responsiveness */
+  .invoice-exact-paper {
+    padding: 10px !important;
+    font-size: 11px !important;
+    max-width: 100% !important;
+    overflow-x: auto;
+  }
+
+  .invoice-exact-header {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .invoice-exact-invno,
+  .invoice-exact-date {
+    width: 48% !important;
+  }
+
+  .invoice-exact-company {
+    width: 100% !important;
+    order: -1;
+    margin-bottom: 8px;
+  }
+
+  .company-title {
+    font-size: 14px !important;
+  }
+
+  .invoice-exact-table-container {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .invoice-exact-table th,
+  .invoice-exact-table td {
+    padding: 4px 6px !important;
+    font-size: 10px !important;
+  }
+}
+
+@media (max-width: 576px) {
+  .sidebar {
+    width: 280px;
+  }
+
+  .stat-card-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 1.1rem;
+  }
+
+  .badge-v {
+    font-size: 0.7rem !important;
+    padding: 3px 8px !important;
+  }
+}
+
+
+
+

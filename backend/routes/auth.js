@@ -1,13 +1,31 @@
 const express = require('express');
 const router = express.Router();
+const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { protect } = require('../middleware/auth');
+
+// Generate JWT Token helper
+const generateToken = (id) => {
+  return jwt.sign(
+    { id },
+    process.env.JWT_SECRET || 'ehnone_super_secret_jwt_key_2026_key',
+    { expiresIn: process.env.JWT_EXPIRE || '30d' }
+  );
+};
 
 // @route   POST /api/auth/login
-// @desc    Login user
+// @desc    Login user & get token
 // @access  Public
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide email and password',
+      });
+    }
 
     // Find user by email
     const user = await User.findOne({ email: email.toLowerCase() });
@@ -15,36 +33,39 @@ router.post('/login', async (req, res) => {
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid email or password'
+        message: 'Invalid email or password',
       });
     }
 
-    // Simple password check (in production, use bcrypt)
-    if (user.password !== password) {
+    // Match password using bcrypt method on user model
+    const isMatch = await user.matchPassword(password);
+    if (!isMatch) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid email or password'
+        message: 'Invalid email or password',
       });
     }
 
-    // Update last login
+    // Update last login timestamp
     user.lastLogin = new Date();
     await user.save();
 
-    // Return user data (without password)
-    const userData = {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      department: user.department,
-      avatar: user.avatar,
-    };
+    // Generate JWT Token
+    const token = generateToken(user._id);
 
+    // Return user data with token
     res.json({
       success: true,
       message: 'Login successful',
-      user: userData
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        department: user.department,
+        avatar: user.avatar,
+      },
     });
 
   } catch (error) {
@@ -52,48 +73,59 @@ router.post('/login', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Server error',
-      error: error.message
+      error: error.message,
     });
   }
 });
 
 // @route   POST /api/auth/register
-// @desc    Register new user
+// @desc    Register new user & get token
 // @access  Public
 router.post('/register', async (req, res) => {
   try {
     const { name, email, password, role, department } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide name, email, and password',
+      });
+    }
 
     // Check if user exists
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: 'User already exists with this email'
+        message: 'User already exists with this email',
       });
     }
 
-    // Create new user
+    // Create new user (password is automatically hashed via pre-save hook in User model)
     const user = new User({
       name,
       email: email.toLowerCase(),
-      password, // In production, hash this with bcrypt
+      password,
       role: role || 'viewer',
-      department: department || 'Operations'
+      department: department || 'Operations',
     });
 
     await user.save();
 
+    // Generate JWT Token
+    const token = generateToken(user._id);
+
     res.status(201).json({
       success: true,
       message: 'User registered successfully',
+      token,
       user: {
         id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
-        department: user.department
-      }
+        department: user.department,
+      },
     });
 
   } catch (error) {
@@ -101,7 +133,27 @@ router.post('/register', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Server error',
-      error: error.message
+      error: error.message,
+    });
+  }
+});
+
+// @route   GET /api/auth/me
+// @desc    Get currently logged in user profile
+// @access  Private
+router.get('/me', protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('-password');
+    res.json({
+      success: true,
+      user,
+    });
+  } catch (error) {
+    console.error('Fetch me error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message,
     });
   }
 });

@@ -870,15 +870,23 @@ function DeleteConfirmModal({ user, onConfirm, onCancel }) {
    AUDIT LOG MODAL
 ═══════════════════════════════════════════════════════════ */
 function AuditLogModal({ auditLog, onClose }) {
+  const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('ALL');
+  const [severityFilter, setSeverityFilter] = useState('ALL');
+  const [viewMode, setViewMode] = useState('timeline'); // 'timeline' | 'table'
+
   const getActionIcon = (action) => {
     const map = {
       'user.created': { icon: 'bi-person-plus', color: 'success' },
       'user.updated': { icon: 'bi-pencil', color: 'primary' },
       'user.deleted': { icon: 'bi-trash', color: 'danger' },
-      'user.role_changed': { icon: 'bi-arrow-left-right', color: 'warning' },
+      'user.role_changed': { icon: 'bi-shield-check', color: 'warning' },
       'user.activated': { icon: 'bi-check-circle', color: 'success' },
       'user.deactivated': { icon: 'bi-dash-circle', color: 'secondary' },
       'user.suspended': { icon: 'bi-x-circle', color: 'danger' },
+      'security.login': { icon: 'bi-shield-lock', color: 'info' },
+      'invoice.delete': { icon: 'bi-receipt-cutoff', color: 'danger' },
+      'settings.update': { icon: 'bi-gear', color: 'primary' },
     };
     return map[action] || { icon: 'bi-info-circle', color: 'primary' };
   };
@@ -892,16 +900,19 @@ function AuditLogModal({ auditLog, onClose }) {
       'user.activated': 'User Activated',
       'user.deactivated': 'User Deactivated',
       'user.suspended': 'User Suspended',
+      'security.login': 'Security Login',
+      'invoice.delete': 'Invoice Deleted',
+      'settings.update': 'Settings Updated',
     };
     return map[action] || action;
   };
 
   const formatTimestamp = (date) => {
     const now = new Date();
-    const diff = Math.floor((now - new Date(date)) / 1000); // seconds
+    const diff = Math.floor((now - new Date(date)) / 1000);
 
     if (diff < 60) return 'Just now';
-    if (diff < 3600) return `${Math.floor(diff / 60)} minutes ago`;
+    if (diff < 3600) return `${Math.floor(diff / 60)} mins ago`;
     if (diff < 86400) return `${Math.floor(diff / 3600)} hours ago`;
     if (diff < 604800) return `${Math.floor(diff / 86400)} days ago`;
     
@@ -911,30 +922,175 @@ function AuditLogModal({ auditLog, onClose }) {
     });
   };
 
-  return (
-    <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal-box" style={{ maxWidth: 750 }}>
-        <div className="modal-box-header">
-          <i className="bi bi-clock-history" style={{ color: 'var(--primary)' }}></i>
-          Audit Log
-          <span className="badge-v secondary ms-auto">{auditLog.length} entries</span>
-          <button className="close-btn" onClick={onClose}>
-            <i className="bi bi-x-lg"></i>
-          </button>
+  // Filter audit log entries
+  const filteredLogs = auditLog.filter(l => {
+    const matchCat = categoryFilter === 'ALL' || (l.category || 'USER') === categoryFilter;
+    const matchSev = severityFilter === 'ALL' || (l.severity || 'INFO') === severityFilter;
+    const matchSearch = !search || 
+      (l.action && l.action.toLowerCase().includes(search.toLowerCase())) ||
+      (l.details && l.details.toLowerCase().includes(search.toLowerCase())) ||
+      (l.target && l.target.toLowerCase().includes(search.toLowerCase())) ||
+      (l.performedBy && l.performedBy.toLowerCase().includes(search.toLowerCase()));
+
+    return matchCat && matchSev && matchSearch;
+  });
+
+  // Export to CSV
+  const exportCSV = () => {
+    let csv = 'Timestamp,Action,Performed By,Target Entity,Details\n';
+    filteredLogs.forEach(l => {
+      csv += `"${new Date(l.timestamp).toISOString()}","${l.action || ''}","${l.performedBy || 'System'}","${(l.target || '').replace(/"/g, '""')}","${(l.details || '').replace(/"/g, '""')}"\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'Security_Audit_Logs_Report.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Print Audit Report
+  const handlePrintAudit = () => {
+    const win = window.open('', '_blank', 'width=900,height=800');
+    if (!win) return alert('Pop-up blocked! Allow pop-ups to print audit log report.');
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Security_Audit_Report_${new Date().toISOString().split('T')[0]}</title>
+        <style>
+          body { font-family: 'Segoe UI', Tahoma, sans-serif; padding: 20px; font-size: 12px; color: #1e293b; }
+          .header { border-bottom: 2px solid #7367f0; padding-bottom: 10px; margin-bottom: 15px; display: flex; justify-content: space-between; }
+          .title { font-size: 18px; font-weight: bold; color: #7367f0; }
+          table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+          th { background: #f8fafc; padding: 8px; font-size: 11px; text-transform: uppercase; border-bottom: 2px solid #cbd5e1; text-align: left; }
+          td { padding: 8px; border-bottom: 1px solid #e2e8f0; font-size: 11px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div>
+            <div class="title">EHN One - Security Audit Logs Report</div>
+            <div>Generated on: ${new Date().toLocaleString('en-IN')}</div>
+          </div>
+          <div>Total Logged Events: ${filteredLogs.length}</div>
         </div>
-        <div className="modal-box-body" style={{ padding: 0 }}>
-          {auditLog.length === 0 ? (
-            <div className="empty-state-v" style={{ padding: '40px 20px' }}>
-              <i className="bi bi-clock"></i>
-              <h5>No Activity Yet</h5>
-              <p>User activity will appear here</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Performer User</th>
+              <th>Action</th>
+              <th>Target Entity</th>
+              <th>Details & Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filteredLogs.map(l => `
+              <tr>
+                <td>${new Date(l.timestamp).toLocaleString('en-IN')}</td>
+                <td><strong>${l.performedBy || 'System'}</strong></td>
+                <td>${l.action}</td>
+                <td>${l.target || '-'}</td>
+                <td>${l.details || '-'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        <script>window.onload = function() { window.focus(); window.print(); };</script>
+      </body>
+      </html>
+    `;
+
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+  };
+
+  return (
+    <div className="modal-overlay" style={{ zIndex: 99999 }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal-box" style={{ maxWidth: 880, width: '94%' }}>
+        
+        {/* Header */}
+        <div className="modal-box-header d-flex align-items-center justify-content-between">
+          <div className="d-flex align-items-center gap-2">
+            <i className="bi bi-shield-check" style={{ color: 'var(--primary)', fontSize: '1.4rem' }}></i>
+            <div>
+              <div className="fw-bold" style={{ fontSize: '1.05rem' }}>Security Audit Logs Explorer</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Real-time user actions, role changes, and system audit trail</div>
             </div>
-          ) : (
-            <div className="audit-log-timeline">
-              {auditLog.map((log) => {
+          </div>
+          <div className="d-flex align-items-center gap-2">
+            <button className="btn-v outline-primary btn-sm" onClick={exportCSV} title="Export Audit Log CSV">
+              <i className="bi bi-download me-1"></i> Export CSV
+            </button>
+            <button className="btn-v primary btn-sm" onClick={handlePrintAudit} title="Print Audit Report">
+              <i className="bi bi-printer me-1"></i> Print Report
+            </button>
+            <button className="close-btn ms-2" onClick={onClose}><i className="bi bi-x-lg"></i></button>
+          </div>
+        </div>
+
+        {/* Filter Bar */}
+        <div className="bg-light p-3 border-bottom d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <div className="d-flex align-items-center gap-2 flex-grow-1" style={{ maxWidth: 360 }}>
+            <div className="search-box-v w-100">
+              <i className="bi bi-search"></i>
+              <input
+                type="text"
+                className="form-control form-control-sm"
+                placeholder="Search audit actions, user, details..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="d-flex align-items-center gap-2">
+            <select className="form-select form-select-sm" style={{ width: 130 }} value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+              <option value="ALL">All Modules</option>
+              <option value="USER">User & Roles</option>
+              <option value="AUTH">Authentication</option>
+              <option value="INVOICE">Invoices</option>
+              <option value="PRODUCT">Products</option>
+              <option value="SETTINGS">Settings</option>
+            </select>
+
+            <select className="form-select form-select-sm" style={{ width: 130 }} value={severityFilter} onChange={(e) => setSeverityFilter(e.target.value)}>
+              <option value="ALL">All Severity</option>
+              <option value="INFO">Info</option>
+              <option value="WARNING">Warning</option>
+              <option value="SECURITY">Security</option>
+              <option value="CRITICAL">Critical</option>
+            </select>
+
+            <div className="btn-group btn-group-sm">
+              <button className={`btn ${viewMode === 'timeline' ? 'btn-primary' : 'btn-outline-secondary'}`} onClick={() => setViewMode('timeline')}>
+                <i className="bi bi-clock-history"></i>
+              </button>
+              <button className={`btn ${viewMode === 'table' ? 'btn-primary' : 'btn-outline-secondary'}`} onClick={() => setViewMode('table')}>
+                <i className="bi bi-table"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="modal-box-body p-0" style={{ maxHeight: '65vh', overflowY: 'auto' }}>
+          {filteredLogs.length === 0 ? (
+            <div className="empty-state-v" style={{ padding: '40px 20px' }}>
+              <i className="bi bi-shield-x"></i>
+              <h5>No Audit Logs Found</h5>
+              <p>Try matching another search keyword or filter</p>
+            </div>
+          ) : viewMode === 'timeline' ? (
+            <div className="audit-log-timeline p-3">
+              {filteredLogs.map((log, idx) => {
                 const actionInfo = getActionIcon(log.action);
                 return (
-                  <div key={log.id} className="audit-log-item">
+                  <div key={log.id || idx} className="audit-log-item">
                     <div className="audit-log-icon-wrap">
                       <div className={`audit-log-icon ${actionInfo.color}`}>
                         <i className={`bi ${actionInfo.icon}`}></i>
@@ -945,10 +1101,10 @@ function AuditLogModal({ auditLog, onClose }) {
                       <div className="audit-log-header">
                         <div className="d-flex align-items-center gap-2">
                           <div className="audit-log-avatar">
-                            {log.performedBy?.charAt(0).toUpperCase()}
+                            {(log.performedBy || 'A').charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <div className="audit-log-user">{log.performedBy}</div>
+                            <div className="audit-log-user">{log.performedBy || 'System Admin'}</div>
                             <div className="audit-log-time">{formatTimestamp(log.timestamp)}</div>
                           </div>
                         </div>
@@ -958,7 +1114,7 @@ function AuditLogModal({ auditLog, onClose }) {
                       </div>
                       <div className="audit-log-details">
                         <div className="audit-log-target">
-                          <i className="bi bi-person"></i> {log.target}
+                          <i className="bi bi-person me-1"></i> {log.target}
                         </div>
                         <div className="audit-log-desc">{log.details}</div>
                       </div>
@@ -967,10 +1123,33 @@ function AuditLogModal({ auditLog, onClose }) {
                 );
               })}
             </div>
+          ) : (
+            <table className="v-table">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Performer</th>
+                  <th>Action</th>
+                  <th>Target Entity</th>
+                  <th>Details</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredLogs.map((l, idx) => (
+                  <tr key={l.id || idx}>
+                    <td style={{ fontSize: '0.78rem' }}>{new Date(l.timestamp).toLocaleString('en-IN')}</td>
+                    <td className="fw-semibold" style={{ color: 'var(--primary)' }}>{l.performedBy || 'Admin'}</td>
+                    <td><span className="badge-v primary" style={{ fontSize: '0.72rem' }}>{l.action}</span></td>
+                    <td className="fw-semibold">{l.target || '-'}</td>
+                    <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{l.details}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
         </div>
         <div className="modal-box-footer">
-          <button className="btn-v light" onClick={onClose}>Close</button>
+          <button className="btn-v light" onClick={onClose}>Close Explorer</button>
         </div>
       </div>
     </div>

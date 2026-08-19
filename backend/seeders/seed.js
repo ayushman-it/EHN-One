@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 const connectDB = require('../config/db');
 const User = require('../models/User');
 const Category = require('../models/Category');
@@ -16,7 +17,7 @@ const seedData = async () => {
 
     // Seed Users
     console.log('👥 Seeding users...');
-    const users = [
+    const usersData = [
       {
         name: 'Arjun Sharma',
         email: 'admin@ehnsystem.com',
@@ -45,8 +46,16 @@ const seedData = async () => {
         status: 'active',
       },
     ];
+
+    const users = await Promise.all(
+      usersData.map(async (u) => {
+        const hashedPassword = await bcrypt.hash(u.password, 10);
+        return { ...u, password: hashedPassword };
+      })
+    );
+
     await User.insertMany(users);
-    console.log('✅ Users seeded\n');
+    console.log('✅ Users seeded with bcrypt hashed passwords\n');
 
     // Seed Categories
     console.log('📁 Seeding categories...');

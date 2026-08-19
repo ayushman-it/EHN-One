@@ -11,7 +11,7 @@ export const ROLES = {
     color: 'danger',
     icon: 'bi-shield-lock-fill',
     permissions: [
-      'dashboard.view',
+      'dashboard.view', 'profile.view',
       'products.view', 'products.add', 'products.edit', 'products.delete',
       'transactions.view', 'transactions.stockin', 'transactions.stockout',
       'lowstock.view',
@@ -27,7 +27,7 @@ export const ROLES = {
     color: 'warning',
     icon: 'bi-person-badge-fill',
     permissions: [
-      'dashboard.view',
+      'dashboard.view', 'profile.view',
       'products.view', 'products.add', 'products.edit',
       'transactions.view', 'transactions.stockin', 'transactions.stockout',
       'lowstock.view',
@@ -42,7 +42,7 @@ export const ROLES = {
     color: 'info',
     icon: 'bi-eye-fill',
     permissions: [
-      'dashboard.view',
+      'dashboard.view', 'profile.view',
       'products.view',
       'transactions.view',
       'lowstock.view',
@@ -109,6 +109,7 @@ export function AuthProvider({ children }) {
 
   const can = (permission) => {
     if (!user) return false;
+    if (permission === 'profile.view') return true;
     return (ROLES[user.role]?.permissions || []).includes(permission);
   };
 

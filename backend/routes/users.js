@@ -1,6 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
+const { protect, authorize } = require('../middleware/auth');
+
+// Apply protection to all user management routes
+router.use(protect);
+router.use(authorize('admin'));
 
 // Get all users
 router.get('/', async (req, res) => {
@@ -41,6 +46,19 @@ router.post('/', async (req, res) => {
 // Update user
 router.put('/:id', async (req, res) => {
   try {
+    // If password is being updated, handle properly through model save hook
+    if (req.body.password) {
+      const user = await User.findById(req.params.id);
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+      }
+      Object.assign(user, req.body);
+      await user.save();
+      const userData = user.toObject();
+      delete userData.password;
+      return res.json({ success: true, message: 'User updated', data: userData });
+    }
+
     const user = await User.findByIdAndUpdate(req.params.id, req.body, { new: true }).select('-password');
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });

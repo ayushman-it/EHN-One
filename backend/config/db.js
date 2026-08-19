@@ -1,11 +1,9 @@
 const mongoose = require('mongoose');
-
-// MongoDB Atlas connection string
-const MONGODB_URI = 'mongodb://anshchourasia768_db_user:It98g2KAWace3sSG@atlas-sql-6a5b7703c51e79adf2ecb006-enpmyj.a.query.mongodb.net/EHN?ssl=true&authSource=admin';
+require('dotenv').config();
 
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGO_URI || MONGODB_URI, {
+    const conn = await mongoose.connect(process.env.MONGO_URI, {
       serverSelectionTimeoutMS: 10000,
       socketTimeoutMS: 45000,
     });

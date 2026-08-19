@@ -17,7 +17,7 @@ const productSchema = new mongoose.Schema({
     default: '',
   },
   category: {
-    type: String, // Changed to String to accept category names directly
+    type: String,
     required: true,
   },
   price: {
@@ -41,20 +41,55 @@ const productSchema = new mongoose.Schema({
     default: 10,
     min: 0,
   },
-  lowStockThreshold: { // Add this field for frontend compatibility
+  lowStockThreshold: {
     type: Number,
     default: 10,
     min: 0,
   },
   unit: {
     type: String,
-    default: 'pcs',
+    default: 'PCS',
+  },
+  uqcUnit: {
+    type: String,
+    default: 'PCS-PIECES',
+  },
+  hsnCode: {
+    type: String,
+    default: '',
+    trim: true,
+  },
+  gstRate: {
+    type: Number,
+    default: 18,
+  },
+  taxability: {
+    type: String,
+    enum: ['Taxable', 'Exempt', 'Nil Rated'],
+    default: 'Taxable',
+  },
+  typeOfSupply: {
+    type: String,
+    enum: ['Goods', 'Services'],
+    default: 'Goods',
+  },
+  openingQuantity: {
+    type: Number,
+    default: 0,
+  },
+  openingRate: {
+    type: Number,
+    default: 0,
+  },
+  openingValue: {
+    type: Number,
+    default: 0,
   },
   supplier: {
-    type: String, // Changed to String for frontend compatibility
+    type: String,
   },
   warehouse: {
-    type: String, // Changed to String for frontend compatibility
+    type: String,
   },
   barcode: String,
   image: String,

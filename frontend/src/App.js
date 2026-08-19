@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { HashRouter as Router, Routes, Route, NavLink, useLocation, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, NavLink, useLocation, Navigate, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth, ROLES } from './context/AuthContext';
 import NotificationDropdown from './components/NotificationDropdown';
 import Dashboard    from './pages/Dashboard';
@@ -8,10 +8,13 @@ import Transactions from './pages/Transactions';
 import Users        from './pages/Users';
 import Invoices     from './pages/Invoices';
 import Suppliers    from './pages/Suppliers';
+import Customers    from './pages/Customers';
 import Warehouse    from './pages/Warehouse';
 import Categories   from './pages/Categories';
 import Automations  from './pages/Automations';
+import Reports      from './pages/Reports';
 import Settings     from './pages/Settings';
+import Support      from './pages/Support';
 import Login        from './pages/Login';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
@@ -42,6 +45,7 @@ const MENU = [
   {
     section: 'Catalogue',
     items: [
+      { to: '/customers',   icon: 'bi-people',            label: 'Customers',        permission: 'products.view' },
       { to: '/categories',   icon: 'bi-tag',               label: 'Categories',       permission: 'categories.view' },
       { to: '/suppliers',    icon: 'bi-truck',             label: 'Suppliers',        permission: 'suppliers.view' },
       { to: '/warehouse',    icon: 'bi-building',          label: 'Warehouse',        permission: 'warehouse.view' },
@@ -60,6 +64,7 @@ const MENU = [
       { to: '/automations', icon: 'bi-lightning-charge',   label: 'Automations',      permission: 'settings.view' },
       { to: '/settings',     icon: 'bi-gear',              label: 'Settings',         permission: 'settings.view' },
       { to: '/users',        icon: 'bi-people',            label: 'User Management',  permission: 'users.view' },
+      { to: '/support',      icon: 'bi-headset',           label: 'Support Helpdesk' },
     ],
   },
 ];
@@ -159,6 +164,7 @@ function Sidebar({ open, onClose }) {
 /* ── Top Navbar ── */
 function Navbar({ onToggle }) {
   const { user, logout, roleInfo } = useAuth();
+  const navigate = useNavigate();
   const [dropOpen, setDropOpen] = useState(false);
 
   const today = new Date().toLocaleDateString('en-IN', {
@@ -239,15 +245,18 @@ function Navbar({ onToggle }) {
                 </div>
               </div>
               <div className="navbar-dropdown-divider"></div>
-              <button className="navbar-dropdown-item">
-                <i className="bi bi-person"></i> My Profile
+              <button className="navbar-dropdown-item" onClick={() => { setDropOpen(false); navigate('/settings'); }}>
+                <i className="bi bi-person me-2"></i> My Profile
               </button>
-              <button className="navbar-dropdown-item">
-                <i className="bi bi-gear"></i> Settings
+              <button className="navbar-dropdown-item" onClick={() => { setDropOpen(false); navigate('/settings'); }}>
+                <i className="bi bi-gear me-2"></i> Settings
+              </button>
+              <button className="navbar-dropdown-item" onClick={() => { setDropOpen(false); navigate('/support'); }}>
+                <i className="bi bi-headset me-2"></i> Support Helpdesk
               </button>
               <div className="navbar-dropdown-divider"></div>
-              <button className="navbar-dropdown-item danger" onClick={logout}>
-                <i className="bi bi-box-arrow-right"></i> Sign Out
+              <button className="navbar-dropdown-item danger" onClick={() => { setDropOpen(false); logout(); }}>
+                <i className="bi bi-box-arrow-right me-2"></i> Sign Out
               </button>
             </div>
           )}
@@ -294,14 +303,16 @@ function AppInner() {
             <Route path="/invoices" element={
               <ProtectedRoute permission="products.view"><Invoices /></ProtectedRoute>
             } />
+            <Route path="/customers"  element={<ProtectedRoute permission="products.view"><Customers /></ProtectedRoute>} />
             <Route path="/categories" element={<ProtectedRoute permission="categories.view"><Categories /></ProtectedRoute>} />
             <Route path="/suppliers"  element={<ProtectedRoute permission="suppliers.view"><Suppliers /></ProtectedRoute>} />
             <Route path="/warehouse"  element={<ProtectedRoute permission="warehouse.view"><Warehouse /></ProtectedRoute>} />
-            <Route path="/reports"    element={<ProtectedRoute permission="reports.view"><ComingSoon /></ProtectedRoute>} />
-            <Route path="/analytics"  element={<ProtectedRoute permission="analytics.view"><ComingSoon /></ProtectedRoute>} />
+            <Route path="/reports"    element={<ProtectedRoute permission="reports.view"><Reports /></ProtectedRoute>} />
+            <Route path="/analytics"  element={<ProtectedRoute permission="analytics.view"><Reports /></ProtectedRoute>} />
             <Route path="/automations" element={<ProtectedRoute permission="settings.view"><Automations /></ProtectedRoute>} />
-            <Route path="/settings"   element={<ProtectedRoute permission="settings.view"><Settings /></ProtectedRoute>} />
+            <Route path="/settings"   element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/users"      element={<ProtectedRoute permission="users.view"><Users /></ProtectedRoute>} />
+            <Route path="/support"    element={<ProtectedRoute><Support /></ProtectedRoute>} />
             <Route path="*"           element={<Navigate to="/" replace />} />
           </Routes>
         </main>
