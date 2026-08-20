@@ -1,81 +1,73 @@
 const express = require('express');
 const router = express.Router();
 const Customer = require('../models/Customer');
+const { protect } = require('../middleware/auth');
 
-// GET /api/customers - Get all customers
+router.use(protect);
+
+function escapeRegex(str) { return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
 router.get('/', async (req, res) => {
   try {
     const { search, status } = req.query;
     let query = {};
-
     if (status) query.status = status;
     if (search) {
+      const safe = escapeRegex(search);
       query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { phone: { $regex: search, $options: 'i' } },
-        { gstin: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } }
+        { name: { $regex: safe, $options: 'i' } },
+        { phone: { $regex: safe, $options: 'i' } },
+        { gstin: { $regex: safe, $options: 'i' } },
+        { email: { $regex: safe, $options: 'i' } }
       ];
     }
-
     const customers = await Customer.find(query).sort({ createdAt: -1 });
     res.json({ success: true, count: customers.length, data: customers });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 
-// GET /api/customers/:id - Get single customer
 router.get('/:id', async (req, res) => {
   try {
     const customer = await Customer.findById(req.params.id);
-    if (!customer) {
-      return res.status(404).json({ success: false, error: 'Customer not found' });
-    }
+    if (!customer) return res.status(404).json({ success: false, message: 'Customer not found' });
     res.json({ success: true, data: customer });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 
-// POST /api/customers - Create new customer
+const CUSTOMER_FIELDS = ['name', 'phone', 'email', 'gstin', 'address', 'city', 'state', 'pincode', 'openingBalance', 'status'];
+function pick(obj, fields) { const r = {}; for (const f of fields) { if (obj[f] !== undefined) r[f] = obj[f]; } return r; }
+
 router.post('/', async (req, res) => {
   try {
-    const newCustomer = new Customer(req.body);
-    const savedCustomer = await newCustomer.save();
-    res.status(201).json({ success: true, data: savedCustomer });
+    const customer = new Customer(pick(req.body, CUSTOMER_FIELDS));
+    await customer.save();
+    res.status(201).json({ success: true, data: customer });
   } catch (err) {
-    res.status(400).json({ success: false, error: err.message });
+    res.status(400).json({ success: false, message: 'Server error' });
   }
 });
 
-// PUT /api/customers/:id - Update customer
 router.put('/:id', async (req, res) => {
   try {
-    const updatedCustomer = await Customer.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
-    if (!updatedCustomer) {
-      return res.status(404).json({ success: false, error: 'Customer not found' });
-    }
-    res.json({ success: true, data: updatedCustomer });
+    const customer = await Customer.findByIdAndUpdate(req.params.id, pick(req.body, CUSTOMER_FIELDS), { new: true, runValidators: true });
+    if (!customer) return res.status(404).json({ success: false, message: 'Customer not found' });
+    res.json({ success: true, data: customer });
   } catch (err) {
-    res.status(400).json({ success: false, error: err.message });
+    res.status(400).json({ success: false, message: 'Server error' });
   }
 });
 
-// DELETE /api/customers/:id - Delete customer
 router.delete('/:id', async (req, res) => {
   try {
     const customer = await Customer.findByIdAndDelete(req.params.id);
-    if (!customer) {
-      return res.status(404).json({ success: false, error: 'Customer not found' });
-    }
-    res.json({ success: true, message: 'Customer deleted successfully' });
+    if (!customer) return res.status(404).json({ success: false, message: 'Customer not found' });
+    res.json({ success: true, message: 'Customer deleted' });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 

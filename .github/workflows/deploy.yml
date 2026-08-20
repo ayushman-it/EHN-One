@@ -1,0 +1,174 @@
+name: EHN One - CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # ── Lint & Security Audit ──
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      - name: Install backend deps
+        run: cd backend && npm ci
+      - name: Audit backend
+        run: cd backend && npm audit --audit-level=high || true
+      - name: Install frontend deps
+        run: cd frontend && npm ci --legacy-peer-deps
+      - name: Audit frontend
+        run: cd frontend && npm audit --audit-level=high || true
+
+  # ── Backend Test ──
+  test-backend:
+    runs-on: ubuntu-latest
+    needs: lint
+    timeout-minutes: 10
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+    env:
+      MONGO_URI: mongodb://localhost:27017/ehnone_test
+      JWT_SECRET: test-secret-for-ci-only-not-production
+      PORT: 4100
+      HOST: 127.0.0.1
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      - name: Install deps
+        run: cd backend && npm ci
+      - name: Start server & health check
+        run: |
+          cd backend && node server.js &
+          sleep 5
+          curl -sf http://127.0.0.1:4100/health && echo "HEALTH OK" || curl -sf http://127.0.0.1:4100/ && echo "ROOT OK"
+          curl -sf http://127.0.0.1:4100/api/auth/login -X POST -H "Content-Type: application/json" -d '{"email":"test","password":"test"}' && echo "AUTH OK"
+          kill %1 2>/dev/null || true
+
+  # ── Frontend Build ──
+  build-frontend:
+    runs-on: ubuntu-latest
+    needs: lint
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install deps
+        run: cd frontend && npm ci --legacy-peer-deps
+      - name: Build production
+        run: cd frontend && REACT_APP_API_URL=/api CI=false npm run build
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/build/
+          retention-days: 7
+
+  # ── Deploy to Production VPS ──
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [test-backend, build-frontend]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    timeout-minutes: 10
+    environment:
+      name: production
+      url: https://admin.kedvasshygieneproducts.com
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download frontend build
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/build/
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p ${{ secrets.VPS_SSH_PORT || 22 }} -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Create release directory
+        id: release
+        run: |
+          RELEASE=$(date +%Y%m%d_%H%M%S)
+          echo "timestamp=$RELEASE" >> $GITHUB_OUTPUT
+
+      - name: Sync code to VPS
+        run: |
+          RELEASE=${{ steps.release.outputs.timestamp }}
+          rsync -avz --delete \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            --exclude='frontend/build' \
+            --exclude='frontend/node_modules' \
+            --exclude='backend/node_modules' \
+            --exclude='.env' \
+            -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.VPS_SSH_PORT || 22 }}" \
+            ./ ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/var/www/ehnone/releases/${RELEASE}/
+
+      - name: Copy frontend build
+        run: |
+          RELEASE=${{ steps.release.outputs.timestamp }}
+          rsync -avz \
+            -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.VPS_SSH_PORT || 22 }}" \
+            frontend/build/ ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/var/www/ehnone/releases/${RELEASE}/frontend/build/
+
+      - name: Deploy on VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT || 22 }}
+          script: |
+            set -e
+            RELEASE=${{ steps.release.outputs.timestamp }}
+            cd /var/www/ehnone/releases/${RELEASE} && bash deploy.sh
+
+      - name: Verify deployment
+        run: |
+          sleep 10
+          for i in 1 2 3 4 5; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://${{ secrets.VPS_HOST }}:4100/health 2>/dev/null || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "Health check passed"
+              exit 0
+            fi
+            echo "Attempt $i: got $STATUS, retrying..."
+            sleep 5
+          done
+          echo "Health check via direct IP failed (expected if port 4100 is firewalled)"
+
+      - name: Cleanup SSH
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

@@ -51,13 +51,6 @@ export const ROLES = {
   },
 };
 
-/* Mock users */
-export const MOCK_USERS = [
-  { id: 1, name: 'Arjun Sharma',  email: 'admin@ehnsystem.com',   password: 'admin123',   role: 'admin'   },
-  { id: 2, name: 'Priya Mehta',   email: 'manager@ehnsystem.com', password: 'manager123', role: 'manager' },
-  { id: 3, name: 'Rahul Verma',   email: 'viewer@ehnsystem.com',  password: 'viewer123',  role: 'viewer'  },
-];
-
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
@@ -66,39 +59,22 @@ export function AuthProvider({ children }) {
   });
 
   const login = async (email, password) => {
-    try {
-      // Call backend API
-      const response = await authAPI.login(email, password);
-      
-      // Extract user data from response
-      const userData = response.data || response;
-      const session = {
-        id: userData._id || userData.id,
-        name: userData.name,
-        email: userData.email,
-        role: userData.role,
-      };
+    const response = await authAPI.login(email, password);
+    const userData = response.data || response;
+    const session = {
+      id: userData._id || userData.id,
+      name: userData.name,
+      email: userData.email,
+      role: userData.role,
+    };
 
-      // Store token if provided
-      if (userData.token) {
-        sessionStorage.setItem('inv_token', userData.token);
-      }
-
-      sessionStorage.setItem('inv_user', JSON.stringify(session));
-      setUser(session);
-      return session;
-    } catch (error) {
-      // If backend is not available, fall back to mock users for development
-      console.warn('Backend login failed, using mock authentication:', error.message);
-      const found = MOCK_USERS.find(
-        (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-      );
-      if (!found) throw new Error('Invalid email or password');
-      const session = { id: found.id, name: found.name, email: found.email, role: found.role };
-      sessionStorage.setItem('inv_user', JSON.stringify(session));
-      setUser(session);
-      return session;
+    if (userData.token) {
+      sessionStorage.setItem('inv_token', userData.token);
     }
+
+    sessionStorage.setItem('inv_user', JSON.stringify(session));
+    setUser(session);
+    return session;
   };
 
   const logout = () => {

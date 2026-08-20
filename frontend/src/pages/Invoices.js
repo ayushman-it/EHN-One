@@ -796,7 +796,7 @@ function CreateInvoiceModal({ onClose, onCreate }) {
         })), ...customersDB];
         setCustomerList(merged);
       }
-    }).catch(err => console.log('Using default customers list'));
+    }).catch(() => {});
   }, []);
 
   // Available units for "per" column

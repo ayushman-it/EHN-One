@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { changePassword } from '../services/api';
 
 /* Global Settings Storage */
 let globalSettings = {
@@ -48,11 +49,13 @@ export default function Settings() {
   const [saved, setSaved] = useState(false);
   const [profileAvatar, setProfileAvatar] = useState(user?.avatar || null);
   const [profileName, setProfileName] = useState(user?.name || 'Arjun Sharma');
-  const [profileEmail, setProfileEmail] = useState(user?.email || 'admin@ehnsystem.com');
+  const [profileEmail, setProfileEmail] = useState(user?.email || '');
   const [profileDept, setProfileDept] = useState(user?.department || 'Operations');
   const [currPass, setCurrPass] = useState('');
   const [newPass, setNewPass] = useState('');
   const [confirmPass, setConfirmPass] = useState('');
+  const [passwordMsg, setPasswordMsg] = useState(null);
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   const isAdmin = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'administrator';
   const canSettings = can('settings.view') || isAdmin;
@@ -628,16 +631,33 @@ export default function Settings() {
 
                   <div className="form-divider mb-4"></div>
 
-                  {/* Password Change Form */}
+                   {/* Password Change Form */}
                   <div className="form-section-title mb-2">
                     <i className="bi bi-key me-1"></i> Update Security Password
                   </div>
-                  <form onSubmit={(e) => {
+                  {passwordMsg && (
+                    <div className={`alert-v ${passwordMsg.success ? 'success' : 'danger'} mb-3`}>
+                      <i className={`bi ${passwordMsg.success ? 'bi-check-circle' : 'bi-exclamation-circle'}`}></i>
+                      <div>{passwordMsg.text}</div>
+                    </div>
+                  )}
+                  <form onSubmit={async (e) => {
                     e.preventDefault();
-                    if (!newPass) return alert('Please enter a new password.');
-                    if (newPass !== confirmPass) return alert('New Password and Confirm Password do not match.');
-                    alert('✅ Password updated successfully!');
-                    setCurrPass(''); setNewPass(''); setConfirmPass('');
+                    setPasswordMsg(null);
+                    if (!currPass) return setPasswordMsg({ success: false, text: 'Please enter your current password.' });
+                    if (!newPass) return setPasswordMsg({ success: false, text: 'Please enter a new password.' });
+                    if (newPass.length < 6) return setPasswordMsg({ success: false, text: 'New password must be at least 6 characters.' });
+                    if (newPass !== confirmPass) return setPasswordMsg({ success: false, text: 'New password and confirm password do not match.' });
+                    setPasswordLoading(true);
+                    try {
+                      await changePassword(currPass, newPass);
+                      setPasswordMsg({ success: true, text: 'Password updated successfully.' });
+                      setCurrPass(''); setNewPass(''); setConfirmPass('');
+                    } catch (err) {
+                      setPasswordMsg({ success: false, text: err.response?.data?.message || 'Failed to update password.' });
+                    } finally {
+                      setPasswordLoading(false);
+                    }
                   }}>
                     <div className="row g-3 mb-3">
                       <div className="col-md-4">
@@ -671,8 +691,12 @@ export default function Settings() {
                         />
                       </div>
                     </div>
-                    <button type="submit" className="btn-v primary">
-                      <i className="bi bi-check-circle me-1"></i> Update Password
+                    <button type="submit" className="btn-v primary" disabled={passwordLoading}>
+                      {passwordLoading ? (
+                        <><span className="spinner-border spinner-border-sm me-2"></span>Updating...</>
+                      ) : (
+                        <><i className="bi bi-check-circle me-1"></i> Update Password</>
+                      )}
                     </button>
                   </form>
                 </>

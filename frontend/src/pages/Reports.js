@@ -32,7 +32,7 @@ export default function Reports() {
         setMetrics(res.data.data);
       }
     } catch (err) {
-      console.log('Error loading report metrics, using fallback metrics:', err);
+      /* error loading report metrics, using fallback */
     } finally {
       setLoading(false);
     }

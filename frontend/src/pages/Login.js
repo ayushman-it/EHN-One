@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth, MOCK_USERS, ROLES } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
   const { login } = useAuth();
@@ -17,12 +17,6 @@ export default function Login() {
     } catch (err) {
       setError(err.message);
     } finally { setLoading(false); }
-  };
-
-  const quickLogin = (user) => {
-    setEmail(user.email);
-    setPassword(user.password);
-    setError('');
   };
 
   return (
@@ -61,29 +55,8 @@ export default function Login() {
       <div className="login-right">
         <div className="login-card">
           <div className="login-card-header">
-            <h3>Welcome back 👋</h3>
+            <h3>Welcome back</h3>
             <p>Sign in to your account to continue</p>
-          </div>
-
-          {/* Quick login pills */}
-          <div className="login-quick">
-            <div className="login-quick-label">Quick login as:</div>
-            <div className="login-quick-pills">
-              {MOCK_USERS.map((u) => {
-                const role = ROLES[u.role];
-                return (
-                  <button
-                    key={u.id}
-                    type="button"
-                    className={`login-quick-pill role-${u.role}`}
-                    onClick={() => quickLogin(u)}
-                  >
-                    <i className={`bi ${role.icon}`}></i>
-                    {role.label}
-                  </button>
-                );
-              })}
-            </div>
           </div>
 
           <form onSubmit={handleSubmit}>
@@ -142,30 +115,6 @@ export default function Login() {
                 : <><i className="bi bi-box-arrow-in-right"></i> Sign In</>}
             </button>
           </form>
-
-          {/* Role info table */}
-          <div className="login-roles-info">
-            <div className="login-roles-title">Demo Credentials</div>
-            <table className="login-roles-table">
-              <thead>
-                <tr><th>Role</th><th>Email</th><th>Password</th></tr>
-              </thead>
-              <tbody>
-                {MOCK_USERS.map((u) => (
-                  <tr key={u.id}>
-                    <td>
-                      <span className={`badge-v ${ROLES[u.role].color}`}>
-                        <i className={`bi ${ROLES[u.role].icon}`}></i>
-                        {ROLES[u.role].label}
-                      </span>
-                    </td>
-                    <td style={{ fontSize: '0.78rem' }}>{u.email}</td>
-                    <td><code style={{ fontSize: '0.78rem' }}>{u.password}</code></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
         </div>
       </div>
     </div>

@@ -8,7 +8,7 @@ const { protect } = require('../middleware/auth');
 const generateToken = (id) => {
   return jwt.sign(
     { id },
-    process.env.JWT_SECRET || 'ehnone_super_secret_jwt_key_2026_key',
+    process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRE || '30d' }
   );
 };
@@ -73,7 +73,6 @@ router.post('/login', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Server error',
-      error: error.message,
     });
   }
 });
@@ -133,7 +132,6 @@ router.post('/register', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Server error',
-      error: error.message,
     });
   }
 });
@@ -153,8 +151,33 @@ router.get('/me', protect, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Server error',
-      error: error.message,
     });
+  }
+});
+
+// @route   PUT /api/auth/change-password
+// @desc    Change user password
+// @access  Private
+router.put('/change-password', protect, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Current and new password are required' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: 'New password must be at least 6 characters' });
+    }
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    const isMatch = await user.matchPassword(currentPassword);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: 'Current password is incorrect' });
+    }
+    user.password = newPassword;
+    await user.save();
+    res.json({ success: true, message: 'Password updated successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 

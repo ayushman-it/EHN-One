@@ -2,7 +2,7 @@
   "name": "inventory-frontend",
   "version": "1.0.0",
   "private": true,
-  "homepage": "https://ayushman-it.github.io/EHN-One",
+  "homepage": ".",
   "dependencies": {
     "axios": "^1.7.4",
     "bootstrap": "^5.3.3",
@@ -18,7 +18,7 @@
     "predeploy": "npm run build",
     "deploy": "gh-pages -d build"
   },
-  "proxy": "http://localhost:5000",
+  "proxy": "http://localhost:4100",
   "browserslist": {
     "production": [
       ">0.2%",

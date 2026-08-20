@@ -52,7 +52,7 @@ export default function Support() {
       const res = await axios.get(`${API_BASE_URL}/tickets`);
       setTickets(res.data?.data || []);
     } catch (err) {
-      console.log('Error loading support tickets, using mock data:', err);
+      /* error loading support tickets, using fallback */
       // Fallback mock tickets
       setTickets([
         {

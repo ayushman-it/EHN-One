@@ -1,65 +1,50 @@
 const express = require('express');
 const router = express.Router();
 const Warehouse = require('../models/Warehouse');
+const { protect } = require('../middleware/auth');
 
-// Get all warehouses
+router.use(protect);
+
+const FIELDS = ['name', 'code', 'location', 'city', 'state', 'pincode', 'manager', 'phone', 'email', 'capacity', 'status', 'type'];
+function pick(obj, f) { const r = {}; for (const k of f) { if (obj[k] !== undefined) r[k] = obj[k]; } return r; }
+
 router.get('/', async (req, res) => {
   try {
-    const warehouses = await Warehouse.find().sort({ createdAt: -1 });
-    res.json({ success: true, count: warehouses.length, data: warehouses });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+    const w = await Warehouse.find().sort({ createdAt: -1 });
+    res.json({ success: true, count: w.length, data: w });
+  } catch (e) { res.status(500).json({ success: false, message: 'Server error' }); }
 });
 
-// Get single warehouse
 router.get('/:id', async (req, res) => {
   try {
-    const warehouse = await Warehouse.findById(req.params.id);
-    if (!warehouse) {
-      return res.status(404).json({ success: false, message: 'Warehouse not found' });
-    }
-    res.json({ success: true, data: warehouse });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+    const w = await Warehouse.findById(req.params.id);
+    if (!w) return res.status(404).json({ success: false, message: 'Warehouse not found' });
+    res.json({ success: true, data: w });
+  } catch (e) { res.status(500).json({ success: false, message: 'Server error' }); }
 });
 
-// Create warehouse
 router.post('/', async (req, res) => {
   try {
-    const warehouse = new Warehouse(req.body);
-    await warehouse.save();
-    res.status(201).json({ success: true, message: 'Warehouse created', data: warehouse });
-  } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
-  }
+    const w = new Warehouse(pick(req.body, FIELDS));
+    await w.save();
+    res.status(201).json({ success: true, data: w });
+  } catch (e) { res.status(400).json({ success: false, message: 'Server error' }); }
 });
 
-// Update warehouse
 router.put('/:id', async (req, res) => {
   try {
-    const warehouse = await Warehouse.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!warehouse) {
-      return res.status(404).json({ success: false, message: 'Warehouse not found' });
-    }
-    res.json({ success: true, message: 'Warehouse updated', data: warehouse });
-  } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
-  }
+    const w = await Warehouse.findByIdAndUpdate(req.params.id, pick(req.body, FIELDS), { new: true, runValidators: true });
+    if (!w) return res.status(404).json({ success: false, message: 'Warehouse not found' });
+    res.json({ success: true, data: w });
+  } catch (e) { res.status(400).json({ success: false, message: 'Server error' }); }
 });
 
-// Delete warehouse
 router.delete('/:id', async (req, res) => {
   try {
-    const warehouse = await Warehouse.findByIdAndDelete(req.params.id);
-    if (!warehouse) {
-      return res.status(404).json({ success: false, message: 'Warehouse not found' });
-    }
+    const w = await Warehouse.findByIdAndDelete(req.params.id);
+    if (!w) return res.status(404).json({ success: false, message: 'Warehouse not found' });
     res.json({ success: true, message: 'Warehouse deleted' });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+  } catch (e) { res.status(500).json({ success: false, message: 'Server error' }); }
 });
 
 module.exports = router;

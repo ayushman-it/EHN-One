@@ -2,82 +2,52 @@ const express = require('express');
 const router = express.Router();
 const Transaction = require('../models/Transaction');
 const Product = require('../models/Product');
+const { protect } = require('../middleware/auth');
 
-// Get all transactions
+router.use(protect);
+
 router.get('/', async (req, res) => {
   try {
-    const transactions = await Transaction.find()
-      .populate('product', 'name sku')
-      .sort({ createdAt: -1 });
+    const transactions = await Transaction.find().populate('product', 'name sku').sort({ createdAt: -1 });
     res.json(transactions);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ message: 'Server error' }); }
 });
 
-// Add stock (in)
 router.post('/in', async (req, res) => {
   try {
     const { productId, quantity, notes } = req.body;
+    if (!productId || !quantity) return res.status(400).json({ message: 'productId and quantity required' });
     const product = await Product.findById(productId);
     if (!product) return res.status(404).json({ error: 'Product not found' });
-
-    product.quantity += quantity;
+    product.quantity += Number(quantity);
     await product.save();
-
-    const transaction = await Transaction.create({
-      product: productId,
-      type: 'in',
-      quantity,
-      notes,
-    });
+    const transaction = await Transaction.create({ product: productId, type: 'in', quantity: Number(quantity), notes });
     res.status(201).json(transaction);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
+  } catch (err) { res.status(400).json({ message: 'Server error' }); }
 });
 
-// Remove stock (out)
 router.post('/out', async (req, res) => {
   try {
     const { productId, quantity, notes } = req.body;
+    if (!productId || !quantity) return res.status(400).json({ message: 'productId and quantity required' });
     const product = await Product.findById(productId);
     if (!product) return res.status(404).json({ error: 'Product not found' });
     if (product.quantity < quantity) return res.status(400).json({ error: 'Insufficient stock' });
-
-    product.quantity -= quantity;
+    product.quantity -= Number(quantity);
     await product.save();
-
-    const transaction = await Transaction.create({
-      product: productId,
-      type: 'out',
-      quantity,
-      notes,
-    });
+    const transaction = await Transaction.create({ product: productId, type: 'out', quantity: Number(quantity), notes });
     res.status(201).json(transaction);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
+  } catch (err) { res.status(400).json({ message: 'Server error' }); }
 });
 
-// Dashboard stats
 router.get('/stats', async (req, res) => {
   try {
     const totalProducts = await Product.countDocuments();
     const totalStock = await Product.aggregate([{ $group: { _id: null, total: { $sum: '$quantity' } } }]);
     const lowStock = await Product.find({ $expr: { $lte: ['$quantity', '$lowStockThreshold'] } });
     const totalValue = await Product.aggregate([{ $group: { _id: null, total: { $sum: { $multiply: ['$price', '$quantity'] } } } }]);
-
-    res.json({
-      totalProducts,
-      totalStock: totalStock[0]?.total || 0,
-      lowStockCount: lowStock.length,
-      lowStockItems: lowStock,
-      totalValue: totalValue[0]?.total || 0,
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+    res.json({ totalProducts, totalStock: totalStock[0]?.total || 0, lowStockCount: lowStock.length, lowStockItems: lowStock, totalValue: totalValue[0]?.total || 0 });
+  } catch (err) { res.status(500).json({ message: 'Server error' }); }
 });
 
 module.exports = router;

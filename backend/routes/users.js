@@ -13,7 +13,7 @@ router.get('/', async (req, res) => {
     const users = await User.find().select('-password').sort({ createdAt: -1 });
     res.json({ success: true, count: users.length, data: users });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 
@@ -26,7 +26,7 @@ router.get('/:id', async (req, res) => {
     }
     res.json({ success: true, data: user });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 
@@ -39,7 +39,7 @@ router.post('/', async (req, res) => {
     delete userData.password;
     res.status(201).json({ success: true, message: 'User created', data: userData });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success: false, message: 'Server error' });
   }
 });
 
@@ -65,7 +65,7 @@ router.put('/:id', async (req, res) => {
     }
     res.json({ success: true, message: 'User updated', data: user });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success: false, message: 'Server error' });
   }
 });
 
@@ -78,7 +78,7 @@ router.delete('/:id', async (req, res) => {
     }
     res.json({ success: true, message: 'User deleted' });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 

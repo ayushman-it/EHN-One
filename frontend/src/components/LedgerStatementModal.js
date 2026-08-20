@@ -22,7 +22,7 @@ export default function LedgerStatementModal({ party, partyType = 'Debtor', onCl
       });
       setInvoices(partyInvoices);
     } catch (err) {
-      console.log('Error loading party invoices:', err);
+      /* error loading party invoices */
     } finally {
       setLoading(false);
     }
@@ -98,11 +98,19 @@ export default function LedgerStatementModal({ party, partyType = 'Debtor', onCl
     const printWin = window.open('', '_blank', 'width=900,height=1000');
     if (!printWin) return alert('Pop-up blocked! Please allow pop-ups to print ledger statement.');
 
+    const esc = (s) => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    const safeName = esc(party.name);
+    const safeGroup = esc(party.group || (isDebtor ? 'Sundry Debtors' : 'Sundry Creditors'));
+    const safeAddr = esc(party.address || '');
+    const safeState = esc(party.state || '');
+    const safeGstin = esc(party.gstin || party.gst || 'Unregistered');
+    const safePhone = esc(party.phone || '-');
+
     const html = `
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Ledger_Statement_${party.name.replace(/\s+/g, '_')}</title>
+        <title>Ledger_Statement_${safeName.replace(/[^a-zA-Z0-9]/g, '_')}</title>
         <style>
           @page { size: A4 portrait; margin: 12mm; }
           body { font-family: 'Segoe UI', Tahoma, sans-serif; font-size: 13px; color: #1e293b; margin: 0; padding: 15px; }
@@ -124,13 +132,13 @@ export default function LedgerStatementModal({ party, partyType = 'Debtor', onCl
       <body>
         <div class="header">
           <div>
-            <div class="party-title">${party.name}</div>
-            <div class="sub">Account Ledger Statement • ${party.group || (isDebtor ? 'Sundry Debtors' : 'Sundry Creditors')}</div>
-            <div class="sub">${party.address || ''} ${party.state ? ', ' + party.state : ''}</div>
+            <div class="party-title">${safeName}</div>
+            <div class="sub">Account Ledger Statement • ${safeGroup}</div>
+            <div class="sub">${safeAddr}${safeState ? ', ' + safeState : ''}</div>
           </div>
           <div style="text-align: right;">
-            <div style="font-weight: bold; font-size: 14px;">GSTIN: ${party.gstin || party.gst || 'Unregistered'}</div>
-            <div class="sub">Phone: ${party.phone || '-'}</div>
+            <div style="font-weight: bold; font-size: 14px;">GSTIN: ${safeGstin}</div>
+            <div class="sub">Phone: ${safePhone}</div>
             <div class="sub">Statement Date: ${new Date().toLocaleDateString('en-IN')}</div>
           </div>
         </div>

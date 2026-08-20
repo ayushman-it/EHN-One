@@ -4,8 +4,8 @@
 
 import axios from 'axios';
 
-// Base API URL - change for production
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+// Base API URL - uses relative path in production (proxied by nginx), absolute in dev
+const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
 
 // Check if backend is available
 let backendAvailable = true;
@@ -82,6 +82,10 @@ export const login = async (email, password) => {
 
 export const register = async (userData) => {
   return api.post('/auth/register', userData);
+};
+
+export const changePassword = async (currentPassword, newPassword) => {
+  return api.put('/auth/change-password', { currentPassword, newPassword });
 };
 
 /* ═══════════════════════════════════════════════════════════
