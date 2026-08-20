@@ -19,6 +19,9 @@ if (!process.env.MONGO_URI) {
 
 const app = express();
 
+// Trust first proxy (nginx) - fixes ERR_ERL_UNEXPECTED_X_FORWARDED_FOR
+app.set('trust proxy', 1);
+
 // Connect to MongoDB
 connectDB();
 

@@ -7,12 +7,18 @@
 set -euo pipefail
 
 APP_DIR="/var/www/ehnone"
-RELEASE_DIR="$APP_DIR/releases/$(date +%Y%m%d_%H%M%S)"
 SHARED_DIR="$APP_DIR/shared"
 CURRENT_LINK="$APP_DIR/current"
 LOG_FILE="$APP_DIR/logs/deploy.log"
 HEALTH_URL="http://127.0.0.1:4100/health"
 PREVIOUS_RELEASE=""
+
+# Accept release dir as argument (from CI/CD) or create one
+if [ -n "${1:-}" ] && [ -d "$1" ]; then
+  RELEASE_DIR="$1"
+else
+  RELEASE_DIR="$APP_DIR/releases/$(date +%Y%m%d_%H%M%S)"
+fi
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"; }
 die() { log "FATAL: $1"; exit 1; }
@@ -29,9 +35,9 @@ fi
 mkdir -p "$SHARED_DIR"/{logs,uploads}
 mkdir -p "$APP_DIR/logs"
 
-# 3. Create new release directory
+# 3. Create new release directory (if not already created by CI)
 mkdir -p "$RELEASE_DIR"
-log "New release: $RELEASE_DIR"
+log "Release: $RELEASE_DIR"
 
 # 4. Build frontend (if package.json exists but no build/)
 if [ -f "$RELEASE_DIR/frontend/package.json" ] && [ ! -d "$RELEASE_DIR/frontend/build" ]; then

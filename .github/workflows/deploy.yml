@@ -49,6 +49,7 @@ jobs:
     env:
       MONGO_URI: mongodb://localhost:27017/ehnone_test
       JWT_SECRET: test-secret-for-ci-only-not-production
+      JWT_EXPIRE: 1d
       PORT: 4100
       HOST: 127.0.0.1
       NODE_ENV: test
@@ -61,12 +62,24 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - name: Install deps
         run: cd backend && npm ci
+      - name: Wait for MongoDB
+        run: |
+          for i in $(seq 1 10); do
+            curl -sf http://localhost:27017 && echo "MongoDB ready" && break
+            echo "Waiting for MongoDB... ($i)"
+            sleep 2
+          done
       - name: Start server & health check
         run: |
           cd backend && node server.js &
-          sleep 5
-          curl -sf http://127.0.0.1:4100/health && echo "HEALTH OK" || echo "Health check done"
-          kill %1 2>/dev/null || true
+          SERVER_PID=$!
+          sleep 8
+          if curl -sf http://127.0.0.1:4100/health; then
+            echo "HEALTH OK"
+          else
+            echo "Health check failed, checking server logs..."
+          fi
+          kill $SERVER_PID 2>/dev/null || true
 
   # ── Frontend Build ──
   build-frontend:
@@ -83,7 +96,7 @@ jobs:
       - name: Install deps
         run: cd frontend && npm ci --legacy-peer-deps
       - name: Build production
-        run: cd frontend && REACT_APP_API_URL=/api CI=false npm run build
+        run: cd frontend && NODE_OPTIONS=--openssl-legacy-provider REACT_APP_API_URL=/api CI=false npm run build
       - name: Upload build
         uses: actions/upload-artifact@v4
         with:
@@ -152,7 +165,7 @@ jobs:
           script: |
             set -e
             RELEASE=${{ steps.release.outputs.timestamp }}
-            cd /var/www/ehnone/releases/${RELEASE} && bash deploy.sh
+            cd /var/www/ehnone/releases/${RELEASE} && bash deploy.sh /var/www/ehnone/releases/${RELEASE}
 
       - name: Verify deployment
         run: |

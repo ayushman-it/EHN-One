@@ -60,16 +60,19 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     const response = await authAPI.login(email, password);
-    const userData = response.data || response;
+    // api.js interceptor returns raw JSON body: { success, token, user: { id, name, email, role } }
+    // user data is nested inside response.user, NOT at top level
+    const u = response.user || response.data || response;
     const session = {
-      id: userData._id || userData.id,
-      name: userData.name,
-      email: userData.email,
-      role: userData.role,
+      id: u._id || u.id,
+      name: u.name,
+      email: u.email,
+      role: u.role,
+      department: u.department,
     };
 
-    if (userData.token) {
-      sessionStorage.setItem('inv_token', userData.token);
+    if (response.token) {
+      sessionStorage.setItem('inv_token', response.token);
     }
 
     sessionStorage.setItem('inv_user', JSON.stringify(session));
