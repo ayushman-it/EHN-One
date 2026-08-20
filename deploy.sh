@@ -44,7 +44,7 @@ if [ -f "$RELEASE_DIR/frontend/package.json" ] && [ ! -d "$RELEASE_DIR/frontend/
   log "Building frontend..."
   cd "$RELEASE_DIR/frontend"
   npm ci --ignore-scripts 2>/dev/null || npm install --legacy-peer-deps
-  REACT_APP_API_URL=/api CI=false npm run build
+  NODE_OPTIONS=--openssl-legacy-provider REACT_APP_API_URL=/api CI=false npm run build
   rm -rf node_modules
 fi
 

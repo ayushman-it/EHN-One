@@ -4,8 +4,8 @@ module.exports = {
       name: 'ehnone-api',
       script: 'backend/server.js',
       cwd: '/var/www/ehnone/current',
-      instances: 'max',
-      exec_mode: 'cluster',
+      instances: 1,
+      exec_mode: 'fork',
       env_production: {
         NODE_ENV: 'production',
         PORT: 4100,
