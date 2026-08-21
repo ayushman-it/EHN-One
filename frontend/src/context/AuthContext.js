@@ -59,57 +59,23 @@ export function AuthProvider({ children }) {
   });
 
   const login = async (email, password) => {
-    try {
-      const response = await authAPI.login(email, password);
-      const u = response.user || response.data || response;
-      const session = {
-        id: u._id || u.id,
-        name: u.name,
-        email: u.email,
-        role: u.role || 'admin',
-        department: u.department || 'Management',
-      };
+    const response = await authAPI.login(email, password);
+    const u = response.user || response.data || response;
+    const session = {
+      id: u._id || u.id,
+      name: u.name,
+      email: u.email,
+      role: u.role,
+      department: u.department,
+    };
 
-      if (response.token) {
-        sessionStorage.setItem('inv_token', response.token);
-      }
-
-      sessionStorage.setItem('inv_user', JSON.stringify(session));
-      setUser(session);
-      return session;
-    } catch (err) {
-      console.warn('Backend login API error, attempting demo account match:', err.message);
-
-      // Check standard demo accounts fallback
-      const cleanEmail = (email || '').toLowerCase().trim();
-      if (cleanEmail === 'admin@ehnsystem.com' || cleanEmail === 'admin@kedvasshygieneproducts.com' || cleanEmail.includes('admin')) {
-        const session = {
-          id: 'admin-001',
-          name: 'Arjun Sharma (Admin)',
-          email: cleanEmail,
-          role: 'admin',
-          department: 'Management',
-        };
-        sessionStorage.setItem('inv_user', JSON.stringify(session));
-        setUser(session);
-        return session;
-      }
-
-      if (cleanEmail === 'manager@ehnsystem.com' || cleanEmail.includes('manager')) {
-        const session = {
-          id: 'mgr-001',
-          name: 'Priya Mehta (Manager)',
-          email: cleanEmail,
-          role: 'manager',
-          department: 'Operations',
-        };
-        sessionStorage.setItem('inv_user', JSON.stringify(session));
-        setUser(session);
-        return session;
-      }
-
-      throw new Error(err.response?.data?.message || err.message || 'Invalid email or password');
+    if (response.token) {
+      sessionStorage.setItem('inv_token', response.token);
     }
+
+    sessionStorage.setItem('inv_user', JSON.stringify(session));
+    setUser(session);
+    return session;
   };
 
   const logout = () => {
