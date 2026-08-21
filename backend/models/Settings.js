@@ -1,6 +1,22 @@
 const mongoose = require('mongoose');
 
 const settingsSchema = new mongoose.Schema({
+  tallyInvoice: {
+    printHsn: { type: Boolean, default: true },
+    showGstBreakdown: { type: Boolean, default: true },
+    invoicePrefix: { type: String, default: 'INV-2026-' },
+    termsAndConditions: { type: String, default: '1. Goods once sold will not be taken back.\n2. Subject to Jurisdiction.' },
+    bankName: { type: String, default: 'HDFC Bank Ltd.' },
+    bankAccountNo: String,
+    ifscCode: String,
+    validateCustomerGstin: { type: Boolean, default: true },
+  },
+  tallyInventory: {
+    allowNegativeStock: { type: String, default: 'warning' },
+    autoReorderAlert: { type: Boolean, default: true },
+    defaultUqcUnit: { type: String, default: 'PCS-PIECES' },
+    valuationMethod: { type: String, default: 'FIFO' },
+  },
   whatsapp: {
     apiKey: String,
     phoneNumberId: String,

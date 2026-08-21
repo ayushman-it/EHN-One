@@ -165,12 +165,12 @@ export default function Customers() {
               <i className="bi bi-people" style={{ color: 'var(--primary)' }}></i>
               Customers Master (Sundry Debtors)
             </h1>
-            <p className="page-subtitle">Manage client ledgers, GSTIN details, credit periods, bill-by-bill tracking, and Tally Prime sync</p>
+            <p className="page-subtitle">Manage client ledgers, GSTIN details, credit periods, bill-by-bill tracking, and EHN One ERP sync</p>
           </div>
           <div className="d-flex align-items-center gap-2">
-            <button className="btn-v outline-success" onClick={exportTallyLedgers} title="Export Tally XML">
+            <button className="btn-v outline-success" onClick={exportTallyLedgers} title="Export XML">
               <i className="bi bi-file-earmark-code-fill"></i>
-              <span>Export Tally XML</span>
+              <span>Export XML</span>
             </button>
             {can('products.add') && (
               <button className="btn-v primary" onClick={() => handleOpenModal()}>

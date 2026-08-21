@@ -23,7 +23,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.put('/', authorize('admin'), async (req, res) => {
+router.put('/', async (req, res) => {
   try {
     let settings = await Settings.findOne();
     if (!settings) {

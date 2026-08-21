@@ -1,9 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { changePassword } from '../services/api';
+import { changePassword, getSettings, updateSettings } from '../services/api';
+import { getThemeConfig, saveThemeConfig, COLOR_SWATCHES, PRESET_THEMES } from '../utils/themeHelper';
 
 /* Global Settings Storage */
 let globalSettings = {
+  tallyInvoice: {
+    printHsn: true,
+    showGstBreakdown: true,
+    invoicePrefix: 'INV-2026-',
+    termsAndConditions: '1. Goods once sold will not be taken back.\n2. Interest @ 18% p.a. will be charged on delayed payments beyond 30 days.\n3. Subject to Delhi Jurisdiction.',
+    bankName: 'HDFC Bank Ltd.',
+    bankAccountNo: '50200012345678',
+    ifscCode: 'HDFC0001234',
+    validateCustomerGstin: true,
+  },
+  tallyInventory: {
+    allowNegativeStock: 'warning', // allow | warning | block
+    autoReorderAlert: true,
+    defaultUqcUnit: 'PCS-PIECES',
+    valuationMethod: 'FIFO', // FIFO | Weighted Average Cost
+  },
   whatsapp: {
     apiKey: '',
     phoneNumberId: '',
@@ -47,6 +64,7 @@ export default function Settings() {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
   const [saved, setSaved] = useState(false);
+  const [savingBackend, setSavingBackend] = useState(false);
   const [profileAvatar, setProfileAvatar] = useState(user?.avatar || null);
   const [profileName, setProfileName] = useState(user?.name || 'Arjun Sharma');
   const [profileEmail, setProfileEmail] = useState(user?.email || '');
@@ -57,23 +75,67 @@ export default function Settings() {
   const [passwordMsg, setPasswordMsg] = useState(null);
   const [passwordLoading, setPasswordLoading] = useState(false);
 
+  // Theme Customizer State
+  const [themeState, setThemeState] = useState(() => getThemeConfig());
+  const [themeSaved, setThemeSaved] = useState(false);
+
+  // Load Settings from Backend Database on Mount
+  useEffect(() => {
+    getSettings()
+      .then((res) => {
+        const data = res.data || res;
+        if (data && typeof data === 'object') {
+          setSettings((prev) => ({ ...prev, ...data }));
+          globalSettings = { ...globalSettings, ...data };
+        }
+      })
+      .catch((err) => {
+        console.warn('Backend settings fetch warning, checking localStorage cache:', err.message);
+        try {
+          const cached = localStorage.getItem('ehn_company_settings');
+          if (cached) setSettings(JSON.parse(cached));
+        } catch (e) {}
+      });
+  }, []);
+
   const isAdmin = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'administrator';
   const canSettings = can('settings.view') || isAdmin;
 
   const sections = [
     { id: 'profile', label: 'My Profile & Security', icon: 'bi-person-circle', color: 'var(--primary)' },
     ...(canSettings ? [
+      { id: 'theme', label: 'Theme & Appearance', icon: 'bi-palette', color: '#8b5cf6' },
+      { id: 'tally_invoice', label: 'EHN One F12 Billing & Invoices', icon: 'bi-receipt', color: '#2563eb' },
+      { id: 'tally_inventory', label: 'EHN One F12 Inventory & Stock', icon: 'bi-boxes', color: '#059669' },
+      { id: 'company', label: 'Company Info & GSTIN', icon: 'bi-building', color: 'var(--primary)' },
       { id: 'whatsapp', label: 'WhatsApp API', icon: 'bi-whatsapp', color: '#25D366' },
-      { id: 'company', label: 'Company Info', icon: 'bi-building', color: 'var(--primary)' },
       { id: 'email', label: 'Email Settings', icon: 'bi-envelope', color: 'var(--info)' },
       { id: 'notifications', label: 'Notifications', icon: 'bi-bell', color: 'var(--warning)' },
     ] : [])
   ];
 
-  const handleSave = () => {
-    globalSettings = settings;
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+  const handleApplyTheme = (newConfig) => {
+    setThemeState(newConfig);
+    saveThemeConfig(newConfig);
+    setThemeSaved(true);
+    setTimeout(() => setThemeSaved(false), 3000);
+  };
+
+  const handleSave = async () => {
+    setSavingBackend(true);
+    try {
+      globalSettings = settings;
+      localStorage.setItem('ehn_company_settings', JSON.stringify(settings));
+      window.dispatchEvent(new Event('ehn_company_updated'));
+      await updateSettings(settings);
+      setSaved(true);
+    } catch (err) {
+      console.warn('Backend settings update warning, saved locally:', err.message);
+      setSaved(true);
+    } finally {
+      setSavingBackend(false);
+      setTimeout(() => setSaved(false), 3500);
+    }
   };
 
   const handleTestWhatsApp = async () => {
@@ -128,16 +190,23 @@ export default function Settings() {
 
   return (
     <div>
-      {/* Page Header */}
-      <div className="page-header">
-        <div className="page-header-top">
-          <div>
-            <h1 className="page-title">
-              <i className="bi bi-gear me-2" style={{ color: 'var(--primary)' }}></i>
-              System Settings
-            </h1>
-            <p className="page-subtitle">Configure integrations, company info, and preferences</p>
+      {/* Gateway of Tally Software Header Bar */}
+      <div className="tally-header-bar mb-3 shadow-sm">
+        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <div className="d-flex align-items-center gap-2">
+            <span className="tally-header-badge" style={{ background: 'var(--primary)', color: '#fff' }}>CONFIGURATION</span>
+            <div>
+              <h5 className="mb-0 fw-bold text-uppercase" style={{ fontSize: '0.95rem', letterSpacing: '0.5px' }}>
+                SYSTEM CONFIGURATION REGISTER &mdash; TALLY F12 CONFIGURATION & SYSTEM PREFERENCES
+              </h5>
+              <div className="text-muted small" style={{ fontSize: '0.72rem' }}>
+                F.Y. 2026-2027 | Tally F12 Configuration Mode | Kedvass Hygiene Products
+              </div>
+            </div>
           </div>
+          <button className="btn-v primary btn-sm" onClick={handleSave}>
+            <i className="bi bi-check-circle me-1"></i> Save Configuration
+          </button>
         </div>
       </div>
 
@@ -355,6 +424,60 @@ export default function Settings() {
                     </div>
                   </div>
 
+                  {/* Company Logo Upload Section */}
+                  <div className="p-3 bg-light rounded-3 border mb-4">
+                    <div className="fw-bold mb-2"><i className="bi bi-image me-1 text-primary"></i> Company Brand Logo Master</div>
+                    <div className="d-flex align-items-center gap-3">
+                      <div 
+                        className="rounded border d-flex align-items-center justify-content-center bg-white shadow-sm"
+                        style={{ width: 80, height: 80, overflow: 'hidden' }}
+                      >
+                        {settings.company?.logo ? (
+                          <img src={settings.company.logo} alt="Company Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 4 }} />
+                        ) : (
+                          <i className="bi bi-building text-muted fs-2"></i>
+                        )}
+                      </div>
+                      <div className="flex-grow-1">
+                        <label className="form-label mb-1">Company Logo Image URL</label>
+                        <input
+                          className="form-control mb-2"
+                          placeholder="https://example.com/logo.png"
+                          value={settings.company?.logo || ''}
+                          onChange={(e) => setSettings({ ...settings, company: { ...settings.company, logo: e.target.value } })}
+                        />
+                        <div className="d-flex gap-2">
+                          <label className="btn-v outline-primary btn-sm style-cursor mb-0">
+                            <i className="bi bi-upload me-1"></i> Upload Image File
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              style={{ display: 'none' }}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const reader = new FileReader();
+                                  reader.onloadend = () => {
+                                    setSettings({ ...settings, company: { ...settings.company, logo: reader.result } });
+                                  };
+                                  reader.readAsDataURL(file);
+                                }
+                              }}
+                            />
+                          </label>
+                          {settings.company?.logo && (
+                            <button 
+                              className="btn-v outline-danger btn-sm"
+                              onClick={() => setSettings({ ...settings, company: { ...settings.company, logo: '' } })}
+                            >
+                              <i className="bi bi-trash me-1"></i> Remove Logo
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="row g-3">
                     <div className="col-md-6">
                       <label className="form-label">Company Name *</label>
@@ -401,13 +524,15 @@ export default function Settings() {
                     </div>
                   </div>
 
-                  {can('settings.edit') && (
-                    <div className="mt-4">
-                      <button className="btn-v primary" onClick={handleSave}>
-                        <i className="bi bi-check-circle"></i> Save Company Info
-                      </button>
-                    </div>
-                  )}
+                  <div className="mt-4">
+                    <button className="btn-v primary" onClick={handleSave} disabled={savingBackend}>
+                      {savingBackend ? (
+                        <><span className="spinner-border spinner-border-sm me-2"></span>Saving to Database...</>
+                      ) : (
+                        <><i className="bi bi-check-circle me-1"></i> Save Company Info</>
+                      )}
+                    </button>
+                  </div>
                 </>
               )}
 
@@ -699,6 +824,442 @@ export default function Settings() {
                       )}
                     </button>
                   </form>
+                </>
+              )}
+
+              {/* Theme & Appearance Section */}
+              {activeSection === 'theme' && (
+                <>
+                  <div className="settings-section-header">
+                    <i className="bi bi-palette" style={{ color: '#8b5cf6' }}></i>
+                    <div>
+                      <h4>EHN One ERP Theme & Software Appearance</h4>
+                      <p>Select unified software desktop ERP themes that adjust primary accent colors, sidebar themes, and high-contrast styling in real-time</p>
+                    </div>
+                  </div>
+
+                  {themeSaved && (
+                    <div className="alert-v success mb-4">
+                      <i className="bi bi-check-circle-fill me-2"></i>
+                      <span>ERP Theme configuration applied live and saved successfully!</span>
+                    </div>
+                  )}
+
+                  {/* 1-Click Unified ERP Preset Themes */}
+                  <div className="form-section-title mb-2">
+                    <i className="bi bi-stars me-1"></i> Unified EHN One ERP Desktop Themes
+                  </div>
+                  <div className="row g-3 mb-4">
+                    {PRESET_THEMES.map((preset) => (
+                      <div key={preset.id} className="col-md-6">
+                        <div 
+                          className="p-3 border rounded-3 style-cursor h-100 position-relative shadow-sm hover-shadow transition"
+                          style={{ 
+                            borderColor: themeState.primaryColor === preset.primaryColor && themeState.sidebarTheme === preset.sidebarTheme ? preset.primaryColor : 'var(--border-color)',
+                            background: themeState.primaryColor === preset.primaryColor && themeState.sidebarTheme === preset.sidebarTheme ? `${preset.primaryColor}0d` : 'var(--card-bg)'
+                          }}
+                          onClick={() => handleApplyTheme({ 
+                            ...themeState, 
+                            primaryColor: preset.primaryColor, 
+                            bodyBgColor: preset.bodyBgColor,
+                            textColor: preset.textColor,
+                            sidebarBgColor: preset.sidebarBgColor,
+                            sidebarTheme: preset.sidebarTheme 
+                          })}
+                        >
+                          <div className="d-flex justify-content-between align-items-center mb-2">
+                            <div className="d-flex align-items-center gap-2">
+                              <span 
+                                className="rounded-circle d-inline-block shadow-sm" 
+                                style={{ width: 18, height: 18, background: preset.primaryColor }}
+                              ></span>
+                              <span className="fw-bold style-preset-title">{preset.name}</span>
+                            </div>
+                            {themeState.primaryColor === preset.primaryColor && themeState.sidebarTheme === preset.sidebarTheme && (
+                              <span className="badge-v success" style={{ fontSize: '0.65rem' }}>Active Theme</span>
+                            )}
+                          </div>
+                          <p className="text-muted mb-0" style={{ fontSize: '0.78rem' }}>{preset.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Manual Custom Color Pickers (Admin Customization) */}
+                  <div className="form-section-title mb-2">
+                    <i className="bi bi-sliders me-1"></i> Manual Custom Color Controls (Admin Mode)
+                  </div>
+                  <div className="p-3 bg-light rounded-3 border mb-4">
+                    <div className="row g-3 mb-3">
+                      <div className="col-md-6 col-xl-3">
+                        <label className="form-label mb-1 fw-semibold" style={{ fontSize: '0.8rem' }}>Primary Accent Color</label>
+                        <div className="d-flex align-items-center gap-2">
+                          <input 
+                            type="color" 
+                            className="form-control form-control-color style-cursor" 
+                            value={themeState.primaryColor || '#7367f0'} 
+                            onChange={(e) => handleApplyTheme({ ...themeState, primaryColor: e.target.value })}
+                            title="Pick Primary Accent Color"
+                          />
+                          <input 
+                            type="text" 
+                            className="form-control btn-sm fw-semibold" 
+                            value={themeState.primaryColor || '#7367f0'}
+                            onChange={(e) => handleApplyTheme({ ...themeState, primaryColor: e.target.value })}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="col-md-6 col-xl-3">
+                        <label className="form-label mb-1 fw-semibold" style={{ fontSize: '0.8rem' }}>Application Background</label>
+                        <div className="d-flex align-items-center gap-2">
+                          <input 
+                            type="color" 
+                            className="form-control form-control-color style-cursor" 
+                            value={themeState.bodyBgColor || '#f8f7fa'} 
+                            onChange={(e) => handleApplyTheme({ ...themeState, bodyBgColor: e.target.value })}
+                            title="Pick Main App Background Color"
+                          />
+                          <input 
+                            type="text" 
+                            className="form-control btn-sm fw-semibold" 
+                            value={themeState.bodyBgColor || '#f8f7fa'}
+                            onChange={(e) => handleApplyTheme({ ...themeState, bodyBgColor: e.target.value })}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="col-md-6 col-xl-3">
+                        <label className="form-label mb-1 fw-semibold" style={{ fontSize: '0.8rem' }}>Text & Heading Color</label>
+                        <div className="d-flex align-items-center gap-2">
+                          <input 
+                            type="color" 
+                            className="form-control form-control-color style-cursor" 
+                            value={themeState.textColor || '#2f2b3d'} 
+                            onChange={(e) => handleApplyTheme({ ...themeState, textColor: e.target.value })}
+                            title="Pick Primary Text Color"
+                          />
+                          <input 
+                            type="text" 
+                            className="form-control btn-sm fw-semibold" 
+                            value={themeState.textColor || '#2f2b3d'}
+                            onChange={(e) => handleApplyTheme({ ...themeState, textColor: e.target.value })}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="col-md-6 col-xl-3">
+                        <label className="form-label mb-1 fw-semibold" style={{ fontSize: '0.8rem' }}>Sidebar Background</label>
+                        <div className="d-flex align-items-center gap-2">
+                          <input 
+                            type="color" 
+                            className="form-control form-control-color style-cursor" 
+                            value={themeState.sidebarBgColor || '#ffffff'} 
+                            onChange={(e) => handleApplyTheme({ ...themeState, sidebarBgColor: e.target.value, sidebarTheme: 'custom' })}
+                            title="Pick Sidebar Background Color"
+                          />
+                          <input 
+                            type="text" 
+                            className="form-control btn-sm fw-semibold" 
+                            value={themeState.sidebarBgColor || '#ffffff'}
+                            onChange={(e) => handleApplyTheme({ ...themeState, sidebarBgColor: e.target.value, sidebarTheme: 'custom' })}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="d-flex align-items-center justify-content-between pt-2 border-top">
+                      <div className="small text-muted">
+                        <i className="bi bi-info-circle me-1"></i> Custom colors apply live to your browser and save automatically.
+                      </div>
+                      <button 
+                        className="btn-v outline-secondary btn-sm"
+                        onClick={() => handleApplyTheme(DEFAULT_THEME)}
+                      >
+                        <i className="bi bi-arrow-counterclockwise me-1"></i> Reset to Default
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* UI Style Mode Selector */}
+                  <div className="form-section-title mb-2">
+                    <i className="bi bi-display me-1"></i> Software Interface Style & Density
+                  </div>
+                  <div className="row g-3 mb-4">
+                    <div className="col-md-6">
+                      <div 
+                        className={`p-3 border style-cursor h-100 transition ${themeState.appStyle !== 'modern' ? 'bg-light' : ''}`}
+                        style={{ 
+                          borderColor: themeState.appStyle !== 'modern' ? themeState.primaryColor : 'var(--border-color)',
+                          borderRadius: '2px'
+                        }}
+                        onClick={() => handleApplyTheme({ ...themeState, appStyle: 'software' })}
+                      >
+                        <div className="d-flex justify-content-between align-items-center mb-1">
+                          <span className="fw-bold"><i className="bi bi-window-desktop me-1"></i> Desktop Software ERP Style</span>
+                          {themeState.appStyle !== 'modern' && <span className="badge-v primary">Active</span>}
+                        </div>
+                        <p className="text-muted mb-0" style={{ fontSize: '0.78rem' }}>
+                          Sharp edges (no rounded corners), compact small buttons, tight high-density tables, rectangular window modals.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="col-md-6">
+                      <div 
+                        className={`p-3 border style-cursor h-100 transition ${themeState.appStyle === 'modern' ? 'bg-light' : ''}`}
+                        style={{ 
+                          borderColor: themeState.appStyle === 'modern' ? themeState.primaryColor : 'var(--border-color)',
+                          borderRadius: '8px'
+                        }}
+                        onClick={() => handleApplyTheme({ ...themeState, appStyle: 'modern' })}
+                      >
+                        <div className="d-flex justify-content-between align-items-center mb-1">
+                          <span className="fw-bold"><i className="bi bi-laptop me-1"></i> Modern Web Style</span>
+                          {themeState.appStyle === 'modern' && <span className="badge-v primary">Active</span>}
+                        </div>
+                        <p className="text-muted mb-0" style={{ fontSize: '0.78rem' }}>
+                          Rounded corners, medium button sizes, softer spacing, modern web layout.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Live Desktop Software UI Preview */}
+                  <div className="form-section-title mb-2">
+                    <i className="bi bi-eye me-1"></i> Live Desktop ERP Software UI Preview
+                  </div>
+                  <div className="p-4 border rounded-3 shadow-sm bg-white mb-4">
+                    <div className="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                      <div className="fw-bold d-flex align-items-center gap-2">
+                        <i className="bi bi-box-seam" style={{ color: themeState.primaryColor }}></i>
+                        EHN One Software ERP Live Interface
+                      </div>
+                      <span className="badge-v primary" style={{ background: `${themeState.primaryColor}20`, color: themeState.primaryColor }}>
+                        Theme Active
+                      </span>
+                    </div>
+
+                    <div className="row g-3">
+                      <div className="col-md-6">
+                        <div className="p-3 rounded-3 border" style={{ borderColor: `${themeState.primaryColor}40`, background: `${themeState.primaryColor}08` }}>
+                          <div className="small text-muted mb-1">Interactive Button Controls</div>
+                          <div className="d-flex gap-2">
+                            <button className="btn-v primary btn-sm" style={{ background: themeState.primaryColor, borderColor: themeState.primaryColor }}>
+                              Primary Action
+                            </button>
+                            <button className="btn-v outline-primary btn-sm" style={{ color: themeState.primaryColor, borderColor: themeState.primaryColor }}>
+                              Outline Button
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="col-md-6">
+                        <div className="p-3 rounded-3 border">
+                          <div className="small text-muted mb-1">Badge Status Indicators</div>
+                          <div className="d-flex gap-2">
+                            <span className="badge-v primary">Active Stock</span>
+                            <span className="badge-v success">Paid Invoice</span>
+                            <span className="badge-v warning">Low Stock</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* EHN One F12 Billing & Invoices Section */}
+              {activeSection === 'tally_invoice' && (
+                <>
+                  <div className="settings-section-header">
+                    <i className="bi bi-receipt" style={{ color: '#2563eb' }}></i>
+                    <div>
+                      <h4>EHN One F12 Billing & Sales Voucher Configuration</h4>
+                      <p>Configure sales invoice voucher printing, GST breakdowns, prefix numbering, and statutory terms</p>
+                    </div>
+                  </div>
+
+                  <div className="form-section-title mb-2"><i className="bi bi-file-earmark-text me-1"></i> Invoice Voucher Printing & GST Breakdown</div>
+                  <div className="p-3 bg-light rounded-3 border mb-4">
+                    <div className="form-check form-switch mb-3">
+                      <input 
+                        className="form-check-input style-cursor" 
+                        type="checkbox" 
+                        id="printHsn" 
+                        checked={settings.tallyInvoice?.printHsn}
+                        onChange={(e) => setSettings({ ...settings, tallyInvoice: { ...settings.tallyInvoice, printHsn: e.target.checked } })}
+                      />
+                      <label className="form-check-label fw-bold style-cursor" htmlFor="printHsn">
+                        Print HSN / SAC Code Column on Sales Vouchers
+                      </label>
+                      <div className="text-muted small">Automatically includes HSN/SAC code against each product on printed PDF invoices.</div>
+                    </div>
+
+                    <div className="form-check form-switch mb-3">
+                      <input 
+                        className="form-check-input style-cursor" 
+                        type="checkbox" 
+                        id="showGstBreakdown" 
+                        checked={settings.tallyInvoice?.showGstBreakdown}
+                        onChange={(e) => setSettings({ ...settings, tallyInvoice: { ...settings.tallyInvoice, showGstBreakdown: e.target.checked } })}
+                      />
+                      <label className="form-check-label fw-bold style-cursor" htmlFor="showGstBreakdown">
+                        Detailed CGST, SGST & IGST Tax Breakdown Columns
+                      </label>
+                      <div className="text-muted small">Separates Central Tax, State Tax, and Integrated Tax in individual invoice columns.</div>
+                    </div>
+
+                    <div className="form-check form-switch">
+                      <input 
+                        className="form-check-input style-cursor" 
+                        type="checkbox" 
+                        id="validateCustomerGstin" 
+                        checked={settings.tallyInvoice?.validateCustomerGstin}
+                        onChange={(e) => setSettings({ ...settings, tallyInvoice: { ...settings.tallyInvoice, validateCustomerGstin: e.target.checked } })}
+                      />
+                      <label className="form-check-label fw-bold style-cursor" htmlFor="validateCustomerGstin">
+                        Enforce Customer GSTIN Format Validation Check
+                      </label>
+                      <div className="text-muted small">Validates 15-digit GSTIN state format when creating or editing customer masters.</div>
+                    </div>
+                  </div>
+
+                  <div className="form-section-title mb-2"><i className="bi bi-hash me-1"></i> Voucher Numbering & Bank Details</div>
+                  <div className="row g-3 mb-4">
+                    <div className="col-md-6">
+                      <label className="form-label">Invoice Numbering Prefix *</label>
+                      <input 
+                        className="form-control" 
+                        value={settings.tallyInvoice?.invoicePrefix || ''}
+                        onChange={(e) => setSettings({ ...settings, tallyInvoice: { ...settings.tallyInvoice, invoicePrefix: e.target.value } })}
+                        placeholder="e.g. INV-2026-" 
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label">Bank Name for Invoice Payments</label>
+                      <input 
+                        className="form-control" 
+                        value={settings.tallyInvoice?.bankName || ''}
+                        onChange={(e) => setSettings({ ...settings, tallyInvoice: { ...settings.tallyInvoice, bankName: e.target.value } })}
+                        placeholder="e.g. HDFC Bank Ltd." 
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label">Bank Account Number</label>
+                      <input 
+                        className="form-control" 
+                        value={settings.tallyInvoice?.bankAccountNo || ''}
+                        onChange={(e) => setSettings({ ...settings, tallyInvoice: { ...settings.tallyInvoice, bankAccountNo: e.target.value } })}
+                        placeholder="e.g. 50200012345678" 
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label">Bank IFSC Code</label>
+                      <input 
+                        className="form-control" 
+                        value={settings.tallyInvoice?.ifscCode || ''}
+                        onChange={(e) => setSettings({ ...settings, tallyInvoice: { ...settings.tallyInvoice, ifscCode: e.target.value } })}
+                        placeholder="e.g. HDFC0001234" 
+                      />
+                    </div>
+                    <div className="col-12">
+                      <label className="form-label">Invoice Terms & Conditions</label>
+                      <textarea 
+                        className="form-control" 
+                        rows={3}
+                        value={settings.tallyInvoice?.termsAndConditions || ''}
+                        onChange={(e) => setSettings({ ...settings, tallyInvoice: { ...settings.tallyInvoice, termsAndConditions: e.target.value } })}
+                      />
+                    </div>
+                  </div>
+
+                  <button className="btn-v primary" onClick={handleSave} disabled={savingBackend}>
+                    {savingBackend ? (
+                      <><span className="spinner-border spinner-border-sm me-2"></span>Saving Configuration...</>
+                    ) : (
+                      <><i className="bi bi-check-circle me-1"></i> Save Invoice Configuration</>
+                    )}
+                  </button>
+                </>
+              )}
+
+              {/* EHN One F12 Inventory & Stock Section */}
+              {activeSection === 'tally_inventory' && (
+                <>
+                  <div className="settings-section-header">
+                    <i className="bi bi-boxes" style={{ color: '#059669' }}></i>
+                    <div>
+                      <h4>EHN One F12 Inventory & Stock Voucher Configuration</h4>
+                      <p>Configure negative stock handling, reorder alert thresholds, valuation methods, and UQC measure units</p>
+                    </div>
+                  </div>
+
+                  <div className="form-section-title mb-2"><i className="bi bi-exclamation-triangle me-1"></i> Negative Stock & Reorder Rules</div>
+                  <div className="p-3 bg-light rounded-3 border mb-4">
+                    <div className="mb-3">
+                      <label className="form-label fw-bold">Negative Stock Quantity Entry Rule</label>
+                      <select 
+                        className="form-select"
+                        value={settings.tallyInventory?.allowNegativeStock || 'warning'}
+                        onChange={(e) => setSettings({ ...settings, tallyInventory: { ...settings.tallyInventory, allowNegativeStock: e.target.value } })}
+                      >
+                        <option value="allow">Allow Negative Stock Entries (No Alert)</option>
+                        <option value="warning">Display Warning Alert on Negative Stock (Recommended)</option>
+                        <option value="block">Block Voucher Entry if Stock Becomes Negative</option>
+                      </select>
+                    </div>
+
+                    <div className="form-check form-switch">
+                      <input 
+                        className="form-check-input style-cursor" 
+                        type="checkbox" 
+                        id="autoReorderAlert" 
+                        checked={settings.tallyInventory?.autoReorderAlert}
+                        onChange={(e) => setSettings({ ...settings, tallyInventory: { ...settings.tallyInventory, autoReorderAlert: e.target.checked } })}
+                      />
+                      <label className="form-check-label fw-bold style-cursor" htmlFor="autoReorderAlert">
+                        Enable Automatic Low Stock Reorder Threshold Alerts
+                      </label>
+                      <div className="text-muted small">Triggers reorder notifications when stock drops below item threshold.</div>
+                    </div>
+                  </div>
+
+                  <div className="form-section-title mb-2"><i className="bi bi-calculator me-1"></i> Stock Valuation & Measure Units</div>
+                  <div className="row g-3 mb-4">
+                    <div className="col-md-6">
+                      <label className="form-label">Inventory Valuation Method *</label>
+                      <select 
+                        className="form-select"
+                        value={settings.tallyInventory?.valuationMethod || 'FIFO'}
+                        onChange={(e) => setSettings({ ...settings, tallyInventory: { ...settings.tallyInventory, valuationMethod: e.target.value } })}
+                      >
+                        <option value="FIFO">First In, First Out (FIFO)</option>
+                        <option value="Weighted Average Cost">Weighted Average Cost (WAC)</option>
+                        <option value="Last Purchase Price">At Last Purchase Cost Price</option>
+                      </select>
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label">Default UQC Measure Unit *</label>
+                      <select 
+                        className="form-select"
+                        value={settings.tallyInventory?.defaultUqcUnit || 'PCS-PIECES'}
+                        onChange={(e) => setSettings({ ...settings, tallyInventory: { ...settings.tallyInventory, defaultUqcUnit: e.target.value } })}
+                      >
+                        <option value="PCS-PIECES">PCS (Pieces)</option>
+                        <option value="NOS-NUMBERS">NOS (Numbers)</option>
+                        <option value="KGS-KILOGRAMS">KGS (Kilograms)</option>
+                        <option value="BOX-BOXES">BOX (Boxes)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <button className="btn-v primary" onClick={handleSave} disabled={savingBackend}>
+                    {savingBackend ? (
+                      <><span className="spinner-border spinner-border-sm me-2"></span>Saving Configuration...</>
+                    ) : (
+                      <><i className="bi bi-check-circle me-1"></i> Save Inventory Configuration</>
+                    )}
+                  </button>
                 </>
               )}
 

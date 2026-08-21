@@ -1,7 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getStats } from '../services/api';
 
 function Dashboard({ showLowStockOnly = false }) {
+  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -20,12 +22,45 @@ function Dashboard({ showLowStockOnly = false }) {
 
   useEffect(() => { loadStats(); }, [loadStats]);
 
+  // Keyboard Shortcuts Handler
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+
+      if (e.key === 'F2') {
+        e.preventDefault();
+        navigate('/transactions');
+      } else if (e.key === 'F4') {
+        e.preventDefault();
+        navigate('/invoices');
+      } else if (e.key === 'F5') {
+        e.preventDefault();
+        loadStats();
+      } else if (e.key === 'F7') {
+        e.preventDefault();
+        navigate('/transactions');
+      } else if (e.altKey && (e.key === 'i' || e.key === 'I')) {
+        e.preventDefault();
+        navigate('/invoices');
+      } else if (e.altKey && (e.key === 'g' || e.key === 'G')) {
+        e.preventDefault();
+        navigate('/stock-in');
+      } else if (e.altKey && (e.key === 'o' || e.key === 'O')) {
+        e.preventDefault();
+        navigate('/stock-out');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [navigate, loadStats]);
+
   if (loading) {
     return (
       <div className="spinner-center">
         <div className="text-center">
-          <div className="spinner-border" style={{ color: 'var(--primary)', width: '2.5rem', height: '2.5rem' }}></div>
-          <p className="mt-3 text-muted" style={{ fontSize: '0.85rem' }}>Loading dashboard…</p>
+          <div className="spinner-border" style={{ color: 'var(--primary)', width: '2.2rem', height: '2.2rem' }}></div>
+          <p className="mt-2 text-muted fw-semibold" style={{ fontSize: '0.8rem' }}>Loading EHN One Gateway…</p>
         </div>
       </div>
     );
@@ -43,46 +78,51 @@ function Dashboard({ showLowStockOnly = false }) {
 
   const statCards = [
     {
-      label: 'Total Products',
-      value: stats.totalProducts.toLocaleString(),
-      icon: 'bi-box-seam',
+      label: 'TOTAL INVENTORY VALUE',
+      value: '₹' + (stats.totalValue || 0).toLocaleString('en-IN'),
+      icon: 'bi-currency-rupee',
       color: 'primary',
-      change: null,
+      desc: 'Valuation at Purchase Cost'
     },
     {
-      label: 'Total Stock Units',
-      value: stats.totalStock.toLocaleString(),
+      label: 'TOTAL STOCK UNITS',
+      value: (stats.totalStock || 0).toLocaleString(),
       icon: 'bi-stack',
       color: 'success',
-      change: null,
+      desc: 'Physical Goods Quantity'
     },
     {
-      label: 'Low Stock Alerts',
-      value: stats.lowStockCount,
-      icon: 'bi-exclamation-triangle',
+      label: 'LOW STOCK WARNINGS',
+      value: stats.lowStockCount || 0,
+      icon: 'bi-exclamation-triangle-fill',
       color: 'danger',
-      change: null,
+      desc: 'Requires Reorder Action'
     },
     {
-      label: 'Inventory Value',
-      value: '₹' + stats.totalValue.toLocaleString('en-IN'),
-      icon: 'bi-currency-rupee',
-      color: 'warning',
-      change: null,
+      label: 'ACTIVE PRODUCT MASTERS',
+      value: (stats.totalProducts || 0).toLocaleString(),
+      icon: 'bi-box-seam',
+      color: 'info',
+      desc: 'Catalog Master SKUs'
     },
   ];
 
   if (showLowStockOnly) {
     return (
       <div>
-        <div className="page-header">
-          <div className="page-header-top">
-            <h1 className="page-title">
-              <i className="bi bi-exclamation-triangle me-2" style={{ color: 'var(--danger)' }}></i>
-              Low Stock Alerts
-            </h1>
+        <div className="tally-header-bar mb-3">
+          <div className="d-flex align-items-center justify-content-between">
+            <div className="d-flex align-items-center gap-2">
+              <span className="tally-header-badge bg-danger text-white">REORDER</span>
+              <h5 className="mb-0 fw-bold text-uppercase" style={{ fontSize: '0.95rem' }}>
+                <i className="bi bi-exclamation-triangle-fill me-2 text-danger"></i>
+                Critical Low Stock & Out-of-Stock Register
+              </h5>
+            </div>
+            <button className="btn-v primary btn-sm" onClick={() => navigate('/')}>
+              <i className="bi bi-arrow-left me-1"></i> Back to Gateway
+            </button>
           </div>
-          <p className="page-subtitle">Products that have reached or crossed their low stock threshold</p>
         </div>
         <LowStockTable items={stats.lowStockItems} />
       </div>
@@ -91,80 +131,161 @@ function Dashboard({ showLowStockOnly = false }) {
 
   return (
     <div>
-      {/* Page Header */}
-      <div className="page-header">
-        <div className="page-header-top">
-          <div>
-            <h1 className="page-title">Dashboard</h1>
-            <p className="page-subtitle">Welcome back, Admin. Here's your inventory overview.</p>
+      {/* Gateway of Tally Top Header Banner */}
+      <div className="tally-header-bar mb-3 shadow-sm">
+        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <div className="d-flex align-items-center gap-2">
+            <span className="tally-header-badge" style={{ background: 'var(--primary)', color: '#fff' }}>GATEWAY</span>
+            <div>
+              <h5 className="mb-0 fw-bold text-uppercase" style={{ fontSize: '0.95rem', letterSpacing: '0.5px' }}>
+                EHN ONE GATEWAY &mdash; EXECUTIVE BUSINESS OVERVIEW
+              </h5>
+              <div className="text-muted small" style={{ fontSize: '0.72rem' }}>
+                F.Y. 2026-2027 | Live Company Session | Kedvass Hygiene Products
+              </div>
+            </div>
           </div>
-          <button className="btn-v primary" onClick={loadStats}>
-            <i className="bi bi-arrow-clockwise"></i>
-            <span className="d-none d-sm-inline">Refresh</span>
+          <div className="d-flex align-items-center gap-2">
+            <button className="btn-v outline-primary btn-sm" onClick={loadStats} title="Refresh System Data">
+              <i className="bi bi-arrow-clockwise me-1"></i> [F5] Refresh
+            </button>
+            <button className="btn-v primary btn-sm" onClick={() => navigate('/invoices')}>
+              <i className="bi bi-plus-square me-1"></i> [Alt+I] New Invoice
+            </button>
+          </div>
+        </div>
+
+        {/* F1-F8 Quick Software Action Toolbar */}
+        <div className="tally-toolbar mt-2 pt-2 border-top d-flex gap-2 flex-wrap">
+          <button className="tally-shortcut-btn" onClick={() => navigate('/transactions')}>
+            <span className="key">[F2]</span> Period Ledger
+          </button>
+          <button className="tally-shortcut-btn" onClick={() => navigate('/invoices')}>
+            <span className="key">[F4]</span> Billing Vouchers
+          </button>
+          <button className="tally-shortcut-btn" onClick={() => navigate('/reports')}>
+            <span className="key">[F5]</span> Stock Valuation
+          </button>
+          <button className="tally-shortcut-btn" onClick={() => navigate('/transactions')}>
+            <span className="key">[F7]</span> Daybook Audit
+          </button>
+          <button className="tally-shortcut-btn" onClick={() => navigate('/stock-in')}>
+            <span className="key">[Alt+G]</span> Stock In Entry
+          </button>
+          <button className="tally-shortcut-btn" onClick={() => navigate('/stock-out')}>
+            <span className="key">[Alt+O]</span> Stock Out Entry
           </button>
         </div>
       </div>
 
-      {/* Stat Cards */}
-      <div className="row g-3 mb-4">
+      {/* Tally Metric Cards Grid */}
+      <div className="row g-2 mb-3">
         {statCards.map((s) => (
           <div key={s.label} className="col-xl-3 col-sm-6">
-            <div className="stat-card">
-              <div className={`stat-card-icon ${s.color}`}>
-                <i className={`bi ${s.icon}`}></i>
+            <div className="tally-stat-card">
+              <div className="d-flex justify-content-between align-items-start">
+                <div>
+                  <div className="tally-stat-label">{s.label}</div>
+                  <div className="tally-stat-value">{s.value}</div>
+                </div>
+                <div className={`tally-stat-icon ${s.color}`}>
+                  <i className={`bi ${s.icon}`}></i>
+                </div>
               </div>
-              <div className="stat-card-body">
-                <div className="stat-card-label">{s.label}</div>
-                <div className="stat-card-value">{s.value}</div>
-                {s.change && (
-                  <div className={`stat-card-change ${s.change > 0 ? 'up' : 'down'}`}>
-                    <i className={`bi bi-arrow-${s.change > 0 ? 'up' : 'down'}-short`}></i>
-                    {Math.abs(s.change)}% vs last month
-                  </div>
-                )}
-              </div>
+              <div className="tally-stat-sub text-muted">{s.desc}</div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Low Stock Table */}
-      <LowStockTable items={stats.lowStockItems || []} />
+      {/* Gateway Split View: Left Command Menu + Right Ledger Table */}
+      <div className="row g-3">
+        {/* Left Gateway Command Panel */}
+        <div className="col-lg-4 col-md-5">
+          <div className="v-card mb-3">
+            <div className="v-card-header bg-slate d-flex justify-content-between align-items-center">
+              <span><i className="bi bi-menu-button-wide me-2" style={{ color: 'var(--primary)' }}></i>GATEWAY COMMANDS</span>
+              <span className="badge-v primary" style={{ fontSize: '0.65rem' }}>EHN ONE ERP</span>
+            </div>
+            <div className="v-card-body p-2">
+              <div className="tally-command-group mb-2">
+                <div className="tally-command-title">VOUCHER TRANSACTIONS</div>
+                <button className="tally-command-btn" onClick={() => navigate('/invoices')}>
+                  <span><i className="bi bi-receipt me-2 text-primary"></i>Sales Invoice Voucher</span>
+                  <kbd>Alt+I</kbd>
+                </button>
+                <button className="tally-command-btn" onClick={() => navigate('/stock-in')}>
+                  <span><i className="bi bi-arrow-down-circle me-2 text-success"></i>Stock Receipt Entry</span>
+                  <kbd>Alt+G</kbd>
+                </button>
+                <button className="tally-command-btn" onClick={() => navigate('/stock-out')}>
+                  <span><i className="bi bi-arrow-up-circle me-2 text-danger"></i>Goods Issue Voucher</span>
+                  <kbd>Alt+O</kbd>
+                </button>
+              </div>
 
-      {/* Summary Row */}
-      <div className="row g-3 mt-1">
-        <div className="col-md-6">
+              <div className="tally-command-group mb-2">
+                <div className="tally-command-title">MASTERS MANAGEMENT</div>
+                <button className="tally-command-btn" onClick={() => navigate('/products')}>
+                  <span><i className="bi bi-box-seam me-2 text-info"></i>Stock Item Masters</span>
+                  <kbd>Alt+P</kbd>
+                </button>
+                <button className="tally-command-btn" onClick={() => navigate('/customers')}>
+                  <span><i className="bi bi-people me-2 text-warning"></i>Customer Sundry Debtors</span>
+                  <kbd>Alt+C</kbd>
+                </button>
+                <button className="tally-command-btn" onClick={() => navigate('/suppliers')}>
+                  <span><i className="bi bi-truck me-2 text-secondary"></i>Supplier Sundry Creditors</span>
+                  <kbd>Alt+S</kbd>
+                </button>
+              </div>
+
+              <div className="tally-command-group">
+                <div className="tally-command-title">REPORTS & EXPORTS</div>
+                <button className="tally-command-btn" onClick={() => navigate('/reports')}>
+                  <span><i className="bi bi-bar-chart-line me-2 text-primary"></i>GSTR & Stock Reports</span>
+                  <kbd>F5</kbd>
+                </button>
+                <button className="tally-command-btn" onClick={() => navigate('/reports')}>
+                  <span><i className="bi bi-filetype-xml me-2 text-danger"></i>Export EHN One XML</span>
+                  <kbd>Alt+E</kbd>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Financial Summary Card */}
           <div className="v-card">
             <div className="v-card-header">
-              <i className="bi bi-info-circle"></i>
-              Quick Stats
+              <i className="bi bi-calculator me-2" style={{ color: 'var(--primary)' }}></i>
+              VALUATION & REGISTER SUMMARY
             </div>
-            <div className="v-card-body">
+            <div className="v-card-body p-0">
               <table className="v-table">
                 <tbody>
                   <tr>
-                    <td className="text-muted" style={{ fontSize: '0.85rem' }}>Out of Stock Items</td>
-                    <td className="text-end fw-bold" style={{ color: 'var(--danger)' }}>
-                      {(stats.lowStockItems || []).filter((i) => i.quantity === 0).length}
+                    <td className="text-muted fw-semibold" style={{ fontSize: '0.78rem' }}>Critical Out of Stock</td>
+                    <td className="text-end fw-bold text-danger">
+                      {(stats.lowStockItems || []).filter((i) => i.quantity === 0).length} Items
                     </td>
                   </tr>
                   <tr>
-                    <td className="text-muted" style={{ fontSize: '0.85rem' }}>Low Stock Items</td>
-                    <td className="text-end fw-bold" style={{ color: 'var(--warning)' }}>
-                      {(stats.lowStockItems || []).filter((i) => i.quantity > 0).length}
+                    <td className="text-muted fw-semibold" style={{ fontSize: '0.78rem' }}>Low Stock Warning</td>
+                    <td className="text-end fw-bold text-warning">
+                      {(stats.lowStockItems || []).filter((i) => i.quantity > 0).length} Items
                     </td>
                   </tr>
                   <tr>
-                    <td className="text-muted" style={{ fontSize: '0.85rem' }}>Total Products</td>
-                    <td className="text-end fw-bold">{stats.totalProducts}</td>
+                    <td className="text-muted fw-semibold" style={{ fontSize: '0.78rem' }}>Total Item Masters</td>
+                    <td className="text-end fw-bold">{stats.totalProducts} Masters</td>
                   </tr>
                   <tr>
-                    <td className="text-muted" style={{ fontSize: '0.85rem' }}>Total Stock Units</td>
-                    <td className="text-end fw-bold">{stats.totalStock.toLocaleString()}</td>
+                    <td className="text-muted fw-semibold" style={{ fontSize: '0.78rem' }}>Total Inventory Units</td>
+                    <td className="text-end fw-bold">{stats.totalStock.toLocaleString()} Pcs</td>
                   </tr>
                   <tr>
-                    <td className="text-muted" style={{ fontSize: '0.85rem' }}>Total Inventory Value</td>
-                    <td className="text-end fw-bold" style={{ color: 'var(--primary)' }}>
+                    <td className="text-muted fw-semibold" style={{ fontSize: '0.78rem' }}>Net Inventory Valuation</td>
+                    <td className="text-end fw-bold text-primary">
                       ₹{stats.totalValue.toLocaleString('en-IN')}
                     </td>
                   </tr>
@@ -173,22 +294,10 @@ function Dashboard({ showLowStockOnly = false }) {
             </div>
           </div>
         </div>
-        <div className="col-md-6">
-          <div className="v-card h-100">
-            <div className="v-card-header">
-              <i className="bi bi-lightbulb"></i>
-              Tips
-            </div>
-            <div className="v-card-body">
-              <ul style={{ paddingLeft: '18px', fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '2' }}>
-                <li>Go to <strong>Products</strong> to add or update inventory items.</li>
-                <li>Use <strong>Stock In</strong> to record incoming goods.</li>
-                <li>Use <strong>Stock Out</strong> to record dispatched items.</li>
-                <li>Set <strong>Low Stock Threshold</strong> per product to get alerts.</li>
-                <li>Check <strong>Low Stock Alerts</strong> regularly to avoid stockouts.</li>
-              </ul>
-            </div>
-          </div>
+
+        {/* Right Low Stock Register Table */}
+        <div className="col-lg-8 col-md-7">
+          <LowStockTable items={stats.lowStockItems || []} />
         </div>
       </div>
     </div>
@@ -200,10 +309,10 @@ function LowStockTable({ items }) {
     return (
       <div className="v-card mb-4">
         <div className="v-card-body">
-          <div className="empty-state-v" style={{ padding: '40px 20px' }}>
-            <i className="bi bi-check-circle" style={{ color: 'var(--success)' }}></i>
-            <h5>All Good!</h5>
-            <p>No low stock alerts. Your inventory is well stocked.</p>
+          <div className="empty-state-v" style={{ padding: '30px 20px' }}>
+            <i className="bi bi-check-circle-fill" style={{ color: 'var(--success)' }}></i>
+            <h5 className="fw-bold text-uppercase" style={{ fontSize: '0.9rem' }}>ALL STOCK ITEM MASTERS OPTIMAL</h5>
+            <p className="text-muted" style={{ fontSize: '0.8rem' }}>No low stock alerts recorded. Inventory stock levels are fully maintained.</p>
           </div>
         </div>
       </div>
@@ -211,36 +320,38 @@ function LowStockTable({ items }) {
   }
 
   return (
-    <div className="v-card mb-4">
-      <div className="v-card-header">
-        <i className="bi bi-exclamation-diamond" style={{ color: 'var(--danger)' }}></i>
-        Low Stock Alerts
-        <span className="badge-v danger ms-auto">{items.length}</span>
+    <div className="v-card mb-3">
+      <div className="v-card-header d-flex justify-content-between align-items-center">
+        <span>
+          <i className="bi bi-exclamation-diamond-fill me-2" style={{ color: 'var(--danger)' }}></i>
+          CRITICAL REORDER REGISTER (LOW STOCK ALERTS)
+        </span>
+        <span className="badge-v danger">{items.length} CRITICAL</span>
       </div>
       <div className="v-card-body p-0" style={{ overflowX: 'auto' }}>
         <table className="v-table">
           <thead>
             <tr>
-              <th>Product</th>
-              <th>SKU</th>
-              <th>Category</th>
-              <th>Stock</th>
-              <th>Threshold</th>
-              <th>Status</th>
+              <th>ITEM NAME</th>
+              <th>SKU / CODE</th>
+              <th>CATEGORY</th>
+              <th>CURRENT STOCK</th>
+              <th>MIN THRESHOLD</th>
+              <th>STATUS</th>
             </tr>
           </thead>
           <tbody>
             {items.map((item) => (
               <tr key={item._id}>
-                <td className="fw-semibold">{item.name}</td>
-                <td><code style={{ color: 'var(--primary)', fontSize: '0.82rem' }}>{item.sku}</code></td>
+                <td className="fw-bold">{item.name}</td>
+                <td><code style={{ color: 'var(--primary)', fontSize: '0.78rem' }}>{item.sku}</code></td>
                 <td>{item.category}</td>
-                <td className="fw-bold" style={{ color: 'var(--danger)' }}>{item.quantity}</td>
+                <td className="fw-bold text-danger">{item.quantity}</td>
                 <td>{item.lowStockThreshold}</td>
                 <td>
                   {item.quantity === 0
-                    ? <span className="badge-v danger">Out of Stock</span>
-                    : <span className="badge-v warning">Low Stock</span>
+                    ? <span className="badge-v danger">OUT OF STOCK</span>
+                    : <span className="badge-v warning">LOW STOCK</span>
                   }
                 </td>
               </tr>

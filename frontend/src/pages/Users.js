@@ -1,24 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth, ROLES } from '../context/AuthContext';
+import { exportToCSV, exportToExcel, exportToPDF } from '../utils/exportHelper';
 
 /* Mock users database */
 let usersDB = [
-  { id: 1, name: 'Arjun Sharma',  email: 'admin@inventrack.com',   role: 'admin',   status: 'active',   phone: '+91 98765 43210', department: 'IT', avatar: null, customPermissions: [], lastLogin: new Date('2024-06-18T09:30:00'), createdAt: new Date('2024-01-01'), createdBy: 'System' },
-  { id: 2, name: 'Priya Mehta',   email: 'manager@inventrack.com', role: 'manager', status: 'active',   phone: '+91 98765 43211', department: 'Operations', avatar: null, customPermissions: [], lastLogin: new Date('2024-06-18T08:15:00'), createdAt: new Date('2024-01-15'), createdBy: 'Arjun Sharma' },
-  { id: 3, name: 'Rahul Verma',   email: 'viewer@inventrack.com',  role: 'viewer',  status: 'active',   phone: '+91 98765 43212', department: 'Finance', avatar: null, customPermissions: [], lastLogin: new Date('2024-06-17T16:45:00'), createdAt: new Date('2024-02-01'), createdBy: 'Arjun Sharma' },
-  { id: 4, name: 'Sneha Patel',   email: 'sneha@inventrack.com',   role: 'manager', status: 'active',   phone: '+91 98765 43213', department: 'Warehouse', avatar: null, customPermissions: [], lastLogin: new Date('2024-06-16T14:20:00'), createdAt: new Date('2024-02-10'), createdBy: 'Arjun Sharma' },
-  { id: 5, name: 'Amit Kumar',    email: 'amit@inventrack.com',    role: 'viewer',  status: 'inactive', phone: '+91 98765 43214', department: 'Sales', avatar: null, customPermissions: [], lastLogin: new Date('2024-05-20T11:00:00'), createdAt: new Date('2024-03-01'), createdBy: 'Priya Mehta' },
-  { id: 6, name: 'Neha Singh',    email: 'neha@inventrack.com',    role: 'manager', status: 'suspended', phone: '+91 98765 43215', department: 'Procurement', avatar: null, customPermissions: [], lastLogin: new Date('2024-04-15T10:30:00'), createdAt: new Date('2024-03-15'), createdBy: 'Arjun Sharma' },
+  { id: 1, name: 'Arjun Sharma',  email: 'admin@inventrack.com',   role: 'admin',   status: 'active',   phone: '+91 98765 43210', department: 'IT Management', avatar: null, customPermissions: [], lastLogin: new Date('2026-08-21T09:30:00'), createdAt: new Date('2026-01-01'), createdBy: 'System' },
+  { id: 2, name: 'Priya Mehta',   email: 'manager@inventrack.com', role: 'manager', status: 'active',   phone: '+91 98765 43211', department: 'Operations & Stock', avatar: null, customPermissions: [], lastLogin: new Date('2026-08-21T08:15:00'), createdAt: new Date('2026-01-15'), createdBy: 'Arjun Sharma' },
+  { id: 3, name: 'Rahul Verma',   email: 'viewer@inventrack.com',  role: 'viewer',  status: 'active',   phone: '+91 98765 43212', department: 'Accounts & Billing', avatar: null, customPermissions: [], lastLogin: new Date('2026-08-20T16:45:00'), createdAt: new Date('2026-02-01'), createdBy: 'Arjun Sharma' },
+  { id: 4, name: 'Sneha Patel',   email: 'sneha@inventrack.com',   role: 'manager', status: 'active',   phone: '+91 98765 43213', department: 'Warehouse Godown', avatar: null, customPermissions: [], lastLogin: new Date('2026-08-19T14:20:00'), createdAt: new Date('2026-02-10'), createdBy: 'Arjun Sharma' },
+  { id: 5, name: 'Amit Kumar',    email: 'amit@inventrack.com',    role: 'viewer',  status: 'inactive', phone: '+91 98765 43214', department: 'Sales Desk', avatar: null, customPermissions: [], lastLogin: new Date('2026-07-20T11:00:00'), createdAt: new Date('2026-03-01'), createdBy: 'Priya Mehta' },
+  { id: 6, name: 'Neha Singh',    email: 'neha@inventrack.com',    role: 'manager', status: 'suspended', phone: '+91 98765 43215', department: 'Procurement', avatar: null, customPermissions: [], lastLogin: new Date('2026-06-15T10:30:00'), createdAt: new Date('2026-03-15'), createdBy: 'Arjun Sharma' },
 ];
 
 let nextUserId = 7;
 
 /* Audit Log */
 let auditLog = [
-  { id: 1, userId: 2, userName: 'Priya Mehta', userAvatar: null, action: 'user.created', target: 'Sneha Patel', details: 'Created manager account', timestamp: new Date('2024-02-10T10:00:00'), performedBy: 'Arjun Sharma' },
-  { id: 2, userId: 1, userName: 'Arjun Sharma', userAvatar: null, action: 'user.role_changed', target: 'Priya Mehta', details: 'Role changed from viewer to manager', timestamp: new Date('2024-03-01T14:30:00'), performedBy: 'Arjun Sharma' },
-  { id: 3, userId: 1, userName: 'Arjun Sharma', userAvatar: null, action: 'user.suspended', target: 'Neha Singh', details: 'Account suspended due to policy violation', timestamp: new Date('2024-04-15T16:00:00'), performedBy: 'Arjun Sharma' },
-  { id: 4, userId: 2, userName: 'Priya Mehta', userAvatar: null, action: 'user.deactivated', target: 'Amit Kumar', details: 'Account deactivated - resigned', timestamp: new Date('2024-05-20T11:30:00'), performedBy: 'Priya Mehta' },
+  { id: 1, userId: 2, userName: 'Priya Mehta', userAvatar: null, action: 'user.created', target: 'Sneha Patel', details: 'Created manager account', timestamp: new Date('2026-02-10T10:00:00'), performedBy: 'Arjun Sharma' },
+  { id: 2, userId: 1, userName: 'Arjun Sharma', userAvatar: null, action: 'user.role_changed', target: 'Priya Mehta', details: 'Role changed from viewer to manager', timestamp: new Date('2026-03-01T14:30:00'), performedBy: 'Arjun Sharma' },
+  { id: 3, userId: 1, userName: 'Arjun Sharma', userAvatar: null, action: 'user.suspended', target: 'Neha Singh', details: 'Account suspended due to policy violation', timestamp: new Date('2026-04-15T16:00:00'), performedBy: 'Arjun Sharma' },
+  { id: 4, userId: 2, userName: 'Priya Mehta', userAvatar: null, action: 'user.deactivated', target: 'Amit Kumar', details: 'Account deactivated - resigned', timestamp: new Date('2026-05-20T11:30:00'), performedBy: 'Priya Mehta' },
 ];
 
 let nextAuditId = 5;
@@ -40,10 +41,10 @@ const addAuditLog = (action, target, details, performedBy) => {
 const emptyForm = {
   name: '', email: '', role: 'viewer', phone: '', department: '', password: '',
   avatar: null, avatarPreview: null,
-  customPermissions: [], // For granular permission control
+  customPermissions: [],
 };
 
-const delay = (ms = 300) => new Promise((r) => setTimeout(r, ms));
+const delay = (ms = 200) => new Promise((r) => setTimeout(r, ms));
 
 export default function Users() {
   const { can, user: currentUser } = useAuth();
@@ -59,6 +60,35 @@ export default function Users() {
   const [showAuditLog, setShowAuditLog] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  // Keyboard Shortcuts Handler
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName) && e.key !== 'F2' && !(e.altKey && (e.key === 'a' || e.key === 'A' || e.key === 'c' || e.key === 'C'))) return;
+
+      if (e.key === 'F2') {
+        e.preventDefault();
+        document.getElementById('user-search-input')?.focus();
+      } else if (e.key === 'F4') {
+        if (can('users.manage')) {
+          e.preventDefault();
+          openAdd();
+        }
+      } else if (e.key === 'F5') {
+        e.preventDefault();
+        setUsers([...usersDB]);
+      } else if (e.altKey && (e.key === 'a' || e.key === 'A')) {
+        e.preventDefault();
+        setShowAuditLog(true);
+      } else if (e.altKey && (e.key === 'c' || e.key === 'C')) {
+        e.preventDefault();
+        handleExportCSV();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [can]);
 
   // Filter logic
   const filteredUsers = users.filter((u) => {
@@ -95,7 +125,7 @@ export default function Users() {
     e.preventDefault();
     setSaving(true);
     setError('');
-    await delay(400);
+    await delay(300);
 
     try {
       if (editId) {
@@ -103,10 +133,9 @@ export default function Users() {
         const idx = users.findIndex((u) => u.id === editId);
         if (idx === -1) throw new Error('User not found');
         const oldRole = users[idx].role;
-        users[idx] = { ...users[idx], ...form, email: users[idx].email }; // email can't change
+        users[idx] = { ...users[idx], ...form, email: users[idx].email };
         usersDB = [...users];
         
-        // Audit log
         if (oldRole !== form.role) {
           addAuditLog('user.role_changed', users[idx].name, `Role changed from ${oldRole} to ${form.role}`, currentUser?.name);
         } else {
@@ -126,8 +155,6 @@ export default function Users() {
         };
         users.unshift(newUser);
         usersDB = [...users];
-        
-        // Audit log
         addAuditLog('user.created', newUser.name, `Created new ${newUser.role} account`, currentUser?.name);
       }
       setUsers([...users]);
@@ -140,16 +167,14 @@ export default function Users() {
   };
 
   const handleDelete = async (id) => {
-    const user = users.find((u) => u.id === id);
-    await delay(300);
+    const uObj = users.find((u) => u.id === id);
+    await delay(200);
     const filtered = users.filter((u) => u.id !== id);
     setUsers(filtered);
     usersDB = filtered;
     setShowDeleteConfirm(null);
-    
-    // Audit log
-    if (user) {
-      addAuditLog('user.deleted', user.name, `Deleted ${user.role} account`, currentUser?.name);
+    if (uObj) {
+      addAuditLog('user.deleted', uObj.name, `Deleted ${uObj.role} account`, currentUser?.name);
     }
   };
 
@@ -162,7 +187,6 @@ export default function Users() {
       setUsers([...users]);
       usersDB = [...users];
       
-      // Audit log
       const actions = {
         active: 'user.activated',
         inactive: 'user.deactivated',
@@ -172,20 +196,55 @@ export default function Users() {
     }
   };
 
+  const getExportData = () => {
+    const headers = ['Operator Name', 'Email Address', 'Security Role', 'Account Status', 'Contact Phone', 'Department', 'Last Login Timestamp'];
+    const rows = users.map(u => [
+      u.name || '',
+      u.email || '',
+      (u.role || '').toUpperCase(),
+      (u.status || '').toUpperCase(),
+      u.phone || '',
+      u.department || '',
+      u.lastLogin ? new Date(u.lastLogin).toLocaleString('en-IN') : 'Never'
+    ]);
+    return { headers, rows };
+  };
+
+  const handleExportCSV = () => {
+    const { headers, rows } = getExportData();
+    exportToCSV('Security_Operators_Register', headers, rows);
+  };
+
+  const handleExportExcel = () => {
+    const { headers, rows } = getExportData();
+    exportToExcel('Security_Operators_Register', 'Users & Roles', headers, rows);
+  };
+
+  const handleExportPDF = () => {
+    const { headers, rows } = getExportData();
+    exportToPDF(
+      'SECURITY & USER ROLES REGISTER',
+      { name: 'Kedvass Hygiene Products', address: 'Korba Industrial Area' },
+      headers,
+      rows,
+      { label: 'Total Registered System Operators', value: `${users.length} Operators` }
+    );
+  };
+
   const getRoleBadge = (role) => {
     const r = ROLES[role];
     if (!r) return null;
-    return <span className={`badge-v ${r.color}`}><i className={`bi ${r.icon}`}></i> {r.label}</span>;
+    return <span className={`badge-v ${r.color}`}><i className={`bi ${r.icon} me-1`}></i> {r.label}</span>;
   };
 
   const getStatusBadge = (status) => {
     const map = {
-      active: { color: 'success', icon: 'bi-check-circle', label: 'Active' },
-      inactive: { color: 'secondary', icon: 'bi-dash-circle', label: 'Inactive' },
-      suspended: { color: 'danger', icon: 'bi-x-circle', label: 'Suspended' },
+      active: { color: 'success', icon: 'bi-check-circle', label: 'ACTIVE' },
+      inactive: { color: 'secondary', icon: 'bi-dash-circle', label: 'INACTIVE' },
+      suspended: { color: 'danger', icon: 'bi-x-circle', label: 'SUSPENDED' },
     };
     const s = map[status] || map.inactive;
-    return <span className={`badge-v ${s.color}`}><i className={`bi ${s.icon}`}></i> {s.label}</span>;
+    return <span className={`badge-v ${s.color}`} style={{ fontSize: '0.7rem' }}><i className={`bi ${s.icon} me-1`}></i> {s.label}</span>;
   };
 
   if (!can('users.view')) {
@@ -193,206 +252,210 @@ export default function Users() {
       <div className="empty-state-v" style={{ paddingTop: 80 }}>
         <i className="bi bi-shield-x" style={{ color: 'var(--danger)' }}></i>
         <h5>Access Denied</h5>
-        <p>Only administrators can manage users.</p>
+        <p>Only administrators can access user security registers.</p>
       </div>
     );
   }
 
   return (
     <div>
-      {/* Page Header */}
-      <div className="page-header">
-        <div className="page-header-top">
-          <div>
-            <h1 className="page-title">
-              <i className="bi bi-people me-2" style={{ color: 'var(--primary)' }}></i>
-              User Management
-            </h1>
-            <p className="page-subtitle">Manage system users, roles, and permissions</p>
+      {/* Gateway of Tally Software Header Bar */}
+      <div className="tally-header-bar mb-3 shadow-sm">
+        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <div className="d-flex align-items-center gap-2">
+            <span className="tally-header-badge" style={{ background: 'var(--primary)', color: '#fff' }}>SECURITY</span>
+            <div>
+              <h5 className="mb-0 fw-bold text-uppercase" style={{ fontSize: '0.95rem', letterSpacing: '0.5px' }}>
+                SECURITY & USER ROLES REGISTER &mdash; OPERATOR MASTERS
+              </h5>
+              <div className="text-muted small" style={{ fontSize: '0.72rem' }}>
+                F.Y. 2026-2027 | System Operator Management | EHN One ERP
+              </div>
+            </div>
           </div>
+          <div className="d-flex align-items-center gap-2">
+            <button className="btn-v outline-secondary btn-sm" onClick={() => setShowAuditLog(true)}>
+              <i className="bi bi-clock-history me-1"></i> [Alt+A] Audit Log
+            </button>
+            <button className="btn-v outline-secondary btn-sm" onClick={handleExportCSV} title="Export CSV">
+              <i className="bi bi-filetype-csv me-1"></i> [Alt+C] CSV
+            </button>
+            <button className="btn-v outline-success btn-sm" onClick={handleExportExcel} title="Export Excel (.xls)">
+              <i className="bi bi-file-earmark-excel me-1"></i> [Alt+X] Excel
+            </button>
+            <button className="btn-v outline-danger btn-sm" onClick={handleExportPDF} title="Export PDF">
+              <i className="bi bi-file-earmark-pdf me-1"></i> [Alt+P] PDF
+            </button>
+            {can('users.manage') && (
+              <button className="btn-v primary btn-sm" onClick={openAdd}>
+                <i className="bi bi-person-plus me-1"></i> [F4] Add Operator Master
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* F1-F8 Action Toolbar */}
+        <div className="tally-toolbar mt-2 pt-2 border-top d-flex gap-2 flex-wrap">
+          <button className="tally-shortcut-btn" onClick={() => document.getElementById('user-search-input')?.focus()}>
+            <span className="key">[F2]</span> Search Operator
+          </button>
           {can('users.manage') && (
-            <div className="d-flex gap-2">
-              <button className="btn-v light" onClick={() => setShowAuditLog(true)}>
-                <i className="bi bi-clock-history"></i>
-                <span className="d-none d-sm-inline">Audit Log</span>
-              </button>
-              <button className="btn-v primary" onClick={openAdd}>
-                <i className="bi bi-person-plus"></i>
-                <span>Add User</span>
-              </button>
-            </div>
+            <button className="tally-shortcut-btn" onClick={openAdd}>
+              <span className="key">[F4]</span> New Operator
+            </button>
           )}
+          <button className="tally-shortcut-btn" onClick={() => setUsers([...usersDB])}>
+            <span className="key">[F5]</span> Refresh Register
+          </button>
+          <button className="tally-shortcut-btn" onClick={() => setShowAuditLog(true)}>
+            <span className="key">[Alt+A]</span> Security Audit Log
+          </button>
+          <button className="tally-shortcut-btn" onClick={handleExportCSV}>
+            <span className="key">[Alt+C]</span> Export CSV
+          </button>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="row g-3 mb-4">
+      {/* Metric Summary Cards */}
+      <div className="row g-2 mb-3">
         <div className="col-xl-3 col-sm-6">
-          <div className="stat-card">
-            <div className="stat-card-icon primary">
-              <i className="bi bi-people"></i>
-            </div>
-            <div className="stat-card-body">
-              <div className="stat-card-label">Total Users</div>
-              <div className="stat-card-value">{stats.total}</div>
-            </div>
+          <div className="tally-stat-card">
+            <div className="tally-stat-label">TOTAL OPERATORS</div>
+            <div className="tally-stat-value">{stats.total}</div>
+            <div className="tally-stat-sub text-muted">Registered System Users</div>
           </div>
         </div>
         <div className="col-xl-3 col-sm-6">
-          <div className="stat-card">
-            <div className="stat-card-icon success">
-              <i className="bi bi-check-circle"></i>
-            </div>
-            <div className="stat-card-body">
-              <div className="stat-card-label">Active Users</div>
-              <div className="stat-card-value">{stats.active}</div>
-            </div>
+          <div className="tally-stat-card">
+            <div className="tally-stat-label">ACTIVE OPERATORS</div>
+            <div className="tally-stat-value text-success">{stats.active}</div>
+            <div className="tally-stat-sub text-muted">Authorized Active Logins</div>
           </div>
         </div>
         <div className="col-xl-3 col-sm-6">
-          <div className="stat-card">
-            <div className="stat-card-icon danger">
-              <i className="bi bi-shield-lock"></i>
-            </div>
-            <div className="stat-card-body">
-              <div className="stat-card-label">Administrators</div>
-              <div className="stat-card-value">{stats.admins}</div>
-            </div>
+          <div className="tally-stat-card">
+            <div className="tally-stat-label">ADMINISTRATORS</div>
+            <div className="tally-stat-value text-danger">{stats.admins}</div>
+            <div className="tally-stat-sub text-muted">Full Control Authority</div>
           </div>
         </div>
         <div className="col-xl-3 col-sm-6">
-          <div className="stat-card">
-            <div className="stat-card-icon warning">
-              <i className="bi bi-person-badge"></i>
-            </div>
-            <div className="stat-card-body">
-              <div className="stat-card-label">Managers</div>
-              <div className="stat-card-value">{stats.managers}</div>
-            </div>
+          <div className="tally-stat-card">
+            <div className="tally-stat-label">MANAGERS & STAFF</div>
+            <div className="tally-stat-value text-primary">{stats.managers + stats.viewers}</div>
+            <div className="tally-stat-sub text-muted">Operational Staff Users</div>
           </div>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="v-card mb-4">
-        <div className="v-card-body" style={{ padding: '16px 24px' }}>
-          <div className="row g-3 align-items-end">
-            <div className="col-md-4">
+      {/* Filter & Search Bar */}
+      <div className="v-card mb-3">
+        <div className="v-card-body p-2">
+          <div className="row g-2 align-items-center">
+            <div className="col-md-5">
               <div className="search-box-v">
                 <i className="bi bi-search"></i>
                 <input
+                  id="user-search-input"
                   type="text"
                   className="form-control"
-                  placeholder="Search by name, email, department…"
+                  placeholder="Filter operators by name, email, department... [Press F2]"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
             </div>
             <div className="col-md-3">
-              <label className="form-label mb-1" style={{ fontSize: '0.75rem' }}>Role</label>
-              <select className="form-select" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
-                <option value="all">All Roles</option>
+              <select className="form-select btn-sm" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
+                <option value="all">All Security Roles</option>
                 <option value="admin">Administrator</option>
                 <option value="manager">Manager</option>
-                <option value="viewer">Viewer</option>
+                <option value="viewer">Viewer / Operator</option>
               </select>
             </div>
             <div className="col-md-3">
-              <label className="form-label mb-1" style={{ fontSize: '0.75rem' }}>Status</label>
-              <select className="form-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                <option value="all">All Status</option>
+              <select className="form-select btn-sm" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                <option value="all">All Account Statuses</option>
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
                 <option value="suspended">Suspended</option>
               </select>
             </div>
-            <div className="col-md-2">
-              <button
-                className="btn-v light w-100"
-                onClick={() => { setSearch(''); setRoleFilter('all'); setStatusFilter('all'); }}
-                style={{ justifyContent: 'center' }}
-              >
-                <i className="bi bi-x-lg"></i> Clear
-              </button>
+            <div className="col-md-1 text-end">
+              <span className="badge-v secondary fw-bold" style={{ fontSize: '0.7rem' }}>
+                {filteredUsers.length} REC
+              </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Users Table */}
+      {/* High-Density Tally Table */}
       <div className="v-card">
-        <div className="v-card-header">
-          <i className="bi bi-table"></i>
-          All Users
-          <span className="badge-v secondary ms-auto">{filteredUsers.length}</span>
+        <div className="v-card-header d-flex justify-content-between align-items-center">
+          <span><i className="bi bi-shield-check me-2" style={{ color: 'var(--primary)' }}></i>SECURITY & OPERATOR MASTER REGISTER</span>
+          <span className="text-muted small">HIGH-DENSITY ERP VIEW</span>
         </div>
         <div className="v-card-body p-0" style={{ overflowX: 'auto' }}>
           {filteredUsers.length === 0 ? (
-            <div className="empty-state-v">
-              <i className="bi bi-inbox"></i>
-              <h5>No Users Found</h5>
-              <p>{search || roleFilter !== 'all' || statusFilter !== 'all' ? 'Try adjusting filters' : 'No users in the system'}</p>
+            <div className="empty-state-v py-4">
+              <i className="bi bi-people text-muted" style={{ fontSize: '2rem' }}></i>
+              <h5 className="fw-bold mt-2 text-uppercase" style={{ fontSize: '0.88rem' }}>No Operators Found</h5>
+              <p className="text-muted" style={{ fontSize: '0.8rem' }}>Try adjusting your search filters or click "[F4] Add Operator Master"</p>
             </div>
           ) : (
             <table className="v-table">
               <thead>
                 <tr>
-                  <th>User</th>
-                  <th>Role</th>
-                  <th>Department</th>
-                  <th>Status</th>
-                  <th>Last Login</th>
-                  <th className="text-end">Actions</th>
+                  <th style={{ width: 40 }}>#</th>
+                  <th>OPERATOR NAME</th>
+                  <th>EMAIL / USERNAME</th>
+                  <th>SECURITY ROLE</th>
+                  <th>DEPARTMENT</th>
+                  <th>STATUS</th>
+                  <th>LAST LOGIN</th>
+                  <th className="text-end" style={{ width: 120 }}>ACTIONS</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.map((u) => (
+                {filteredUsers.map((u, i) => (
                   <tr key={u.id}>
+                    <td className="text-muted fw-semibold" style={{ fontSize: '0.75rem' }}>{i + 1}</td>
                     <td>
                       <div className="d-flex align-items-center gap-2">
-                        <div className={`user-avatar role-avatar-${u.role}`}>
+                        <div 
+                          className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm"
+                          style={{ width: 28, height: 28, background: 'var(--primary)', fontSize: '0.75rem' }}
+                        >
                           {u.name.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <div className="fw-semibold">{u.name}</div>
-                          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                            <i className="bi bi-envelope me-1"></i>{u.email}
-                          </div>
+                          <div className="fw-bold text-dark">{u.name}</div>
+                          {u.phone && <small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>{u.phone}</small>}
                         </div>
                       </div>
                     </td>
+                    <td>
+                      <code style={{ color: 'var(--primary)', fontSize: '0.78rem' }}>{u.email}</code>
+                    </td>
                     <td>{getRoleBadge(u.role)}</td>
-                    <td>{u.department}</td>
+                    <td><span className="badge-v secondary">{u.department || 'General'}</span></td>
                     <td>{getStatusBadge(u.status)}</td>
-                    <td style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                      {u.lastLogin ? new Date(u.lastLogin).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Never'}
+                    <td className="text-muted" style={{ fontSize: '0.75rem' }}>
+                      {u.lastLogin ? new Date(u.lastLogin).toLocaleString('en-IN') : 'Never'}
                     </td>
                     <td className="text-end">
-                      <div className="d-flex justify-content-end gap-2">
-                        <button
-                          className="btn-v outline-primary icon-only"
-                          onClick={() => setViewUser(u)}
-                          title="View Details"
-                        >
+                      <div className="d-flex justify-content-end gap-1">
+                        <button className="btn-v outline-secondary btn-sm px-2" onClick={() => setViewUser(u)} title="View Operator Profile">
                           <i className="bi bi-eye"></i>
                         </button>
                         {can('users.manage') && (
                           <>
-                            <button
-                              className="btn-v outline-primary icon-only"
-                              onClick={() => openEdit(u)}
-                              title="Edit"
-                              disabled={u.id === currentUser?.id}
-                            >
+                            <button className="btn-v outline-primary btn-sm px-2" onClick={() => openEdit(u)} title="Edit Master">
                               <i className="bi bi-pencil"></i>
                             </button>
                             {u.id !== currentUser?.id && (
-                              <button
-                                className="btn-v outline-danger icon-only"
-                                onClick={() => setShowDeleteConfirm(u)}
-                                title="Delete"
-                              >
+                              <button className="btn-v outline-danger btn-sm px-2" onClick={() => setShowDeleteConfirm(u)} title="Delete Master">
                                 <i className="bi bi-trash"></i>
                               </button>
                             )}
@@ -408,750 +471,171 @@ export default function Users() {
         </div>
       </div>
 
-      {/* Add/Edit Modal */}
+      {/* Add / Edit Operator Desktop Modal */}
       {showModal && (
-        <UserFormModal
-          form={form}
-          setForm={setForm}
-          editId={editId}
-          onSubmit={handleSubmit}
-          onClose={() => setShowModal(false)}
-          saving={saving}
-          error={error}
-        />
+        <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}>
+          <div className="modal-box" style={{ maxWidth: 650 }}>
+            <div className="modal-box-header d-flex align-items-center justify-content-between">
+              <div className="d-flex align-items-center gap-2">
+                <i className={`bi ${editId ? 'bi-pencil-square' : 'bi-person-plus'}`} style={{ color: 'var(--primary)' }}></i>
+                <span>{editId ? 'MODIFY OPERATOR SECURITY MASTER' : 'CREATE NEW OPERATOR MASTER'}</span>
+              </div>
+              <button className="close-btn" onClick={() => setShowModal(false)} aria-label="Close">
+                <i className="bi bi-x-lg"></i>
+              </button>
+            </div>
+            <form onSubmit={handleSubmit}>
+              <div className="modal-box-body p-3" style={{ maxHeight: '68vh', overflowY: 'auto' }}>
+                {error && (
+                  <div className="alert-v danger mb-3">
+                    <i className="bi bi-exclamation-circle me-1"></i> {error}
+                  </div>
+                )}
+
+                <div className="form-section-title mb-2"><i className="bi bi-person-badge me-1"></i> Operator Identity</div>
+                <div className="row g-2 mb-3">
+                  <div className="col-md-6">
+                    <label className="form-label">Full Name *</label>
+                    <input className="form-control" placeholder="e.g. Ramesh Sharma" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label">Email Address *</label>
+                    <input className="form-control" type="email" placeholder="ramesh@ehnone.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} disabled={!!editId} required />
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label">Phone Number</label>
+                    <input className="form-control" placeholder="+91 98765 43210" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label">Department / Branch</label>
+                    <input className="form-control" placeholder="e.g. Billing Desk" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} />
+                  </div>
+                </div>
+
+                <div className="form-divider mb-3"></div>
+
+                <div className="form-section-title mb-2"><i className="bi bi-shield-lock me-1"></i> Security Role Level</div>
+                <div className="row g-2 mb-3">
+                  <div className="col-md-6">
+                    <label className="form-label">Assigned Role Level *</label>
+                    <select className="form-select" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
+                      <option value="admin">Administrator (Full Rights)</option>
+                      <option value="manager">Manager (Operations & Stock)</option>
+                      <option value="viewer">Viewer / Billing Operator</option>
+                    </select>
+                  </div>
+                  {!editId && (
+                    <div className="col-md-6">
+                      <label className="form-label">Initial Password *</label>
+                      <input className="form-control" type="password" placeholder="••••••••" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="modal-box-footer d-flex justify-content-end gap-2">
+                <button type="button" className="btn-v outline-secondary btn-sm" onClick={() => setShowModal(false)}>Cancel</button>
+                <button type="submit" className="btn-v primary btn-sm" disabled={saving}>
+                  <i className="bi bi-check-circle me-1"></i> {saving ? 'Saving...' : editId ? 'Update Operator' : 'Create Operator'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
-      {/* View Details Modal */}
-      {viewUser && <UserDetailsModal user={viewUser} onClose={() => setViewUser(null)} onStatusChange={handleStatusChange} canManage={can('users.manage')} />}
-
-      {/* Delete Confirmation */}
+      {/* Delete Confirmation Window */}
       {showDeleteConfirm && (
-        <DeleteConfirmModal
-          user={showDeleteConfirm}
-          onConfirm={() => handleDelete(showDeleteConfirm.id)}
-          onCancel={() => setShowDeleteConfirm(null)}
-        />
+        <div className="modal-overlay">
+          <div className="modal-box" style={{ maxWidth: 450 }}>
+            <div className="modal-box-header text-danger">
+              <i className="bi bi-exclamation-triangle me-2"></i> CONFIRM OPERATOR DELETION
+            </div>
+            <div className="modal-box-body p-3">
+              <p className="mb-0">Are you sure you want to revoke access and delete operator <strong>{showDeleteConfirm.name}</strong>? This action cannot be undone.</p>
+            </div>
+            <div className="modal-box-footer d-flex justify-content-end gap-2">
+              <button className="btn-v outline-secondary btn-sm" onClick={() => setShowDeleteConfirm(null)}>Cancel</button>
+              <button className="btn-v danger btn-sm" onClick={() => handleDelete(showDeleteConfirm.id)}>Delete Operator</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View User Profile Window */}
+      {viewUser && (
+        <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setViewUser(null); }}>
+          <div className="modal-box" style={{ maxWidth: 500 }}>
+            <div className="modal-box-header d-flex align-items-center justify-content-between">
+              <span>OPERATOR MASTER DETAILS</span>
+              <button className="close-btn" onClick={() => setViewUser(null)}><i className="bi bi-x-lg"></i></button>
+            </div>
+            <div className="modal-box-body p-3">
+              <div className="d-flex align-items-center gap-3 mb-3 pb-3 border-bottom">
+                <div className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold" style={{ width: 48, height: 48, background: 'var(--primary)', fontSize: '1.2rem' }}>
+                  {viewUser.name.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <h6 className="mb-0 fw-bold">{viewUser.name}</h6>
+                  <div className="text-muted small">{viewUser.email}</div>
+                  <div className="mt-1">{getRoleBadge(viewUser.role)}</div>
+                </div>
+              </div>
+              <div className="row g-2 small">
+                <div className="col-6"><strong>Department:</strong> {viewUser.department || 'N/A'}</div>
+                <div className="col-6"><strong>Phone:</strong> {viewUser.phone || 'N/A'}</div>
+                <div className="col-6"><strong>Status:</strong> {getStatusBadge(viewUser.status)}</div>
+                <div className="col-6"><strong>Last Login:</strong> {viewUser.lastLogin ? new Date(viewUser.lastLogin).toLocaleString('en-IN') : 'Never'}</div>
+              </div>
+            </div>
+            <div className="modal-box-footer d-flex justify-content-end">
+              <button className="btn-v outline-secondary btn-sm" onClick={() => setViewUser(null)}>Close</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Audit Log Modal */}
-      {showAuditLog && <AuditLogModal auditLog={auditLog} onClose={() => setShowAuditLog(false)} />}
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════
-   USER FORM MODAL (Add / Edit)
-═══════════════════════════════════════════════════════════ */
-function UserFormModal({ form, setForm, editId, onSubmit, onClose, saving, error }) {
-  const handleAvatarChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        alert('File size must be less than 2MB');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setForm({ ...form, avatar: file, avatarPreview: reader.result });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const removeAvatar = () => {
-    setForm({ ...form, avatar: null, avatarPreview: null });
-  };
-
-  // Available permissions grouped by module
-  const allPermissions = {
-    'Dashboard': ['dashboard.view'],
-    'Products': ['products.view', 'products.add', 'products.edit', 'products.delete'],
-    'Transactions': ['transactions.view', 'transactions.stockin', 'transactions.stockout'],
-    'Inventory': ['lowstock.view'],
-    'Catalogue': ['categories.view', 'suppliers.view', 'warehouse.view'],
-    'Reports': ['reports.view', 'analytics.view'],
-    'Administration': ['settings.view', 'users.view', 'users.manage'],
-  };
-
-  // Get role's default permissions
-  const rolePermissions = ROLES[form.role]?.permissions || [];
-
-  const togglePermission = (perm) => {
-    const current = form.customPermissions || [];
-    if (current.includes(perm)) {
-      setForm({ ...form, customPermissions: current.filter((p) => p !== perm) });
-    } else {
-      setForm({ ...form, customPermissions: [...current, perm] });
-    }
-  };
-
-  const isPermissionActive = (perm) => {
-    return rolePermissions.includes(perm) || (form.customPermissions || []).includes(perm);
-  };
-
-  const isPermissionFromRole = (perm) => {
-    return rolePermissions.includes(perm);
-  };
-
-  return (
-    <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal-box" style={{ maxWidth: 800 }}>
-        <div className="modal-box-header">
-          <i className={`bi ${editId ? 'bi-pencil-square' : 'bi-person-plus'}`} style={{ color: 'var(--primary)' }}></i>
-          {editId ? 'Edit User' : 'Add New User'}
-          <button className="close-btn" onClick={onClose}>
-            <i className="bi bi-x-lg"></i>
-          </button>
-        </div>
-        <form onSubmit={onSubmit}>
-          <div className="modal-box-body">
-            {error && (
-              <div className="alert-v danger">
-                <i className="bi bi-exclamation-circle"></i> {error}
+      {showAuditLog && (
+        <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowAuditLog(false); }}>
+          <div className="modal-box" style={{ maxWidth: 750 }}>
+            <div className="modal-box-header d-flex align-items-center justify-content-between">
+              <div className="d-flex align-items-center gap-2">
+                <i className="bi bi-clock-history" style={{ color: 'var(--primary)' }}></i>
+                <span>SECURITY AUDIT LOG REGISTER</span>
               </div>
-            )}
-
-            {/* Avatar Upload Section */}
-            <div className="avatar-upload-section">
-              <div className="avatar-upload-preview">
-                {form.avatarPreview ? (
-                  <div className="avatar-preview-img" style={{ backgroundImage: `url(${form.avatarPreview})` }}>
-                    <button type="button" className="avatar-remove-btn" onClick={removeAvatar} title="Remove">
-                      <i className="bi bi-x-lg"></i>
-                    </button>
-                  </div>
-                ) : (
-                  <div className={`avatar-preview-placeholder role-avatar-${form.role}`}>
-                    <i className="bi bi-person"></i>
-                  </div>
-                )}
-              </div>
-              <div className="avatar-upload-info">
-                <div className="avatar-upload-title">Profile Picture</div>
-                <div className="avatar-upload-desc">Upload a profile image (JPG, PNG • Max 2MB)</div>
-                <label className="btn-v light mt-2" style={{ cursor: 'pointer' }}>
-                  <i className="bi bi-upload"></i>
-                  <span>Choose Image</span>
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/jpg"
-                    onChange={handleAvatarChange}
-                    style={{ display: 'none' }}
-                  />
-                </label>
-              </div>
+              <button className="close-btn" onClick={() => setShowAuditLog(false)}><i className="bi bi-x-lg"></i></button>
             </div>
-
-            <div className="form-divider"></div>
-
-            {/* Basic Info */}
-            <div className="row g-3">
-              <div className="col-md-6">
-                <label className="form-label">Full Name *</label>
-                <input
-                  className="form-control"
-                  placeholder="e.g. John Doe"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="col-md-6">
-                <label className="form-label">Email Address *</label>
-                <input
-                  className="form-control"
-                  type="email"
-                  placeholder="user@example.com"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  required
-                  disabled={!!editId}
-                />
-              </div>
-              <div className="col-md-6">
-                <label className="form-label">Phone Number</label>
-                <input
-                  className="form-control"
-                  placeholder="+91 98765 43210"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                />
-              </div>
-              <div className="col-md-6">
-                <label className="form-label">Department</label>
-                <select
-                  className="form-select"
-                  value={form.department}
-                  onChange={(e) => setForm({ ...form, department: e.target.value })}
-                >
-                  <option value="">Select Department</option>
-                  <option value="IT">IT</option>
-                  <option value="Operations">Operations</option>
-                  <option value="Finance">Finance</option>
-                  <option value="Warehouse">Warehouse</option>
-                  <option value="Sales">Sales</option>
-                  <option value="Procurement">Procurement</option>
-                  <option value="HR">HR</option>
-                  <option value="Marketing">Marketing</option>
-                </select>
-              </div>
-              <div className="col-md-6">
-                <label className="form-label">Role *</label>
-                <select
-                  className="form-select"
-                  value={form.role}
-                  onChange={(e) => setForm({ ...form, role: e.target.value, customPermissions: [] })}
-                  required
-                >
-                  <option value="viewer">👁️ Viewer — Read-only access</option>
-                  <option value="manager">📋 Manager — Can manage inventory</option>
-                  <option value="admin">🛡️ Administrator — Full access</option>
-                </select>
-              </div>
-              <div className="col-md-6">
-                <label className="form-label">{editId ? 'New Password (leave blank to keep)' : 'Password *'}</label>
-                <input
-                  className="form-control"
-                  type="password"
-                  placeholder={editId ? 'Leave blank to keep current' : 'Enter password'}
-                  value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  required={!editId}
-                />
-              </div>
-
-              {/* Permission Customization */}
-              <div className="col-12">
-                <div className="permission-section">
-                  <div className="permission-section-header">
-                    <div>
-                      <i className="bi bi-shield-check" style={{ color: 'var(--primary)' }}></i>
-                      <span className="permission-section-title">Access Permissions</span>
-                    </div>
-                    <span className="badge-v primary">{Object.keys(allPermissions).reduce((sum, module) => sum + allPermissions[module].filter(isPermissionActive).length, 0)} active</span>
-                  </div>
-                  <div className="permission-section-desc">
-                    Base permissions from <strong>{ROLES[form.role]?.label}</strong> role. 
-                    Click to add/remove additional permissions.
-                  </div>
-
-                  <div className="permissions-modules">
-                    {Object.entries(allPermissions).map(([module, perms]) => (
-                      <div key={module} className="permission-module">
-                        <div className="permission-module-title">
-                          <i className="bi bi-folder"></i>
-                          {module}
-                          <span className="permission-module-count">
-                            {perms.filter(isPermissionActive).length}/{perms.length}
-                          </span>
-                        </div>
-                        <div className="permission-items">
-                          {perms.map((perm) => {
-                            const isActive = isPermissionActive(perm);
-                            const fromRole = isPermissionFromRole(perm);
-                            return (
-                              <button
-                                key={perm}
-                                type="button"
-                                className={`permission-item-btn ${isActive ? 'active' : ''} ${fromRole ? 'from-role' : ''}`}
-                                onClick={() => !fromRole && togglePermission(perm)}
-                                disabled={fromRole}
-                                title={fromRole ? 'Included in role' : 'Click to toggle'}
-                              >
-                                <i className={`bi ${isActive ? 'bi-check-circle-fill' : 'bi-circle'}`}></i>
-                                <span>{perm.split('.')[1]}</span>
-                                {fromRole && <i className="bi bi-lock-fill permission-lock"></i>}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="modal-box-footer">
-            <button className="btn-v light" type="button" onClick={onClose}>Cancel</button>
-            <button className="btn-v primary" type="submit" disabled={saving}>
-              {saving ? (
-                <><span className="spinner-border spinner-border-sm me-1"></span>Saving…</>
-              ) : (
-                <>{editId ? 'Update User' : 'Create User'}</>
-              )}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════
-   USER DETAILS MODAL (View)
-═══════════════════════════════════════════════════════════ */
-function UserDetailsModal({ user, onClose, onStatusChange, canManage }) {
-  const roleInfo = ROLES[user.role];
-
-  return (
-    <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal-box" style={{ maxWidth: 650 }}>
-        <div className="modal-box-header">
-          <i className="bi bi-person-circle" style={{ color: 'var(--primary)' }}></i>
-          User Details
-          <button className="close-btn" onClick={onClose}>
-            <i className="bi bi-x-lg"></i>
-          </button>
-        </div>
-        <div className="modal-box-body">
-          {/* User Header */}
-          <div className="user-detail-header">
-            <div className={`user-detail-avatar role-avatar-${user.role}`}>
-              {user.name.charAt(0).toUpperCase()}
-            </div>
-            <div className="flex-grow-1">
-              <h4 className="user-detail-name">{user.name}</h4>
-              <div className="user-detail-email">
-                <i className="bi bi-envelope"></i> {user.email}
-              </div>
-              <div className="d-flex gap-2 mt-2">
-                {roleInfo && (
-                  <span className={`badge-v ${roleInfo.color}`}>
-                    <i className={`bi ${roleInfo.icon}`}></i> {roleInfo.label}
-                  </span>
-                )}
-                {user.status === 'active' && <span className="badge-v success"><i className="bi bi-check-circle"></i> Active</span>}
-                {user.status === 'inactive' && <span className="badge-v secondary"><i className="bi bi-dash-circle"></i> Inactive</span>}
-                {user.status === 'suspended' && <span className="badge-v danger"><i className="bi bi-x-circle"></i> Suspended</span>}
-              </div>
-            </div>
-          </div>
-
-          <div className="user-detail-divider"></div>
-
-          {/* User Info Grid */}
-          <div className="user-detail-grid">
-            <div className="user-detail-item">
-              <div className="user-detail-label">
-                <i className="bi bi-telephone"></i> Phone
-              </div>
-              <div className="user-detail-value">{user.phone || '—'}</div>
-            </div>
-            <div className="user-detail-item">
-              <div className="user-detail-label">
-                <i className="bi bi-building"></i> Department
-              </div>
-              <div className="user-detail-value">{user.department || '—'}</div>
-            </div>
-            <div className="user-detail-item">
-              <div className="user-detail-label">
-                <i className="bi bi-calendar-check"></i> Last Login
-              </div>
-              <div className="user-detail-value">
-                {user.lastLogin
-                  ? new Date(user.lastLogin).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-                  : 'Never'}
-              </div>
-            </div>
-            <div className="user-detail-item">
-              <div className="user-detail-label">
-                <i className="bi bi-calendar-plus"></i> Created At
-              </div>
-              <div className="user-detail-value">
-                {new Date(user.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-              </div>
-            </div>
-          </div>
-
-          {/* Permissions */}
-          <div className="user-detail-divider"></div>
-          <div className="user-detail-section">
-            <div className="user-detail-section-title">
-              <i className="bi bi-shield-check"></i> Permissions
-            </div>
-            <div className="permissions-grid">
-              {roleInfo?.permissions.map((perm) => (
-                <div key={perm} className="permission-item">
-                  <i className="bi bi-check-circle-fill"></i>
-                  <span>{perm.replace(/\./g, ' › ')}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Status Actions */}
-          {canManage && (
-            <>
-              <div className="user-detail-divider"></div>
-              <div className="user-detail-section">
-                <div className="user-detail-section-title">
-                  <i className="bi bi-sliders"></i> Quick Actions
-                </div>
-                <div className="d-flex gap-2 flex-wrap">
-                  {user.status !== 'active' && (
-                    <button
-                      className="btn-v success"
-                      onClick={() => { onStatusChange(user.id, 'active'); onClose(); }}
-                    >
-                      <i className="bi bi-check-circle"></i> Activate User
-                    </button>
-                  )}
-                  {user.status !== 'suspended' && (
-                    <button
-                      className="btn-v danger"
-                      onClick={() => { onStatusChange(user.id, 'suspended'); onClose(); }}
-                    >
-                      <i className="bi bi-x-circle"></i> Suspend User
-                    </button>
-                  )}
-                  {user.status !== 'inactive' && (
-                    <button
-                      className="btn-v light"
-                      onClick={() => { onStatusChange(user.id, 'inactive'); onClose(); }}
-                    >
-                      <i className="bi bi-dash-circle"></i> Deactivate
-                    </button>
-                  )}
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-        <div className="modal-box-footer">
-          <button className="btn-v light" onClick={onClose}>Close</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════
-   DELETE CONFIRMATION MODAL
-═══════════════════════════════════════════════════════════ */
-function DeleteConfirmModal({ user, onConfirm, onCancel }) {
-  return (
-    <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
-      <div className="modal-box" style={{ maxWidth: 480 }}>
-        <div className="modal-box-header" style={{ background: 'rgba(234,84,85,0.08)' }}>
-          <i className="bi bi-trash" style={{ color: 'var(--danger)' }}></i>
-          Delete User
-          <button className="close-btn" onClick={onCancel}>
-            <i className="bi bi-x-lg"></i>
-          </button>
-        </div>
-        <div className="modal-box-body">
-          <div className="text-center mb-3">
-            <div className={`user-avatar role-avatar-${user.role}`} style={{ width: 60, height: 60, fontSize: '1.5rem', margin: '0 auto 12px' }}>
-              {user.name.charAt(0).toUpperCase()}
-            </div>
-            <h5 style={{ marginBottom: 6 }}>{user.name}</h5>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>{user.email}</p>
-          </div>
-          <div className="alert-v danger" style={{ fontSize: '0.88rem' }}>
-            <i className="bi bi-exclamation-triangle-fill"></i>
-            <div>
-              <strong>Warning:</strong> This action cannot be undone. All user data and access will be permanently removed.
-            </div>
-          </div>
-        </div>
-        <div className="modal-box-footer">
-          <button className="btn-v light" onClick={onCancel}>Cancel</button>
-          <button className="btn-v danger" onClick={onConfirm}>
-            <i className="bi bi-trash"></i> Delete User
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════
-   AUDIT LOG MODAL
-═══════════════════════════════════════════════════════════ */
-function AuditLogModal({ auditLog, onClose }) {
-  const [search, setSearch] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('ALL');
-  const [severityFilter, setSeverityFilter] = useState('ALL');
-  const [viewMode, setViewMode] = useState('timeline'); // 'timeline' | 'table'
-
-  const getActionIcon = (action) => {
-    const map = {
-      'user.created': { icon: 'bi-person-plus', color: 'success' },
-      'user.updated': { icon: 'bi-pencil', color: 'primary' },
-      'user.deleted': { icon: 'bi-trash', color: 'danger' },
-      'user.role_changed': { icon: 'bi-shield-check', color: 'warning' },
-      'user.activated': { icon: 'bi-check-circle', color: 'success' },
-      'user.deactivated': { icon: 'bi-dash-circle', color: 'secondary' },
-      'user.suspended': { icon: 'bi-x-circle', color: 'danger' },
-      'security.login': { icon: 'bi-shield-lock', color: 'info' },
-      'invoice.delete': { icon: 'bi-receipt-cutoff', color: 'danger' },
-      'settings.update': { icon: 'bi-gear', color: 'primary' },
-    };
-    return map[action] || { icon: 'bi-info-circle', color: 'primary' };
-  };
-
-  const getActionLabel = (action) => {
-    const map = {
-      'user.created': 'User Created',
-      'user.updated': 'User Updated',
-      'user.deleted': 'User Deleted',
-      'user.role_changed': 'Role Changed',
-      'user.activated': 'User Activated',
-      'user.deactivated': 'User Deactivated',
-      'user.suspended': 'User Suspended',
-      'security.login': 'Security Login',
-      'invoice.delete': 'Invoice Deleted',
-      'settings.update': 'Settings Updated',
-    };
-    return map[action] || action;
-  };
-
-  const formatTimestamp = (date) => {
-    const now = new Date();
-    const diff = Math.floor((now - new Date(date)) / 1000);
-
-    if (diff < 60) return 'Just now';
-    if (diff < 3600) return `${Math.floor(diff / 60)} mins ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)} hours ago`;
-    if (diff < 604800) return `${Math.floor(diff / 86400)} days ago`;
-    
-    return new Date(date).toLocaleString('en-IN', {
-      day: 'numeric', month: 'short', year: 'numeric',
-      hour: '2-digit', minute: '2-digit',
-    });
-  };
-
-  // Filter audit log entries
-  const filteredLogs = auditLog.filter(l => {
-    const matchCat = categoryFilter === 'ALL' || (l.category || 'USER') === categoryFilter;
-    const matchSev = severityFilter === 'ALL' || (l.severity || 'INFO') === severityFilter;
-    const matchSearch = !search || 
-      (l.action && l.action.toLowerCase().includes(search.toLowerCase())) ||
-      (l.details && l.details.toLowerCase().includes(search.toLowerCase())) ||
-      (l.target && l.target.toLowerCase().includes(search.toLowerCase())) ||
-      (l.performedBy && l.performedBy.toLowerCase().includes(search.toLowerCase()));
-
-    return matchCat && matchSev && matchSearch;
-  });
-
-  // Export to CSV
-  const exportCSV = () => {
-    let csv = 'Timestamp,Action,Performed By,Target Entity,Details\n';
-    filteredLogs.forEach(l => {
-      csv += `"${new Date(l.timestamp).toISOString()}","${l.action || ''}","${l.performedBy || 'System'}","${(l.target || '').replace(/"/g, '""')}","${(l.details || '').replace(/"/g, '""')}"\n`;
-    });
-
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'Security_Audit_Logs_Report.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  // Print Audit Report
-  const handlePrintAudit = () => {
-    const win = window.open('', '_blank', 'width=900,height=800');
-    if (!win) return alert('Pop-up blocked! Allow pop-ups to print audit log report.');
-
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Security_Audit_Report_${new Date().toISOString().split('T')[0]}</title>
-        <style>
-          body { font-family: 'Segoe UI', Tahoma, sans-serif; padding: 20px; font-size: 12px; color: #1e293b; }
-          .header { border-bottom: 2px solid #7367f0; padding-bottom: 10px; margin-bottom: 15px; display: flex; justify-content: space-between; }
-          .title { font-size: 18px; font-weight: bold; color: #7367f0; }
-          table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-          th { background: #f8fafc; padding: 8px; font-size: 11px; text-transform: uppercase; border-bottom: 2px solid #cbd5e1; text-align: left; }
-          td { padding: 8px; border-bottom: 1px solid #e2e8f0; font-size: 11px; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <div>
-            <div class="title">EHN One - Security Audit Logs Report</div>
-            <div>Generated on: ${new Date().toLocaleString('en-IN')}</div>
-          </div>
-          <div>Total Logged Events: ${filteredLogs.length}</div>
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Timestamp</th>
-              <th>Performer User</th>
-              <th>Action</th>
-              <th>Target Entity</th>
-              <th>Details & Description</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${filteredLogs.map(l => `
-              <tr>
-                <td>${new Date(l.timestamp).toLocaleString('en-IN')}</td>
-                <td><strong>${l.performedBy || 'System'}</strong></td>
-                <td>${l.action}</td>
-                <td>${l.target || '-'}</td>
-                <td>${l.details || '-'}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-        <script>window.onload = function() { window.focus(); window.print(); };</script>
-      </body>
-      </html>
-    `;
-
-    win.document.open();
-    win.document.write(html);
-    win.document.close();
-  };
-
-  return (
-    <div className="modal-overlay" style={{ zIndex: 99999 }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal-box" style={{ maxWidth: 880, width: '94%' }}>
-        
-        {/* Header */}
-        <div className="modal-box-header d-flex align-items-center justify-content-between">
-          <div className="d-flex align-items-center gap-2">
-            <i className="bi bi-shield-check" style={{ color: 'var(--primary)', fontSize: '1.4rem' }}></i>
-            <div>
-              <div className="fw-bold" style={{ fontSize: '1.05rem' }}>Security Audit Logs Explorer</div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Real-time user actions, role changes, and system audit trail</div>
-            </div>
-          </div>
-          <div className="d-flex align-items-center gap-2">
-            <button className="btn-v outline-primary btn-sm" onClick={exportCSV} title="Export Audit Log CSV">
-              <i className="bi bi-download me-1"></i> Export CSV
-            </button>
-            <button className="btn-v primary btn-sm" onClick={handlePrintAudit} title="Print Audit Report">
-              <i className="bi bi-printer me-1"></i> Print Report
-            </button>
-            <button className="close-btn ms-2" onClick={onClose}><i className="bi bi-x-lg"></i></button>
-          </div>
-        </div>
-
-        {/* Filter Bar */}
-        <div className="bg-light p-3 border-bottom d-flex flex-wrap align-items-center justify-content-between gap-2">
-          <div className="d-flex align-items-center gap-2 flex-grow-1" style={{ maxWidth: 360 }}>
-            <div className="search-box-v w-100">
-              <i className="bi bi-search"></i>
-              <input
-                type="text"
-                className="form-control form-control-sm"
-                placeholder="Search audit actions, user, details..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="d-flex align-items-center gap-2">
-            <select className="form-select form-select-sm" style={{ width: 130 }} value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
-              <option value="ALL">All Modules</option>
-              <option value="USER">User & Roles</option>
-              <option value="AUTH">Authentication</option>
-              <option value="INVOICE">Invoices</option>
-              <option value="PRODUCT">Products</option>
-              <option value="SETTINGS">Settings</option>
-            </select>
-
-            <select className="form-select form-select-sm" style={{ width: 130 }} value={severityFilter} onChange={(e) => setSeverityFilter(e.target.value)}>
-              <option value="ALL">All Severity</option>
-              <option value="INFO">Info</option>
-              <option value="WARNING">Warning</option>
-              <option value="SECURITY">Security</option>
-              <option value="CRITICAL">Critical</option>
-            </select>
-
-            <div className="btn-group btn-group-sm">
-              <button className={`btn ${viewMode === 'timeline' ? 'btn-primary' : 'btn-outline-secondary'}`} onClick={() => setViewMode('timeline')}>
-                <i className="bi bi-clock-history"></i>
-              </button>
-              <button className={`btn ${viewMode === 'table' ? 'btn-primary' : 'btn-outline-secondary'}`} onClick={() => setViewMode('table')}>
-                <i className="bi bi-table"></i>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="modal-box-body p-0" style={{ maxHeight: '65vh', overflowY: 'auto' }}>
-          {filteredLogs.length === 0 ? (
-            <div className="empty-state-v" style={{ padding: '40px 20px' }}>
-              <i className="bi bi-shield-x"></i>
-              <h5>No Audit Logs Found</h5>
-              <p>Try matching another search keyword or filter</p>
-            </div>
-          ) : viewMode === 'timeline' ? (
-            <div className="audit-log-timeline p-3">
-              {filteredLogs.map((log, idx) => {
-                const actionInfo = getActionIcon(log.action);
-                return (
-                  <div key={log.id || idx} className="audit-log-item">
-                    <div className="audit-log-icon-wrap">
-                      <div className={`audit-log-icon ${actionInfo.color}`}>
-                        <i className={`bi ${actionInfo.icon}`}></i>
-                      </div>
-                      <div className="audit-log-line"></div>
-                    </div>
-                    <div className="audit-log-content">
-                      <div className="audit-log-header">
-                        <div className="d-flex align-items-center gap-2">
-                          <div className="audit-log-avatar">
-                            {(log.performedBy || 'A').charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <div className="audit-log-user">{log.performedBy || 'System Admin'}</div>
-                            <div className="audit-log-time">{formatTimestamp(log.timestamp)}</div>
-                          </div>
-                        </div>
-                        <span className={`badge-v ${actionInfo.color}`}>
-                          {getActionLabel(log.action)}
-                        </span>
-                      </div>
-                      <div className="audit-log-details">
-                        <div className="audit-log-target">
-                          <i className="bi bi-person me-1"></i> {log.target}
-                        </div>
-                        <div className="audit-log-desc">{log.details}</div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <table className="v-table">
-              <thead>
-                <tr>
-                  <th>Timestamp</th>
-                  <th>Performer</th>
-                  <th>Action</th>
-                  <th>Target Entity</th>
-                  <th>Details</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredLogs.map((l, idx) => (
-                  <tr key={l.id || idx}>
-                    <td style={{ fontSize: '0.78rem' }}>{new Date(l.timestamp).toLocaleString('en-IN')}</td>
-                    <td className="fw-semibold" style={{ color: 'var(--primary)' }}>{l.performedBy || 'Admin'}</td>
-                    <td><span className="badge-v primary" style={{ fontSize: '0.72rem' }}>{l.action}</span></td>
-                    <td className="fw-semibold">{l.target || '-'}</td>
-                    <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{l.details}</td>
+            <div className="modal-box-body p-0" style={{ maxHeight: '65vh', overflowY: 'auto' }}>
+              <table className="v-table">
+                <thead>
+                  <tr>
+                    <th>TIMESTAMP</th>
+                    <th>OPERATOR</th>
+                    <th>ACTION</th>
+                    <th>TARGET</th>
+                    <th>DETAILS</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+                </thead>
+                <tbody>
+                  {auditLog.map((log) => (
+                    <tr key={log.id}>
+                      <td className="text-muted" style={{ fontSize: '0.72rem' }}>{new Date(log.timestamp).toLocaleString('en-IN')}</td>
+                      <td className="fw-semibold">{log.performedBy}</td>
+                      <td><span className="badge-v secondary" style={{ fontSize: '0.7rem' }}>{log.action}</span></td>
+                      <td className="fw-bold">{log.target}</td>
+                      <td className="text-muted" style={{ fontSize: '0.75rem' }}>{log.details}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="modal-box-footer d-flex justify-content-end">
+              <button className="btn-v outline-secondary btn-sm" onClick={() => setShowAuditLog(false)}>Close Register</button>
+            </div>
+          </div>
         </div>
-        <div className="modal-box-footer">
-          <button className="btn-v light" onClick={onClose}>Close Explorer</button>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

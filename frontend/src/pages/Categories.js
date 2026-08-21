@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 /* Mock Categories Database */
@@ -112,7 +112,6 @@ export default function Categories() {
   const [editCategory, setEditCategory] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  // Filter logic
   const filteredCategories = categories.filter((cat) => {
     const q = search.toLowerCase();
     const matchSearch = !q || 
@@ -123,19 +122,13 @@ export default function Categories() {
     return matchSearch && matchStatus;
   });
 
-  // Get parent categories (no parent)
   const parentCategories = categories.filter(c => !c.parent);
 
-  // Get children for a parent
-  const getChildren = (parentId) => categories.filter(c => c.parent === parentId);
-
-  // Get parent name
   const getParentName = (parentId) => {
     const parent = categories.find(c => c.id === parentId);
-    return parent ? parent.name : 'None';
+    return parent ? parent.name : 'Primary Group';
   };
 
-  // Stats
   const stats = {
     total: categories.length,
     parent: parentCategories.length,
@@ -143,41 +136,78 @@ export default function Categories() {
     totalProducts: categories.reduce((sum, c) => sum + c.products, 0),
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName) && e.key !== 'F2' && !(e.altKey && (e.key === 'c' || e.key === 'C' || e.key === 'e' || e.key === 'E'))) return;
+
+      if (e.key === 'F2') {
+        e.preventDefault();
+        document.getElementById('category-search-input')?.focus();
+      } else if (e.key === 'F4') {
+        if (can('categories.add')) {
+          e.preventDefault();
+          setShowCreateModal(true);
+        }
+      } else if (e.key === 'F5') {
+        e.preventDefault();
+        setCategories([...categoriesDB]);
+      } else if (e.altKey && (e.key === 'c' || e.key === 'C')) {
+        e.preventDefault();
+        exportCSV();
+      } else if (e.altKey && (e.key === 'e' || e.key === 'E')) {
+        e.preventDefault();
+        exportTallyXML();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [can]);
+
   const getStatusBadge = (status) => {
     const map = {
-      active: { color: 'success', icon: 'bi-check-circle', label: 'Active' },
-      inactive: { color: 'secondary', icon: 'bi-dash-circle', label: 'Inactive' },
+      active: { color: 'success', icon: 'bi-check-circle', label: 'ACTIVE' },
+      inactive: { color: 'secondary', icon: 'bi-dash-circle', label: 'INACTIVE' },
     };
     const s = map[status] || map.active;
-    return <span className={`badge-v ${s.color}`}><i className={`bi ${s.icon}`}></i> {s.label}</span>;
+    return <span className={`badge-v ${s.color}`} style={{ fontSize: '0.7rem' }}><i className={`bi ${s.icon} me-1`}></i> {s.label}</span>;
   };
 
   const handleDelete = (id) => {
     const hasChildren = categories.some(c => c.parent === id);
     if (hasChildren) {
-      alert('Cannot delete category with subcategories. Please delete or reassign subcategories first.');
+      alert('Cannot delete stock group with sub-groups. Reassign sub-groups first.');
       return;
     }
-    if (window.confirm('Delete this category? This action cannot be undone.')) {
+    if (window.confirm('Delete this stock group master? This action cannot be undone.')) {
       setCategories(categories.filter((c) => c.id !== id));
       categoriesDB = categories.filter((c) => c.id !== id);
     }
   };
 
-  const handleCreate = (newCategory) => {
-    const category = {
-      ...newCategory,
-      id: `CAT-${String(nextCategoryNum++).padStart(3, '0')}`,
-      products: 0,
-      createdDate: new Date(),
-    };
-    setCategories([category, ...categories]);
-    categoriesDB = [category, ...categories];
+  const exportCSV = () => {
+    const headers = ['ID', 'Name', 'Slug', 'Parent Group', 'Description', 'Linked Products', 'Status'];
+    const rows = categories.map(c => [
+      `"${c.id}"`,
+      `"${c.name || ''}"`,
+      `"${c.slug || ''}"`,
+      `"${getParentName(c.parent)}"`,
+      `"${c.description || ''}"`,
+      c.products || 0,
+      c.status ? 'ACTIVE' : 'INACTIVE'
+    ]);
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `Stock_Groups_Register_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
-  const handleUpdate = (updatedCategory) => {
-    setCategories(categories.map((c) => c.id === updatedCategory.id ? updatedCategory : c));
-    categoriesDB = categories.map((c) => c.id === updatedCategory.id ? updatedCategory : c);
+  const exportTallyXML = () => {
+    alert('Exporting Stock Group Masters XML for EHN One ERP...');
   };
 
   if (!can('categories.view')) {
@@ -185,491 +215,323 @@ export default function Categories() {
       <div className="empty-state-v" style={{ paddingTop: 80 }}>
         <i className="bi bi-shield-x" style={{ color: 'var(--danger)' }}></i>
         <h5>Access Denied</h5>
-        <p>You don't have permission to view categories.</p>
+        <p>You don't have permission to access stock group masters register.</p>
       </div>
     );
   }
 
   return (
     <div>
-      {/* Page Header */}
-      <div className="page-header">
-        <div className="page-header-top">
-          <div>
-            <h1 className="page-title">
-              <i className="bi bi-tag me-2" style={{ color: 'var(--primary)' }}></i>
-              Product Categories
-            </h1>
-            <p className="page-subtitle">Organize products into hierarchical categories</p>
+      {/* Gateway of Tally Software Module Header Bar */}
+      <div className="tally-header-bar mb-3 shadow-sm">
+        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <div className="d-flex align-items-center gap-2">
+            <span className="tally-header-badge" style={{ background: 'var(--primary)', color: '#fff' }}>MASTERS</span>
+            <div>
+              <h5 className="mb-0 fw-bold text-uppercase" style={{ fontSize: '0.95rem', letterSpacing: '0.5px' }}>
+                STOCK GROUP MASTERS REGISTER &mdash; ITEM CATEGORIES
+              </h5>
+              <div className="text-muted small" style={{ fontSize: '0.72rem' }}>
+                F.Y. 2026-2027 | Inventory Classification Register | EHN One ERP
+              </div>
+            </div>
           </div>
+          <div className="d-flex align-items-center gap-2">
+            <button className="btn-v outline-primary btn-sm" onClick={exportTallyXML}>
+              <i className="bi bi-file-earmark-code me-1"></i> [Alt+E] Export XML
+            </button>
+            <button className="btn-v outline-secondary btn-sm" onClick={exportCSV}>
+              <i className="bi bi-download me-1"></i> [Alt+C] Export CSV
+            </button>
+            {can('categories.add') && (
+              <button className="btn-v primary btn-sm" onClick={() => setShowCreateModal(true)}>
+                <i className="bi bi-plus-lg me-1"></i> [F4] Add Stock Group Master
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* F1-F8 Action Toolbar */}
+        <div className="tally-toolbar mt-2 pt-2 border-top d-flex gap-2 flex-wrap">
+          <button className="tally-shortcut-btn" onClick={() => document.getElementById('category-search-input')?.focus()}>
+            <span className="key">[F2]</span> Search Group
+          </button>
           {can('categories.add') && (
-            <button className="btn-v primary" onClick={() => setShowCreateModal(true)}>
-              <i className="bi bi-plus-lg"></i>
-              <span>Add Category</span>
+            <button className="tally-shortcut-btn" onClick={() => setShowCreateModal(true)}>
+              <span className="key">[F4]</span> New Group Master
             </button>
           )}
+          <button className="tally-shortcut-btn" onClick={() => setCategories([...categoriesDB])}>
+            <span className="key">[F5]</span> Refresh Register
+          </button>
+          <button className="tally-shortcut-btn" onClick={exportTallyXML}>
+            <span className="key">[Alt+E]</span> Export XML
+          </button>
+          <button className="tally-shortcut-btn" onClick={exportCSV}>
+            <span className="key">[Alt+C]</span> Export CSV
+          </button>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="row g-3 mb-4">
+      {/* Tally Metric Summary Cards */}
+      <div className="row g-2 mb-3">
         <div className="col-xl-3 col-sm-6">
-          <div className="stat-card">
-            <div className="stat-card-icon primary">
-              <i className="bi bi-tag"></i>
-            </div>
-            <div className="stat-card-body">
-              <div className="stat-card-label">Total Categories</div>
-              <div className="stat-card-value">{stats.total}</div>
-            </div>
+          <div className="tally-stat-card">
+            <div className="tally-stat-label">TOTAL STOCK GROUPS</div>
+            <div className="tally-stat-value">{stats.total}</div>
+            <div className="tally-stat-sub text-muted">Configured Item Groups</div>
           </div>
         </div>
         <div className="col-xl-3 col-sm-6">
-          <div className="stat-card">
-            <div className="stat-card-icon success">
-              <i className="bi bi-diagram-3"></i>
-            </div>
-            <div className="stat-card-body">
-              <div className="stat-card-label">Parent Categories</div>
-              <div className="stat-card-value">{stats.parent}</div>
-            </div>
+          <div className="tally-stat-card">
+            <div className="tally-stat-label">PRIMARY GROUPS</div>
+            <div className="tally-stat-value text-primary">{stats.parent}</div>
+            <div className="tally-stat-sub text-muted">Top-Level Categories</div>
           </div>
         </div>
         <div className="col-xl-3 col-sm-6">
-          <div className="stat-card">
-            <div className="stat-card-icon warning">
-              <i className="bi bi-diagram-2"></i>
-            </div>
-            <div className="stat-card-body">
-              <div className="stat-card-label">Subcategories</div>
-              <div className="stat-card-value">{stats.child}</div>
-            </div>
+          <div className="tally-stat-card">
+            <div className="tally-stat-label">SUB-GROUPS</div>
+            <div className="tally-stat-value text-info">{stats.child}</div>
+            <div className="tally-stat-sub text-muted">Nested Child Categories</div>
           </div>
         </div>
         <div className="col-xl-3 col-sm-6">
-          <div className="stat-card">
-            <div className="stat-card-icon info">
-              <i className="bi bi-box-seam"></i>
-            </div>
-            <div className="stat-card-body">
-              <div className="stat-card-label">Total Products</div>
-              <div className="stat-card-value">{stats.totalProducts}</div>
-            </div>
+          <div className="tally-stat-card">
+            <div className="tally-stat-label">LINKED ITEM MASTERS</div>
+            <div className="tally-stat-value text-success">{stats.totalProducts}</div>
+            <div className="tally-stat-sub text-muted">Total Associated Items</div>
           </div>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="v-card mb-4">
-        <div className="v-card-body" style={{ padding: '16px 24px' }}>
-          <div className="row g-3 align-items-end">
+      {/* Search & Filter Bar */}
+      <div className="v-card mb-3">
+        <div className="v-card-body p-2">
+          <div className="row g-2 align-items-center">
             <div className="col-md-6">
               <div className="search-box-v">
                 <i className="bi bi-search"></i>
                 <input
+                  id="category-search-input"
                   type="text"
                   className="form-control"
-                  placeholder="Search categories, descriptions…"
+                  placeholder="Filter stock groups by name, slug, description... [Press F2]"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
             </div>
-            <div className="col-md-2">
-              <label className="form-label mb-1" style={{ fontSize: '0.75rem' }}>Status</label>
-              <select className="form-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                <option value="all">All Status</option>
+            <div className="col-md-4">
+              <select className="form-select btn-sm" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                <option value="all">All Group Statuses</option>
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
               </select>
             </div>
-            <div className="col-md-2">
-              <button className="btn-v light w-100" onClick={() => { setSearch(''); setStatusFilter('all'); }} style={{ justifyContent: 'center' }}>
-                <i className="bi bi-x-lg"></i> Clear
-              </button>
-            </div>
-            <div className="col-md-2">
-              <button className="btn-v light w-100" style={{ justifyContent: 'center' }} title="Export">
-                <i className="bi bi-download"></i> Export
-              </button>
+            <div className="col-md-2 text-end">
+              <span className="badge-v secondary fw-bold" style={{ fontSize: '0.72rem' }}>
+                {filteredCategories.length} GROUPS
+              </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Categories Grid View */}
-      <div className="row g-3 mb-4">
-        {filteredCategories.filter(c => !c.parent).map((parent) => {
-          const children = getChildren(parent.id);
-          return (
-            <div key={parent.id} className="col-md-6 col-lg-4">
-              <div className="category-card">
-                <div className="category-card-header" style={{ background: `${parent.color}15`, borderLeft: `4px solid ${parent.color}` }}>
-                  <div className="d-flex align-items-start gap-3">
-                    <div className="category-icon" style={{ background: parent.color }}>
-                      <i className={`bi ${parent.icon}`}></i>
-                    </div>
-                    <div className="flex-grow-1">
-                      <h6 className="mb-1">{parent.name}</h6>
-                      <p className="category-desc">{parent.description}</p>
-                      <div className="d-flex gap-2 align-items-center mt-2">
-                        <span className="badge-v light" style={{ fontSize: '0.75rem' }}>
-                          <i className="bi bi-box-seam"></i> {parent.products} products
-                        </span>
-                        {children.length > 0 && (
-                          <span className="badge-v info" style={{ fontSize: '0.75rem' }}>
-                            {children.length} subcategories
-                          </span>
+      {/* High-Density Tally Table */}
+      <div className="v-card">
+        <div className="v-card-header d-flex justify-content-between align-items-center">
+          <span><i className="bi bi-tag me-2" style={{ color: 'var(--primary)' }}></i>STOCK GROUP MASTERS REGISTER</span>
+          <span className="text-muted small">HIGH-DENSITY ERP VIEW</span>
+        </div>
+        <div className="v-card-body p-0" style={{ overflowX: 'auto' }}>
+          {filteredCategories.length === 0 ? (
+            <div className="empty-state-v py-4">
+              <i className="bi bi-tag text-muted" style={{ fontSize: '2rem' }}></i>
+              <h5 className="fw-bold mt-2 text-uppercase" style={{ fontSize: '0.88rem' }}>No Stock Groups Found</h5>
+              <p className="text-muted" style={{ fontSize: '0.8rem' }}>Click "[F4] Add Stock Group Master" to define a category</p>
+            </div>
+          ) : (
+            <table className="v-table">
+              <thead>
+                <tr>
+                  <th style={{ width: 40 }}>#</th>
+                  <th>STOCK GROUP NAME</th>
+                  <th>PARENT GROUP</th>
+                  <th>SLUG / ALIAS KEY</th>
+                  <th className="text-end">LINKED ITEMS</th>
+                  <th>STATUS</th>
+                  <th className="text-end" style={{ width: 120 }}>ACTIONS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredCategories.map((c, i) => (
+                  <tr key={c.id}>
+                    <td className="text-muted fw-semibold" style={{ fontSize: '0.75rem' }}>{i + 1}</td>
+                    <td>
+                      <div className="d-flex align-items-center gap-2">
+                        <i className={`bi ${c.icon || 'bi-tag'} text-primary`}></i>
+                        <div>
+                          <div className="fw-bold text-dark">{c.name}</div>
+                          {c.description && <small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>{c.description}</small>}
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span className={`badge-v ${c.parent ? 'info' : 'secondary'}`}>
+                        {getParentName(c.parent)}
+                      </span>
+                    </td>
+                    <td><code style={{ fontSize: '0.78rem', color: 'var(--primary)' }}>{c.slug}</code></td>
+                    <td className="text-end fw-bold text-success">{c.products} items</td>
+                    <td>{getStatusBadge(c.status)}</td>
+                    <td className="text-end">
+                      <div className="d-flex justify-content-end gap-1">
+                        <button className="btn-v outline-secondary btn-sm px-2" onClick={() => setViewCategory(c)} title="View Group Details">
+                          <i className="bi bi-eye"></i>
+                        </button>
+                        {can('categories.edit') && (
+                          <button className="btn-v outline-primary btn-sm px-2" onClick={() => setEditCategory(c)} title="Edit Master">
+                            <i className="bi bi-pencil"></i>
+                          </button>
+                        )}
+                        {can('categories.delete') && (
+                          <button className="btn-v outline-danger btn-sm px-2" onClick={() => handleDelete(c.id)} title="Delete Master">
+                            <i className="bi bi-trash"></i>
+                          </button>
                         )}
                       </div>
-                    </div>
-                  </div>
-                </div>
-                {children.length > 0 && (
-                  <div className="category-children">
-                    {children.map((child) => (
-                      <div key={child.id} className="category-child-item">
-                        <div className="d-flex align-items-center gap-2">
-                          <i className={`bi ${child.icon}`} style={{ color: child.color, fontSize: '1rem' }}></i>
-                          <span className="fw-semibold" style={{ fontSize: '0.85rem' }}>{child.name}</span>
-                          <span className="ms-auto text-muted" style={{ fontSize: '0.75rem' }}>
-                            {child.products} items
-                          </span>
-                        </div>
-                        <div className="category-child-actions">
-                          <button className="btn-v-mini outline-primary" onClick={() => setViewCategory(child)} title="View">
-                            <i className="bi bi-eye"></i>
-                          </button>
-                          {can('categories.edit') && (
-                            <button className="btn-v-mini outline-primary" onClick={() => setEditCategory(child)} title="Edit">
-                              <i className="bi bi-pencil"></i>
-                            </button>
-                          )}
-                          {can('categories.delete') && (
-                            <button className="btn-v-mini outline-danger" onClick={() => handleDelete(child.id)} title="Delete">
-                              <i className="bi bi-trash"></i>
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <div className="category-card-footer">
-                  <button className="btn-v-text primary" onClick={() => setViewCategory(parent)}>
-                    <i className="bi bi-eye"></i> View Details
-                  </button>
-                  {can('categories.edit') && (
-                    <button className="btn-v-text primary" onClick={() => setEditCategory(parent)}>
-                      <i className="bi bi-pencil"></i> Edit
-                    </button>
-                  )}
-                  {can('categories.delete') && (
-                    <button className="btn-v-text danger" onClick={() => handleDelete(parent.id)}>
-                      <i className="bi bi-trash"></i> Delete
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
 
-      {filteredCategories.length === 0 && (
-        <div className="v-card">
-          <div className="v-card-body">
-            <div className="empty-state-v">
-              <i className="bi bi-inbox"></i>
-              <h5>No Categories Found</h5>
-              <p>{search || statusFilter !== 'all' ? 'Try adjusting filters' : 'Click "Add Category" to get started'}</p>
+      {/* View Stock Group Modal */}
+      {viewCategory && (
+        <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setViewCategory(null); }}>
+          <div className="modal-box" style={{ maxWidth: 500 }}>
+            <div className="modal-box-header d-flex align-items-center justify-content-between">
+              <span>STOCK GROUP MASTER DETAILS &mdash; {viewCategory.id}</span>
+              <button className="close-btn" onClick={() => setViewCategory(null)}><i className="bi bi-x-lg"></i></button>
+            </div>
+            <div className="modal-box-body p-3">
+              <div className="d-flex align-items-center gap-3 mb-3 pb-3 border-bottom">
+                <i className={`bi ${viewCategory.icon || 'bi-tag'} text-primary fs-3`}></i>
+                <div>
+                  <h6 className="mb-0 fw-bold">{viewCategory.name}</h6>
+                  <div className="text-muted small">Slug Key: {viewCategory.slug}</div>
+                </div>
+              </div>
+              <div className="row g-2 small">
+                <div className="col-6"><strong>Parent Group:</strong> {getParentName(viewCategory.parent)}</div>
+                <div className="col-6"><strong>Status:</strong> {getStatusBadge(viewCategory.status)}</div>
+                <div className="col-6"><strong>Linked Items:</strong> {viewCategory.products} Products</div>
+                <div className="col-6"><strong>Created Date:</strong> {new Date(viewCategory.createdDate).toLocaleDateString('en-IN')}</div>
+                <div className="col-12 mt-2"><strong>Description:</strong> {viewCategory.description || 'N/A'}</div>
+              </div>
+            </div>
+            <div className="modal-box-footer d-flex justify-content-end">
+              <button className="btn-v outline-secondary btn-sm" onClick={() => setViewCategory(null)}>Close</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* View Category Modal */}
-      {viewCategory && <ViewCategoryModal category={viewCategory} getParentName={getParentName} onClose={() => setViewCategory(null)} />}
-
-      {/* Create/Edit Category Modal */}
-      {showCreateModal && <CategoryFormModal categories={categories} onClose={() => setShowCreateModal(false)} onSave={handleCreate} />}
-      {editCategory && <CategoryFormModal category={editCategory} categories={categories} onClose={() => setEditCategory(null)} onSave={handleUpdate} />}
+      {/* Create / Edit Modal */}
+      {(showCreateModal || editCategory) && (
+        <CategoryModal
+          category={editCategory}
+          parentCategories={parentCategories}
+          onClose={() => { setShowCreateModal(false); setEditCategory(null); }}
+          onSave={(data) => {
+            if (editCategory) {
+              setCategories(categories.map(c => c.id === data.id ? data : c));
+              categoriesDB = categories.map(c => c.id === data.id ? data : c);
+            } else {
+              const newCat = { ...data, id: `CAT-${String(nextCategoryNum++).padStart(3, '0')}`, products: 0, createdDate: new Date() };
+              setCategories([newCat, ...categories]);
+              categoriesDB = [newCat, ...categoriesDB];
+            }
+            setShowCreateModal(false);
+            setEditCategory(null);
+          }}
+        />
+      )}
     </div>
   );
 }
 
-/* ═══════════════════════════════════════════════════════════
-   VIEW CATEGORY MODAL
-═══════════════════════════════════════════════════════════ */
-function ViewCategoryModal({ category, getParentName, onClose }) {
-  return (
-    <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal-box" style={{ maxWidth: 600 }}>
-        <div className="modal-box-header">
-          <i className="bi bi-tag" style={{ color: 'var(--primary)' }}></i>
-          Category Details
-          <button className="close-btn" onClick={onClose}>
-            <i className="bi bi-x-lg"></i>
-          </button>
-        </div>
-        <div className="modal-box-body">
-          {/* Header Card */}
-          <div className="v-card mb-3" style={{ background: `${category.color}15`, border: `1px solid ${category.color}40` }}>
-            <div className="v-card-body" style={{ padding: '20px' }}>
-              <div className="d-flex align-items-start gap-3">
-                <div className="category-icon-large" style={{ background: category.color }}>
-                  <i className={`bi ${category.icon}`}></i>
-                </div>
-                <div className="flex-grow-1">
-                  <h5 className="mb-1">{category.name}</h5>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '8px' }}>
-                    {category.description}
-                  </div>
-                  <div className="d-flex gap-2">
-                    {getStatusBadge(category.status)}
-                    <span className="badge-v light">
-                      <i className="bi bi-box-seam"></i> {category.products} products
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Details */}
-          <div className="row g-3">
-            <div className="col-md-6">
-              <label className="form-label">Category ID</label>
-              <div className="info-box">{category.id}</div>
-            </div>
-            <div className="col-md-6">
-              <label className="form-label">URL Slug</label>
-              <div className="info-box">{category.slug}</div>
-            </div>
-            <div className="col-md-6">
-              <label className="form-label">Parent Category</label>
-              <div className="info-box">{getParentName(category.parent)}</div>
-            </div>
-            <div className="col-md-6">
-              <label className="form-label">Created Date</label>
-              <div className="info-box">
-                {new Date(category.createdDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-              </div>
-            </div>
-            <div className="col-md-6">
-              <label className="form-label">Icon</label>
-              <div className="info-box">
-                <i className={`bi ${category.icon}`} style={{ color: category.color, marginRight: '8px' }}></i>
-                {category.icon}
-              </div>
-            </div>
-            <div className="col-md-6">
-              <label className="form-label">Color</label>
-              <div className="info-box">
-                <span style={{ display: 'inline-block', width: 20, height: 20, background: category.color, borderRadius: 4, marginRight: 8, verticalAlign: 'middle' }}></span>
-                {category.color}
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="modal-box-footer">
-          <button className="btn-v light" onClick={onClose}>Close</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════
-   CATEGORY FORM MODAL (Create/Edit)
-═══════════════════════════════════════════════════════════ */
-function CategoryFormModal({ category, categories, onClose, onSave }) {
-  const [form, setForm] = useState(category || {
-    name: '',
-    slug: '',
-    parent: null,
-    description: '',
-    icon: 'bi-tag',
-    color: '#7367f0',
-    status: 'active',
-  });
-  const [error, setError] = useState('');
-
-  const icons = [
-    'bi-tag', 'bi-lightning-charge', 'bi-laptop', 'bi-phone', 'bi-briefcase', 
-    'bi-back', 'bi-pen', 'bi-usb-symbol', 'bi-hdd-network', 'bi-printer',
-    'bi-camera', 'bi-headphones', 'bi-tv', 'bi-watch', 'bi-controller'
-  ];
-
-  const colors = [
-    '#7367f0', '#00cfe8', '#28c76f', '#ff9f43', '#ea5455',
-    '#9c27b0', '#3f51b5', '#009688', '#ff5722', '#795548'
-  ];
-
-  // Auto-generate slug from name
-  const generateSlug = (name) => {
-    return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-  };
-
-  const handleNameChange = (name) => {
-    setForm({ ...form, name, slug: generateSlug(name) });
-  };
+function CategoryModal({ category, parentCategories, onClose, onSave }) {
+  const [name, setName] = useState(category ? category.name : '');
+  const [slug, setSlug] = useState(category ? category.slug : '');
+  const [parent, setParent] = useState(category ? category.parent || '' : '');
+  const [description, setDescription] = useState(category ? category.description : '');
+  const [icon, setIcon] = useState(category ? category.icon : 'bi-tag');
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    setError('');
-
-    if (!form.name || !form.slug || !form.description) {
-      setError('Please fill all required fields');
-      return;
-    }
-
-    // Check for duplicate slug
-    const duplicateSlug = categories.find(c => c.slug === form.slug && c.id !== category?.id);
-    if (duplicateSlug) {
-      setError('A category with this slug already exists');
-      return;
-    }
-
-    onSave(form);
-    onClose();
+    onSave({
+      ...(category || {}),
+      name,
+      slug: slug || name.toLowerCase().replace(/\s+/g, '-'),
+      parent: parent || null,
+      description,
+      icon,
+      status: 'active',
+    });
   };
-
-  const parentCategories = categories.filter(c => !c.parent && c.id !== category?.id);
 
   return (
     <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal-box" style={{ maxWidth: 700 }}>
-        <div className="modal-box-header">
-          <i className="bi bi-tag" style={{ color: 'var(--primary)' }}></i>
-          {category ? 'Edit Category' : 'Add New Category'}
-          <button className="close-btn" onClick={onClose}>
-            <i className="bi bi-x-lg"></i>
-          </button>
+      <div className="modal-box" style={{ maxWidth: 550 }}>
+        <div className="modal-box-header d-flex align-items-center justify-content-between">
+          <span>{category ? 'MODIFY STOCK GROUP MASTER' : 'CREATE NEW STOCK GROUP MASTER'}</span>
+          <button className="close-btn" onClick={onClose}><i className="bi bi-x-lg"></i></button>
         </div>
         <form onSubmit={handleSubmit}>
-          <div className="modal-box-body">
-            {error && (
-              <div className="alert-v danger mb-3">
-                <i className="bi bi-exclamation-circle"></i> {error}
-              </div>
-            )}
-
-            {/* Basic Info */}
-            <div className="form-section-title mb-2">
-              <i className="bi bi-info-circle"></i> Basic Information
-            </div>
-            <div className="row g-3 mb-3">
+          <div className="modal-box-body p-3">
+            <div className="row g-2 mb-3">
               <div className="col-md-6">
-                <label className="form-label">Category Name *</label>
-                <input
-                  className="form-control"
-                  placeholder="e.g. Electronics"
-                  value={form.name}
-                  onChange={(e) => handleNameChange(e.target.value)}
-                  required
-                />
+                <label className="form-label">Stock Group Name *</label>
+                <input className="form-control" placeholder="e.g. Raw Materials" value={name} onChange={(e) => setName(e.target.value)} required />
               </div>
               <div className="col-md-6">
-                <label className="form-label">URL Slug *</label>
-                <input
-                  className="form-control"
-                  placeholder="e.g. electronics"
-                  value={form.slug}
-                  onChange={(e) => setForm({ ...form, slug: e.target.value })}
-                  required
-                />
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                  Auto-generated from name
-                </div>
-              </div>
-              <div className="col-12">
-                <label className="form-label">Description *</label>
-                <textarea
-                  className="form-control"
-                  rows="2"
-                  placeholder="Brief description of the category"
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  required
-                ></textarea>
+                <label className="form-label">Slug / Alias Key</label>
+                <input className="form-control" placeholder="e.g. raw-materials" value={slug} onChange={(e) => setSlug(e.target.value)} />
               </div>
               <div className="col-md-6">
-                <label className="form-label">Parent Category</label>
-                <select className="form-select" value={form.parent || ''} onChange={(e) => setForm({ ...form, parent: e.target.value || null })}>
-                  <option value="">None (Parent Category)</option>
-                  {parentCategories.map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                <label className="form-label">Parent Group</label>
+                <select className="form-select" value={parent} onChange={(e) => setParent(e.target.value)}>
+                  <option value="">Primary (Top Level)</option>
+                  {parentCategories.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
                 </select>
               </div>
               <div className="col-md-6">
-                <label className="form-label">Status</label>
-                <select className="form-select" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
+                <label className="form-label">Display Icon</label>
+                <select className="form-select" value={icon} onChange={(e) => setIcon(e.target.value)}>
+                  <option value="bi-tag">Tag</option>
+                  <option value="bi-box-seam">Box</option>
+                  <option value="bi-lightning-charge">Lightning</option>
+                  <option value="bi-laptop">Laptop</option>
+                  <option value="bi-briefcase">Briefcase</option>
                 </select>
               </div>
-            </div>
-
-            <div className="form-divider"></div>
-
-            {/* Appearance */}
-            <div className="form-section-title mb-2">
-              <i className="bi bi-palette"></i> Appearance
-            </div>
-            <div className="row g-3">
               <div className="col-12">
-                <label className="form-label">Icon</label>
-                <div className="icon-selector">
-                  {icons.map((icon) => (
-                    <button
-                      key={icon}
-                      type="button"
-                      className={`icon-option${form.icon === icon ? ' selected' : ''}`}
-                      onClick={() => setForm({ ...form, icon })}
-                      title={icon}
-                    >
-                      <i className={`bi ${icon}`}></i>
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="col-12">
-                <label className="form-label">Color</label>
-                <div className="color-selector">
-                  {colors.map((color) => (
-                    <button
-                      key={color}
-                      type="button"
-                      className={`color-option${form.color === color ? ' selected' : ''}`}
-                      style={{ background: color }}
-                      onClick={() => setForm({ ...form, color })}
-                      title={color}
-                    >
-                      {form.color === color && <i className="bi bi-check"></i>}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="col-12">
-                <div className="alert-v info" style={{ fontSize: '0.85rem', padding: '12px 16px' }}>
-                  <div className="d-flex align-items-center gap-2">
-                    <div className="category-icon-preview" style={{ background: form.color }}>
-                      <i className={`bi ${form.icon}`}></i>
-                    </div>
-                    <div>
-                      <strong>Preview:</strong> {form.name || 'Category Name'}
-                    </div>
-                  </div>
-                </div>
+                <label className="form-label">Description / Remarks</label>
+                <textarea className="form-control" rows={2} placeholder="Optional group notes" value={description} onChange={(e) => setDescription(e.target.value)} />
               </div>
             </div>
           </div>
-          <div className="modal-box-footer">
-            <button className="btn-v light" type="button" onClick={onClose}>Cancel</button>
-            <button className="btn-v primary" type="submit">
-              <i className="bi bi-check-circle"></i> {category ? 'Update' : 'Create'} Category
+          <div className="modal-box-footer d-flex justify-content-end gap-2">
+            <button type="button" className="btn-v outline-secondary btn-sm" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn-v primary btn-sm">
+              <i className="bi bi-check-circle me-1"></i> {category ? 'Update Group' : 'Create Group'}
             </button>
           </div>
         </form>

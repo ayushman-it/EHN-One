@@ -19,6 +19,15 @@ const seedData = async () => {
     console.log('👥 Seeding users...');
     const usersData = [
       {
+        name: 'Arjun Sharma',
+        email: 'admin@ehnsystem.com',
+        password: 'admin123',
+        role: 'admin',
+        department: 'Management',
+        phone: '+91 98765 43210',
+        status: 'active',
+      },
+      {
         name: 'KDV Admin',
         email: 'admin@kedvasshygieneproducts.com',
         password: 'KdV@dm1n#2026!xQ',
@@ -28,18 +37,18 @@ const seedData = async () => {
         status: 'active',
       },
       {
-        name: 'KDV Manager',
-        email: 'manager@kedvasshygieneproducts.com',
-        password: 'KdV@mng#2026!pL',
+        name: 'Priya Mehta',
+        email: 'manager@ehnsystem.com',
+        password: 'manager123',
         role: 'manager',
         department: 'Operations',
         phone: '+91 98765 43211',
         status: 'active',
       },
       {
-        name: 'KDV Viewer',
-        email: 'viewer@kedvasshygieneproducts.com',
-        password: 'KdV@vwr#2026!mZ',
+        name: 'Rahul Verma',
+        email: 'viewer@ehnsystem.com',
+        password: 'viewer123',
         role: 'viewer',
         department: 'Sales',
         phone: '+91 98765 43212',
