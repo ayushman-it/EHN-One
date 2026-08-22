@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { changePassword, getSettings, updateSettings } from '../services/api';
-import { getThemeConfig, saveThemeConfig, COLOR_SWATCHES, PRESET_THEMES } from '../utils/themeHelper';
+import { DEFAULT_THEME, getThemeConfig, saveThemeConfig, COLOR_SWATCHES, PRESET_THEMES } from '../utils/themeHelper';
 import { getCustomMenuOrder, saveCustomMenuOrder, resetCustomMenuOrder } from '../utils/menuHelper';
 import { getCustomHotkeys, saveCustomHotkeys, resetCustomHotkeys } from '../utils/hotkeyHelper';
 

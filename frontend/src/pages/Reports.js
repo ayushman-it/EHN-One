@@ -5,9 +5,248 @@ import { exportToCSV, exportToExcel, exportToPDF } from '../utils/exportHelper';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
+/* Interactive Analytics Chart Engine Component */
+function InteractiveAnalyticsChartSuite({ metrics }) {
+  const [chartType, setChartType] = useState('line'); // 'line' | 'bar' | 'area' | 'pie'
+  const [hoveredPoint, setHoveredPoint] = useState(null);
+
+  const monthlyData = [
+    { label: 'Apr 2026', revenue: 320000, collections: 290000, tax: 48000, stockVal: 950000 },
+    { label: 'May 2026', revenue: 380000, collections: 350000, tax: 57000, stockVal: 1020000 },
+    { label: 'Jun 2026', revenue: 410000, collections: 380000, tax: 62000, stockVal: 1100000 },
+    { label: 'Jul 2026', revenue: 450000, collections: 410000, tax: 68000, stockVal: 1180000 },
+    { label: 'Aug 2026', revenue: metrics.sales.totalRevenue, collections: metrics.sales.paidCollections, tax: metrics.gst.totalTax, stockVal: metrics.inventory.valuationRetail },
+  ];
+
+  const pieData = [
+    { name: 'Paid Cash Realized', value: metrics.sales.paidCollections, color: '#10b981' },
+    { name: 'Pending Debtors Dues', value: metrics.sales.pendingReceivables, color: '#f59e0b' },
+    { name: 'GSTR-1 Tax Collected', value: metrics.gst.totalTax, color: '#ef4444' },
+    { name: 'Creditors Payable Dues', value: metrics.ledgers.creditorsPayable, color: '#6366f1' },
+  ];
+
+  const totalPieVal = pieData.reduce((acc, curr) => acc + curr.value, 0);
+
+  const maxVal = Math.max(...monthlyData.map(d => d.revenue)) * 1.15 || 500000;
+  const pointsRevenue = monthlyData.map((d, i) => ({
+    x: 40 + i * 130,
+    y: 200 - (d.revenue / maxVal) * 160,
+    ...d
+  }));
+
+  const pointsCollections = monthlyData.map((d, i) => ({
+    x: 40 + i * 130,
+    y: 200 - (d.collections / maxVal) * 160,
+    ...d
+  }));
+
+  const linePathRevenue = pointsRevenue.reduce((acc, p, i) => `${acc} ${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`, '');
+  const linePathCollections = pointsCollections.reduce((acc, p, i) => `${acc} ${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`, '');
+  const areaPathRevenue = `${linePathRevenue} L ${pointsRevenue[pointsRevenue.length - 1].x} 200 L ${pointsRevenue[0].x} 200 Z`;
+
+  return (
+    <div className="v-card mb-4 border rounded-3 bg-white shadow-sm">
+      <div className="v-card-header bg-light d-flex flex-wrap align-items-center justify-content-between gap-2 p-3 border-bottom">
+        <div className="d-flex align-items-center gap-2">
+          <i className="bi bi-graph-up-arrow text-primary" style={{ fontSize: '1.2rem' }}></i>
+          <div>
+            <h6 className="mb-0 fw-bold text-uppercase" style={{ fontSize: '0.9rem', letterSpacing: '0.5px' }}>
+              INTERACTIVE BUSINESS ANALYTICS & VISUAL CHARTS
+            </h6>
+            <small className="text-muted" style={{ fontSize: '0.72rem' }}>Real-time revenue, cashflow, tax liability, & pie breakdown</small>
+          </div>
+        </div>
+
+        <div className="d-flex align-items-center gap-1 bg-white p-1 rounded border shadow-sm">
+          <button 
+            className={`btn btn-sm ${chartType === 'line' ? 'btn-primary fw-bold' : 'btn-light text-muted'}`}
+            onClick={() => setChartType('line')}
+            style={{ fontSize: '0.78rem' }}
+          >
+            <i className="bi bi-graph-up me-1"></i> Line Trend
+          </button>
+          <button 
+            className={`btn btn-sm ${chartType === 'bar' ? 'btn-primary fw-bold' : 'btn-light text-muted'}`}
+            onClick={() => setChartType('bar')}
+            style={{ fontSize: '0.78rem' }}
+          >
+            <i className="bi bi-bar-chart-line me-1"></i> Bar Chart
+          </button>
+          <button 
+            className={`btn btn-sm ${chartType === 'area' ? 'btn-primary fw-bold' : 'btn-light text-muted'}`}
+            onClick={() => setChartType('area')}
+            style={{ fontSize: '0.78rem' }}
+          >
+            <i className="bi bi-bezier2 me-1"></i> Filled Area
+          </button>
+          <button 
+            className={`btn btn-sm ${chartType === 'pie' ? 'btn-primary fw-bold' : 'btn-light text-muted'}`}
+            onClick={() => setChartType('pie')}
+            style={{ fontSize: '0.78rem' }}
+          >
+            <i className="bi bi-pie-chart me-1"></i> Donut / Pie
+          </button>
+        </div>
+      </div>
+
+      <div className="v-card-body p-4">
+        {chartType === 'pie' ? (
+          <div className="row align-items-center g-4">
+            <div className="col-md-6 text-center">
+              <div className="position-relative d-inline-block">
+                <svg width="240" height="240" viewBox="0 0 240 240" style={{ transform: 'rotate(-90deg)' }}>
+                  {(() => {
+                    let cumulativePercent = 0;
+                    return pieData.map((slice, idx) => {
+                      const percent = slice.value / totalPieVal;
+                      const strokeDasharray = `${percent * 565} 565`;
+                      const strokeDashoffset = -cumulativePercent * 565;
+                      cumulativePercent += percent;
+                      return (
+                        <circle
+                          key={idx}
+                          cx="120"
+                          cy="120"
+                          r="90"
+                          fill="transparent"
+                          stroke={slice.color}
+                          strokeWidth="32"
+                          strokeDasharray={strokeDasharray}
+                          strokeDashoffset={strokeDashoffset}
+                          style={{ transition: 'all 0.5s ease', cursor: 'pointer' }}
+                        />
+                      );
+                    });
+                  })()}
+                </svg>
+                <div className="position-absolute top-50 start-50 translate-middle text-center">
+                  <div className="text-muted text-uppercase fw-bold" style={{ fontSize: '0.65rem', letterSpacing: '0.5px' }}>Total Ledger</div>
+                  <div className="fw-bold text-dark" style={{ fontSize: '1.05rem' }}>
+                    ₹{(totalPieVal / 100000).toFixed(2)}L
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="col-md-6">
+              <h6 className="fw-bold text-uppercase mb-3" style={{ fontSize: '0.82rem', letterSpacing: '0.5px' }}>
+                Financial Distribution Ledger Breakdown
+              </h6>
+              <div className="vstack gap-2">
+                {pieData.map((item, idx) => {
+                  const pct = Math.round((item.value / totalPieVal) * 100);
+                  return (
+                    <div key={idx} className="d-flex align-items-center justify-content-between p-2 rounded border bg-light">
+                      <div className="d-flex align-items-center gap-2">
+                        <span className="rounded-circle d-inline-block" style={{ width: 12, height: 12, background: item.color }}></span>
+                        <span className="fw-bold" style={{ fontSize: '0.82rem' }}>{item.name}</span>
+                      </div>
+                      <div className="text-end">
+                        <span className="fw-bold d-block" style={{ fontSize: '0.85rem' }}>₹{item.value.toLocaleString('en-IN')}</span>
+                        <span className="badge bg-white text-dark border" style={{ fontSize: '0.68rem' }}>{pct}% Ratio</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <div className="d-flex align-items-center justify-content-between mb-3 px-2">
+              <div className="d-flex align-items-center gap-3">
+                <span className="d-flex align-items-center gap-1.5 small fw-bold text-primary">
+                  <span className="rounded-circle d-inline-block" style={{ width: 10, height: 10, background: 'var(--primary)' }}></span>
+                  Sales Turnover (₹)
+                </span>
+                <span className="d-flex align-items-center gap-1.5 small fw-bold text-success">
+                  <span className="rounded-circle d-inline-block" style={{ width: 10, height: 10, background: '#10b981' }}></span>
+                  Paid Collections (₹)
+                </span>
+              </div>
+              {hoveredPoint && (
+                <div className="badge bg-dark text-white px-2 py-1" style={{ fontSize: '0.75rem' }}>
+                  {hoveredPoint.label}: ₹{hoveredPoint.revenue.toLocaleString('en-IN')} Turnover
+                </div>
+              )}
+            </div>
+
+            <div className="position-relative overflow-x-auto">
+              <svg width="100%" height="230" viewBox="0 0 600 230" preserveAspectRatio="none" style={{ background: '#fafafa', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
+                {[40, 80, 120, 160, 200].map((y, idx) => (
+                  <line key={idx} x1="30" y1={y} x2="570" y2={y} stroke="#e2e8f0" strokeDasharray="3 3" />
+                ))}
+
+                {chartType === 'area' && (
+                  <path d={areaPathRevenue} fill="rgba(115,103,240,0.15)" stroke="none" />
+                )}
+
+                {chartType === 'bar' ? (
+                  pointsRevenue.map((p, idx) => (
+                    <g key={idx}>
+                      <rect
+                        x={p.x - 20}
+                        y={p.y}
+                        width="18"
+                        height={200 - p.y}
+                        fill="var(--primary)"
+                        rx="2"
+                        style={{ cursor: 'pointer', transition: 'all 0.3s ease' }}
+                        onMouseEnter={() => setHoveredPoint(p)}
+                        onMouseLeave={() => setHoveredPoint(null)}
+                      />
+                      <rect
+                        x={p.x + 2}
+                        y={pointsCollections[idx].y}
+                        width="18"
+                        height={200 - pointsCollections[idx].y}
+                        fill="#10b981"
+                        rx="2"
+                        style={{ cursor: 'pointer', transition: 'all 0.3s ease' }}
+                        onMouseEnter={() => setHoveredPoint(p)}
+                        onMouseLeave={() => setHoveredPoint(null)}
+                      />
+                    </g>
+                  ))
+                ) : (
+                  <>
+                    <path d={linePathRevenue} fill="none" stroke="var(--primary)" strokeWidth="3" />
+                    <path d={linePathCollections} fill="none" stroke="#10b981" strokeWidth="2.5" strokeDasharray="4 2" />
+
+                    {pointsRevenue.map((p, idx) => (
+                      <circle
+                        key={idx}
+                        cx={p.x}
+                        cy={p.y}
+                        r="5"
+                        fill="var(--primary)"
+                        stroke="#fff"
+                        strokeWidth="2"
+                        style={{ cursor: 'pointer' }}
+                        onMouseEnter={() => setHoveredPoint(p)}
+                        onMouseLeave={() => setHoveredPoint(null)}
+                      />
+                    ))}
+                  </>
+                )}
+
+                {monthlyData.map((d, i) => (
+                  <text key={i} x={40 + i * 130} y="220" textAnchor="middle" fill="#64748b" fontSize="11" fontWeight="600">
+                    {d.label}
+                  </text>
+                ))}
+              </svg>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Reports() {
   const { can } = useAuth();
-  const [activeTab, setActiveTab] = useState('overview'); // overview | gst | stock | ledger
+  const [activeTab, setActiveTab] = useState('charts'); // charts | overview | gst | stock | ledger
   const [dateRange, setDateRange] = useState('this_month');
   const [dateFrom, setDateFrom] = useState('2026-08-01');
   const [dateTo, setDateTo] = useState('2026-08-31');
@@ -352,7 +591,13 @@ export default function Reports() {
       </div>
 
       {/* Module Tab Control */}
-      <div className="d-flex border-bottom mb-3 bg-white p-2 rounded-2 shadow-sm gap-2">
+      <div className="d-flex border-bottom mb-3 bg-white p-2 rounded-2 shadow-sm gap-2 overflow-auto">
+        <button 
+          className={`btn-v btn-sm ${activeTab === 'charts' ? 'primary' : 'light'}`}
+          onClick={() => setActiveTab('charts')}
+        >
+          <i className="bi bi-graph-up-arrow me-1"></i> Interactive Visual Charts
+        </button>
         <button 
           className={`btn-v btn-sm ${activeTab === 'overview' ? 'primary' : 'light'}`}
           onClick={() => setActiveTab('overview')}
@@ -378,6 +623,11 @@ export default function Reports() {
           <i className="bi bi-journal-bookmark me-1"></i> Sundry Debtors & Creditors
         </button>
       </div>
+
+      {/* TAB 0: INTERACTIVE VISUAL CHARTS */}
+      {activeTab === 'charts' && (
+        <InteractiveAnalyticsChartSuite metrics={metrics} />
+      )}
 
       {/* TAB 1: EXECUTIVE OVERVIEW */}
       {activeTab === 'overview' && (

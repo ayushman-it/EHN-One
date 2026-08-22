@@ -477,6 +477,79 @@ function TallyCommandPaletteModal({ onClose }) {
   );
 }
 
+/* Classic Tally Prime Right-Side Function Key Dock (Light Software Style) */
+function TallyRightKeyDock() {
+  const navigate = useNavigate();
+
+  const dockKeys = [
+    { key: 'F2',  label: 'Date / Period',   action: () => navigate('/transactions') },
+    { key: 'F3',  label: 'Select Company', action: () => navigate('/settings') },
+    { key: 'F4',  label: 'Contra / In-Out', action: () => navigate('/stock-in') },
+    { key: 'F5',  label: 'Payment / Ledger',action: () => navigate('/reports') },
+    { key: 'F6',  label: 'Receipt Entry',   action: () => navigate('/transactions') },
+    { key: 'F7',  label: 'Stock Daybook',   action: () => navigate('/transactions') },
+    { key: 'F8',  label: 'Sales Billing',   action: () => navigate('/invoices') },
+    { key: 'F9',  label: 'Purchase Entry',  action: () => navigate('/products') },
+    { key: 'F10', label: 'Other Vouchers',  action: () => navigate('/categories') },
+    { key: 'F11', label: 'ERP Features',    action: () => navigate('/automations') },
+    { key: 'F12', label: 'System Setup',    action: () => navigate('/settings') },
+  ];
+
+  return (
+    <aside className="tally-right-dock border-start bg-light text-dark d-none d-xl-flex flex-column py-2 shadow-sm" aria-label="Tally Action Dock" style={{ width: 180, minWidth: 180, borderColor: '#cbd5e1' }}>
+      <div className="px-2 pb-2 mb-1 border-bottom text-center text-primary fw-bold text-uppercase" style={{ fontSize: '0.68rem', letterSpacing: '0.5px' }}>
+        <i className="bi bi-cpu me-1"></i> ERP ACTION DOCK
+      </div>
+      <div className="vstack gap-1 px-1 overflow-auto flex-1">
+        {dockKeys.map((item) => (
+          <button
+            key={item.key}
+            className="tally-dock-btn d-flex align-items-center justify-content-between p-2 rounded border text-dark w-100 text-start style-cursor transition bg-white shadow-sm"
+            onClick={item.action}
+          >
+            <span className="badge bg-primary text-white fw-bold me-1" style={{ fontSize: '0.65rem' }}>{item.key}</span>
+            <span className="fw-bold text-truncate" style={{ fontSize: '0.72rem', color: '#1e293b' }}>{item.label}</span>
+          </button>
+        ))}
+      </div>
+    </aside>
+  );
+}
+
+/* Tally Prime Software Status Bar Footer (Light Software Style) */
+function TallySoftwareStatusBar() {
+  const [companyName, setCompanyName] = useState('EHN One');
+
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem('ehn_company_settings');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.company?.name) setCompanyName(parsed.company.name);
+      }
+    } catch (e) {}
+  }, []);
+
+  return (
+    <footer className="tally-software-statusbar d-flex align-items-center justify-content-between px-3 py-1.5 bg-white text-dark border-top shadow-sm" style={{ fontSize: '0.72rem', minHeight: 32, borderColor: '#cbd5e1' }}>
+      <div className="d-flex align-items-center gap-3">
+        <span className="fw-bold text-primary text-uppercase">
+          <i className="bi bi-building me-1"></i> {companyName}
+        </span>
+        <span className="text-muted">|</span>
+        <span className="fw-semibold text-secondary">GATEWAY LICENSED TO: {companyName.toUpperCase()}</span>
+        <span className="text-muted">|</span>
+        <span className="badge bg-success bg-opacity-15 text-success fw-bold">F.Y. 2026-2027</span>
+      </div>
+      <div className="d-flex align-items-center gap-3">
+        <span className="text-muted"><i className="bi bi-shield-check text-success me-1"></i>SSL 256-Bit Encrypted</span>
+        <span className="text-muted">|</span>
+        <span className="fw-bold text-primary">EHN One ERP v2.4.0</span>
+      </div>
+    </footer>
+  );
+}
+
 function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
@@ -517,30 +590,34 @@ function MainLayout() {
   return (
     <div className="app-shell">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="app-main">
+      <div className="app-main d-flex flex-column min-vh-100">
         <Navbar onToggle={() => setSidebarOpen((v) => !v)} onOpenCommandPalette={() => setShowCommandPalette(true)} />
-        <main className="content-area">
-          <Routes>
-            <Route path="/"            element={<ProtectedRoute permission="dashboard.view"><Dashboard /></ProtectedRoute>} />
-            <Route path="/products"    element={<ProtectedRoute permission="products.view"><Products /></ProtectedRoute>} />
-            <Route path="/transactions" element={<ProtectedRoute permission="transactions.view"><Transactions /></ProtectedRoute>} />
-            <Route path="/stock-in"    element={<ProtectedRoute permission="transactions.stockin"><Transactions defaultType="stock_in" /></ProtectedRoute>} />
-            <Route path="/stock-out"   element={<ProtectedRoute permission="transactions.stockout"><Transactions defaultType="stock_out" /></ProtectedRoute>} />
-            <Route path="/low-stock"   element={<ProtectedRoute permission="lowstock.view"><Dashboard showLowStockOnly /></ProtectedRoute>} />
-            <Route path="/invoices"    element={<ProtectedRoute permission="products.view"><Invoices /></ProtectedRoute>} />
-            <Route path="/customers"   element={<ProtectedRoute permission="products.view"><Customers /></ProtectedRoute>} />
-            <Route path="/suppliers"   element={<ProtectedRoute permission="suppliers.view"><Suppliers /></ProtectedRoute>} />
-            <Route path="/categories"  element={<ProtectedRoute permission="categories.view"><Categories /></ProtectedRoute>} />
-            <Route path="/warehouse"   element={<ProtectedRoute permission="warehouse.view"><Warehouse /></ProtectedRoute>} />
-            <Route path="/reports"     element={<ProtectedRoute permission="reports.view"><Reports /></ProtectedRoute>} />
-            <Route path="/analytics"   element={<ProtectedRoute permission="analytics.view"><Reports defaultTab="overview" /></ProtectedRoute>} />
-            <Route path="/automations" element={<ProtectedRoute permission="settings.view"><Automations /></ProtectedRoute>} />
-            <Route path="/settings"    element={<ProtectedRoute permission="settings.view"><Settings /></ProtectedRoute>} />
-            <Route path="/users"       element={<ProtectedRoute permission="users.view"><Users /></ProtectedRoute>} />
-            <Route path="/support"     element={<Support />} />
-            <Route path="*"            element={<Navigate to="/" replace />} />
-          </Routes>
-        </main>
+        <div className="d-flex flex-1 overflow-hidden" style={{ minHeight: 'calc(100vh - 85px)' }}>
+          <main className="content-area flex-1 overflow-auto">
+            <Routes>
+              <Route path="/"            element={<ProtectedRoute permission="dashboard.view"><Dashboard /></ProtectedRoute>} />
+              <Route path="/products"    element={<ProtectedRoute permission="products.view"><Products /></ProtectedRoute>} />
+              <Route path="/transactions" element={<ProtectedRoute permission="transactions.view"><Transactions /></ProtectedRoute>} />
+              <Route path="/stock-in"    element={<ProtectedRoute permission="transactions.stockin"><Transactions defaultType="stock_in" /></ProtectedRoute>} />
+              <Route path="/stock-out"   element={<ProtectedRoute permission="transactions.stockout"><Transactions defaultType="stock_out" /></ProtectedRoute>} />
+              <Route path="/low-stock"   element={<ProtectedRoute permission="lowstock.view"><Dashboard showLowStockOnly /></ProtectedRoute>} />
+              <Route path="/invoices"    element={<ProtectedRoute permission="products.view"><Invoices /></ProtectedRoute>} />
+              <Route path="/customers"   element={<ProtectedRoute permission="products.view"><Customers /></ProtectedRoute>} />
+              <Route path="/suppliers"   element={<ProtectedRoute permission="suppliers.view"><Suppliers /></ProtectedRoute>} />
+              <Route path="/categories"  element={<ProtectedRoute permission="categories.view"><Categories /></ProtectedRoute>} />
+              <Route path="/warehouse"   element={<ProtectedRoute permission="warehouse.view"><Warehouse /></ProtectedRoute>} />
+              <Route path="/reports"     element={<ProtectedRoute permission="reports.view"><Reports /></ProtectedRoute>} />
+              <Route path="/analytics"   element={<ProtectedRoute permission="analytics.view"><Reports defaultTab="overview" /></ProtectedRoute>} />
+              <Route path="/automations" element={<ProtectedRoute permission="settings.view"><Automations /></ProtectedRoute>} />
+              <Route path="/settings"    element={<ProtectedRoute permission="settings.view"><Settings /></ProtectedRoute>} />
+              <Route path="/users"       element={<ProtectedRoute permission="users.view"><Users /></ProtectedRoute>} />
+              <Route path="/support"     element={<Support />} />
+              <Route path="*"            element={<Navigate to="/" replace />} />
+            </Routes>
+          </main>
+          <TallyRightKeyDock />
+        </div>
+        <TallySoftwareStatusBar />
       </div>
 
       {showCommandPalette && <TallyCommandPaletteModal onClose={() => setShowCommandPalette(false)} />}

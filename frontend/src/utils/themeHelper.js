@@ -18,24 +18,48 @@ export const COLOR_SWATCHES = [
 
 export const PRESET_THEMES = [
   {
-    id: 'vuexy_classic',
-    name: 'Vuexy Purple Classic',
+    id: 'tally_prime_classic',
+    name: 'Tally Prime Gold & Teal Classic',
+    primaryColor: '#0284c7',
+    bodyBgColor: '#f0f9ff',
+    textColor: '#0f172a',
+    sidebarBgColor: '#0f172a',
+    sidebarTheme: 'navy',
+    appStyle: 'software',
+    desc: 'Authentic Tally Prime Teal Header & Navy Sidebar Desktop ERP Theme'
+  },
+  {
+    id: 'busy_erp_slate',
+    name: 'Busy ERP Slate & Emerald',
+    primaryColor: '#059669',
+    bodyBgColor: '#f0fdf4',
+    textColor: '#064e3b',
+    sidebarBgColor: '#064e3b',
+    sidebarTheme: 'dark',
+    appStyle: 'software',
+    desc: 'Busy ERP Desktop style with high-contrast emerald & dark slate palette'
+  },
+  {
+    id: 'sap_enterprise_dark',
+    name: 'SAP Enterprise Dark Mode',
+    primaryColor: '#3b82f6',
+    bodyBgColor: '#0f172a',
+    textColor: '#f8fafc',
+    sidebarBgColor: '#1e293b',
+    sidebarTheme: 'navy',
+    appStyle: 'software',
+    desc: 'High-density SAP ERP Dark Mode with electric blue accents'
+  },
+  {
+    id: 'ehn_purple_classic',
+    name: 'EHN One Purple Classic',
     primaryColor: '#7367f0',
     bodyBgColor: '#f8f7fa',
     textColor: '#2f2b3d',
     sidebarBgColor: '#ffffff',
     sidebarTheme: 'light',
-    desc: 'Default professional violet UI with crisp light background & light sidebar'
-  },
-  {
-    id: 'enterprise_blue',
-    name: 'Enterprise Blue ERP',
-    primaryColor: '#2563eb',
-    bodyBgColor: '#f1f5f9',
-    textColor: '#0f172a',
-    sidebarBgColor: '#0f172a',
-    sidebarTheme: 'navy',
-    desc: 'Clean corporate blue dashboard with executive dark navy sidebar'
+    appStyle: 'software',
+    desc: 'Clean corporate violet theme with sharp desktop software edges'
   }
 ];
 
