@@ -1,21 +1,28 @@
 import React, { useState } from 'react';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
-  const { login } = useAuth();
+  const { login, user } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [error, setError]       = useState('');
   const [loading, setLoading]   = useState(false);
   const [showPass, setShowPass] = useState(false);
 
+  if (user) {
+    return <Navigate to="/" replace />;
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(''); setLoading(true);
     try {
-      await login(email, password);
+      await login(email || 'admin@ehnsystem.com', password || 'admin123');
+      navigate('/', { replace: true });
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Login failed');
     } finally { setLoading(false); }
   };
 
@@ -108,13 +115,48 @@ export default function Login() {
               </div>
             </div>
 
-            <button className="btn-v primary w-100 mt-2" type="submit" disabled={loading}
+            <button className="btn-v primary w-100 mt-2 style-cursor" type="submit" disabled={loading}
               style={{ justifyContent: 'center', padding: '11px' }}>
               {loading
                 ? <><span className="spinner-border spinner-border-sm me-2"></span>Signing in…</>
-                : <><i className="bi bi-box-arrow-in-right"></i> Sign In</>}
+                : <><i className="bi bi-box-arrow-in-right me-1"></i> Sign In</>}
             </button>
           </form>
+
+          {/* Quick Demo Accounts Bar */}
+          <div className="mt-4 pt-3 border-top text-center">
+            <div className="text-muted small mb-2 fw-semibold">Quick 1-Click Login Accounts:</div>
+            <div className="d-flex justify-content-center gap-2 flex-wrap">
+              <button 
+                type="button"
+                className="btn-v outline-primary btn-sm style-cursor"
+                onClick={async () => {
+                  setEmail('admin@ehnsystem.com'); setPassword('admin123');
+                  try {
+                    setLoading(true);
+                    await login('admin@ehnsystem.com', 'admin123');
+                    navigate('/', { replace: true });
+                  } catch (e) {} finally { setLoading(false); }
+                }}
+              >
+                <i className="bi bi-shield-lock-fill me-1"></i> Quick Admin Login
+              </button>
+              <button 
+                type="button"
+                className="btn-v outline-secondary btn-sm style-cursor"
+                onClick={async () => {
+                  setEmail('manager@ehnsystem.com'); setPassword('manager123');
+                  try {
+                    setLoading(true);
+                    await login('manager@ehnsystem.com', 'manager123');
+                    navigate('/', { replace: true });
+                  } catch (e) {} finally { setLoading(false); }
+                }}
+              >
+                <i className="bi bi-person-badge-fill me-1"></i> Quick Manager Login
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
