@@ -17,6 +17,8 @@ import Settings     from './pages/Settings';
 import Support      from './pages/Support';
 import Login        from './pages/Login';
 import { getThemeConfig, applyThemeConfig } from './utils/themeHelper';
+import { getCustomMenuOrder } from './utils/menuHelper';
+import { getCustomHotkeys } from './utils/hotkeyHelper';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
 import './App.css';
@@ -117,6 +119,8 @@ function Sidebar({ open, onClose }) {
     'SYSTEM & UTILITIES': true,
   });
 
+  const [menuTree, setMenuTree] = useState(getCustomMenuOrder);
+
   useEffect(() => {
     const handleCompanyUpdate = () => {
       try {
@@ -129,28 +133,36 @@ function Sidebar({ open, onClose }) {
       } catch (e) {}
     };
 
+    const handleMenuOrderUpdate = () => {
+      setMenuTree(getCustomMenuOrder());
+    };
+
     window.addEventListener('ehn_company_updated', handleCompanyUpdate);
+    window.addEventListener('ehn_menu_order_updated', handleMenuOrderUpdate);
     window.addEventListener('storage', handleCompanyUpdate);
+    window.addEventListener('storage', handleMenuOrderUpdate);
     return () => {
       window.removeEventListener('ehn_company_updated', handleCompanyUpdate);
+      window.removeEventListener('ehn_menu_order_updated', handleMenuOrderUpdate);
       window.removeEventListener('storage', handleCompanyUpdate);
+      window.removeEventListener('storage', handleMenuOrderUpdate);
     };
   }, []);
 
   useEffect(() => {
     onClose();
-    MENU.forEach((group) => {
+    menuTree.forEach((group) => {
       if (group.items.some((item) => item.to === location.pathname)) {
         setOpenSections((prev) => ({ ...prev, [group.section]: true }));
       }
     });
-  }, [location.pathname]); // eslint-disable-line
+  }, [location.pathname, menuTree]); // eslint-disable-line
 
   const toggleSection = (sectionName) => {
     setOpenSections((prev) => ({ ...prev, [sectionName]: !prev[sectionName] }));
   };
 
-  const visibleMenu = MENU.map((group) => ({
+  const visibleMenu = menuTree.map((group) => ({
     ...group,
     items: group.items.filter((item) => can(item.permission)),
   })).filter((group) => group.items.length > 0);
@@ -469,16 +481,38 @@ function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
 
+  const [hotkeys, setHotkeys] = useState(getCustomHotkeys);
+
   useEffect(() => {
+    const handleHotkeysUpdate = () => {
+      setHotkeys(getCustomHotkeys());
+    };
+    window.addEventListener('ehn_hotkeys_updated', handleHotkeysUpdate);
+    window.addEventListener('storage', handleHotkeysUpdate);
+    return () => {
+      window.removeEventListener('ehn_hotkeys_updated', handleHotkeysUpdate);
+      window.removeEventListener('storage', handleHotkeysUpdate);
+    };
+  }, []);
+
+  useEffect(() => {
+    const gotoHotkey = hotkeys.find(h => h.action === 'open_goto')?.shortcut || 'Alt+G';
+    const parts = gotoHotkey.toLowerCase().split('+');
+
     const handleGlobalKeyDown = (e) => {
-      if (e.altKey && (e.key === 'g' || e.key === 'G')) {
+      const matchAlt = parts.includes('alt') === e.altKey;
+      const matchCtrl = parts.includes('ctrl') === e.ctrlKey;
+      const matchShift = parts.includes('shift') === e.shiftKey;
+      const keyChar = parts[parts.length - 1];
+
+      if (matchAlt && matchCtrl && matchShift && e.key.toLowerCase() === keyChar) {
         e.preventDefault();
         setShowCommandPalette((prev) => !prev);
       }
     };
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, []);
+  }, [hotkeys]);
 
   return (
     <div className="app-shell">

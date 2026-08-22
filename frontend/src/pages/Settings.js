@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { changePassword, getSettings, updateSettings } from '../services/api';
 import { getThemeConfig, saveThemeConfig, COLOR_SWATCHES, PRESET_THEMES } from '../utils/themeHelper';
+import { getCustomMenuOrder, saveCustomMenuOrder, resetCustomMenuOrder } from '../utils/menuHelper';
+import { getCustomHotkeys, saveCustomHotkeys, resetCustomHotkeys } from '../utils/hotkeyHelper';
 
 /* Global Settings Storage */
 let globalSettings = {
@@ -105,6 +107,8 @@ export default function Settings() {
     { id: 'profile', label: 'My Profile & Security', icon: 'bi-person-circle', color: 'var(--primary)' },
     ...(canSettings ? [
       { id: 'theme', label: 'Theme & Appearance', icon: 'bi-palette', color: '#8b5cf6' },
+      { id: 'menu_manager', label: 'Sidebar Menu Rearranger', icon: 'bi-border-inner', color: '#ec4899' },
+      { id: 'hotkeys_manager', label: 'Keyboard Shortcuts & Hotkeys', icon: 'bi-keyboard', color: '#3b82f6' },
       { id: 'tally_invoice', label: 'EHN One F12 Billing & Invoices', icon: 'bi-receipt', color: '#2563eb' },
       { id: 'tally_inventory', label: 'EHN One F12 Inventory & Stock', icon: 'bi-boxes', color: '#059669' },
       { id: 'company', label: 'Company Info & GSTIN', icon: 'bi-building', color: 'var(--primary)' },
@@ -113,6 +117,71 @@ export default function Settings() {
       { id: 'notifications', label: 'Notifications', icon: 'bi-bell', color: 'var(--warning)' },
     ] : [])
   ];
+
+  // Menu Rearranger State & Handlers
+  const [menuTreeState, setMenuTreeState] = useState(getCustomMenuOrder);
+  const [menuSaved, setMenuSaved] = useState(false);
+
+  const moveGroup = (idx, direction) => {
+    const newArr = [...menuTreeState];
+    const targetIdx = idx + direction;
+    if (targetIdx < 0 || targetIdx >= newArr.length) return;
+    const [moved] = newArr.splice(idx, 1);
+    newArr.splice(targetIdx, 0, moved);
+    setMenuTreeState(newArr);
+  };
+
+  const moveMenuItem = (gIdx, iIdx, direction) => {
+    const newArr = [...menuTreeState];
+    const items = [...newArr[gIdx].items];
+    const targetIdx = iIdx + direction;
+    if (targetIdx < 0 || targetIdx >= items.length) return;
+    const [moved] = items.splice(iIdx, 1);
+    items.splice(targetIdx, 0, moved);
+    newArr[gIdx] = { ...newArr[gIdx], items };
+    setMenuTreeState(newArr);
+  };
+
+  const handleSaveMenuOrder = () => {
+    saveCustomMenuOrder(menuTreeState);
+    setMenuSaved(true);
+    setTimeout(() => setMenuSaved(false), 3000);
+  };
+
+  const handleResetMenuOrder = () => {
+    resetCustomMenuOrder();
+    setMenuTreeState(getCustomMenuOrder());
+    setMenuSaved(true);
+    setTimeout(() => setMenuSaved(false), 3000);
+  };
+
+  // Hotkeys Manager State & Handlers
+  const [hotkeysState, setHotkeysState] = useState(getCustomHotkeys);
+  const [hotkeysSaved, setHotkeysSaved] = useState(false);
+  const [editingHotkey, setEditingHotkey] = useState(null);
+  const [shortcutKeyInput, setShortcutKeyInput] = useState('');
+
+  const handleSaveHotkeys = () => {
+    saveCustomHotkeys(hotkeysState);
+    setHotkeysSaved(true);
+    setTimeout(() => setHotkeysSaved(false), 3000);
+  };
+
+  const handleResetHotkeys = () => {
+    resetCustomHotkeys();
+    setHotkeysState(getCustomHotkeys());
+    setHotkeysSaved(true);
+    setTimeout(() => setHotkeysSaved(false), 3000);
+  };
+
+  const updateSingleHotkey = (id, newKey) => {
+    const updated = hotkeysState.map(h => h.id === id ? { ...h, shortcut: newKey } : h);
+    setHotkeysState(updated);
+    saveCustomHotkeys(updated);
+    setEditingHotkey(null);
+    setHotkeysSaved(true);
+    setTimeout(() => setHotkeysSaved(false), 3000);
+  };
 
   const handleApplyTheme = (newConfig) => {
     setThemeState(newConfig);
@@ -1065,6 +1134,223 @@ export default function Settings() {
                       </div>
                     </div>
                   </div>
+                </>
+              )}
+
+              {/* Sidebar Menu Rearranger Section */}
+              {activeSection === 'menu_manager' && (
+                <>
+                  <div className="settings-section-header">
+                    <i className="bi bi-border-inner" style={{ color: '#ec4899' }}></i>
+                    <div>
+                      <h4>Sidebar Menu Rearranger & Custom Gateway Order</h4>
+                      <p>Customize the order of sidebar groups and navigation menu links. Your menu order saves live to your sidebar.</p>
+                    </div>
+                  </div>
+
+                  {menuSaved && (
+                    <div className="alert-v success mb-4">
+                      <i className="bi bi-check-circle-fill me-2"></i>
+                      <span>Sidebar Menu Order updated and applied live!</span>
+                    </div>
+                  )}
+
+                  <div className="d-flex align-items-center justify-content-between mb-3">
+                    <div className="form-section-title mb-0">
+                      <i className="bi bi-list-nested me-1"></i> Interactive Sidebar Structure
+                    </div>
+                    <div className="d-flex gap-2">
+                      <button className="btn-v outline-secondary btn-sm" onClick={handleResetMenuOrder}>
+                        <i className="bi bi-arrow-counterclockwise me-1"></i> Reset Default Order
+                      </button>
+                      <button className="btn-v primary btn-sm" onClick={handleSaveMenuOrder}>
+                        <i className="bi bi-check-lg me-1"></i> Save Menu Order
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="vstack gap-3 mb-4">
+                    {menuTreeState.map((group, gIdx) => (
+                      <div key={group.section} className="p-3 border rounded-3 bg-white shadow-sm">
+                        <div className="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+                          <div className="d-flex align-items-center gap-2 fw-bold text-uppercase" style={{ fontSize: '0.85rem' }}>
+                            <i className={`bi ${group.icon || 'bi-folder'} text-primary`}></i>
+                            {group.section}
+                            <span className="badge bg-light text-muted border ms-2" style={{ fontSize: '0.65rem' }}>Group #{gIdx + 1}</span>
+                          </div>
+                          <div className="d-flex align-items-center gap-1">
+                            <button 
+                              className="btn btn-sm btn-light border px-2 py-0.5"
+                              disabled={gIdx === 0}
+                              onClick={() => moveGroup(gIdx, -1)}
+                              title="Move Group Up"
+                            >
+                              <i className="bi bi-chevron-up"></i>
+                            </button>
+                            <button 
+                              className="btn btn-sm btn-light border px-2 py-0.5"
+                              disabled={gIdx === menuTreeState.length - 1}
+                              onClick={() => moveGroup(gIdx, 1)}
+                              title="Move Group Down"
+                            >
+                              <i className="bi bi-chevron-down"></i>
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="vstack gap-1">
+                          {group.items.map((item, iIdx) => (
+                            <div key={item.to} className="d-flex align-items-center justify-content-between p-2 rounded border bg-light">
+                              <div className="d-flex align-items-center gap-2">
+                                <i className={`bi ${item.icon} text-secondary`}></i>
+                                <span className="fw-semibold" style={{ fontSize: '0.83rem' }}>{item.label}</span>
+                                <span className="text-muted small ms-2">({item.to})</span>
+                              </div>
+                              <div className="d-flex align-items-center gap-1">
+                                <button 
+                                  className="btn btn-sm btn-white border px-2 py-0.5"
+                                  disabled={iIdx === 0}
+                                  onClick={() => moveMenuItem(gIdx, iIdx, -1)}
+                                  title="Move Item Up"
+                                >
+                                  <i className="bi bi-arrow-up"></i>
+                                </button>
+                                <button 
+                                  className="btn btn-sm btn-white border px-2 py-0.5"
+                                  disabled={iIdx === group.items.length - 1}
+                                  onClick={() => moveMenuItem(gIdx, iIdx, 1)}
+                                  title="Move Item Down"
+                                >
+                                  <i className="bi bi-arrow-down"></i>
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="p-3 bg-light rounded border d-flex justify-content-between align-items-center">
+                    <div className="small text-muted">
+                      <i className="bi bi-info-circle me-1"></i> Saving menu order updates your left sidebar instantly.
+                    </div>
+                    <button className="btn-v primary" onClick={handleSaveMenuOrder}>
+                      <i className="bi bi-check-circle me-1"></i> Save Menu Structure
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* Keyboard Shortcuts & Hotkeys Manager Section */}
+              {activeSection === 'hotkeys_manager' && (
+                <>
+                  <div className="settings-section-header">
+                    <i className="bi bi-keyboard" style={{ color: '#3b82f6' }}></i>
+                    <div>
+                      <h4>Keyboard Shortcuts & Hotkeys Configuration Manager</h4>
+                      <p>View, customize, and rebind physical keyboard shortcuts (F-keys, Alt-keys) across all ERP modules.</p>
+                    </div>
+                  </div>
+
+                  {hotkeysSaved && (
+                    <div className="alert-v success mb-4">
+                      <i className="bi bi-check-circle-fill me-2"></i>
+                      <span>Keyboard Shortcuts configuration saved & applied live globally!</span>
+                    </div>
+                  )}
+
+                  <div className="d-flex align-items-center justify-content-between mb-3">
+                    <div className="form-section-title mb-0">
+                      <i className="bi bi-command me-1"></i> System Action Hotkeys Registry
+                    </div>
+                    <div className="d-flex gap-2">
+                      <button className="btn-v outline-secondary btn-sm" onClick={handleResetHotkeys}>
+                        <i className="bi bi-arrow-counterclockwise me-1"></i> Reset All Shortcuts
+                      </button>
+                      <button className="btn-v primary btn-sm" onClick={handleSaveHotkeys}>
+                        <i className="bi bi-check-lg me-1"></i> Save Hotkeys
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="table-responsive border rounded-3 bg-white shadow-sm mb-4">
+                    <table className="v-table">
+                      <thead>
+                        <tr>
+                          <th>Action Description</th>
+                          <th>System Category</th>
+                          <th>Current Keybinding</th>
+                          <th className="text-end">Rebind Key</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {hotkeysState.map((hk) => (
+                          <tr key={hk.id}>
+                            <td className="fw-bold">{hk.label}</td>
+                            <td><span className="badge bg-light text-dark border">{hk.category}</span></td>
+                            <td>
+                              <span className="badge bg-primary text-white px-2 py-1" style={{ fontSize: '0.78rem', fontFamily: 'monospace' }}>
+                                {hk.shortcut}
+                              </span>
+                            </td>
+                            <td className="text-end">
+                              <button 
+                                className="btn-v outline-primary btn-sm"
+                                onClick={() => { setEditingHotkey(hk); setShortcutKeyInput(hk.shortcut); }}
+                              >
+                                <i className="bi bi-pencil me-1"></i> Change Key
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="p-3 bg-light rounded border d-flex justify-content-between align-items-center">
+                    <div className="small text-muted">
+                      <i className="bi bi-info-circle me-1"></i> Shortcuts take effect immediately without page reload.
+                    </div>
+                    <button className="btn-v primary" onClick={handleSaveHotkeys}>
+                      <i className="bi bi-check-circle me-1"></i> Save Keybindings
+                    </button>
+                  </div>
+
+                  {/* Edit Hotkey Modal */}
+                  {editingHotkey && (
+                    <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setEditingHotkey(null); }}>
+                      <div className="modal-box" style={{ maxWidth: 460 }}>
+                        <div className="modal-box-header d-flex justify-content-between align-items-center" style={{ background: 'var(--primary)', color: '#fff' }}>
+                          <span className="fw-bold">REBIND SHORTCUT KEY &mdash; {editingHotkey.label.toUpperCase()}</span>
+                          <button className="close-btn text-white" onClick={() => setEditingHotkey(null)}><i className="bi bi-x-lg"></i></button>
+                        </div>
+                        <div className="modal-box-body p-3">
+                          <p className="text-muted small mb-3">
+                            Type or select a new shortcut key (e.g. <code>F2</code>, <code>Alt+G</code>, <code>Alt+S</code>, <code>Ctrl+K</code>):
+                          </p>
+
+                          <div className="mb-3">
+                            <label className="form-label fw-bold">Shortcut Key Code</label>
+                            <input 
+                              type="text" 
+                              className="form-control fw-bold text-primary" 
+                              value={shortcutKeyInput}
+                              onChange={(e) => setShortcutKeyInput(e.target.value)}
+                              placeholder="e.g. F4 or Alt+S"
+                            />
+                          </div>
+
+                          <div className="d-flex justify-content-end gap-2">
+                            <button className="btn-v outline-secondary btn-sm" onClick={() => setEditingHotkey(null)}>Cancel</button>
+                            <button className="btn-v primary btn-sm" onClick={() => updateSingleHotkey(editingHotkey.id, shortcutKeyInput)}>
+                              <i className="bi bi-check-circle me-1"></i> Update Hotkey
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
 
