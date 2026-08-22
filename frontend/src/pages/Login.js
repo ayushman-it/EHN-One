@@ -19,7 +19,7 @@ export default function Login() {
     e.preventDefault();
     setError(''); setLoading(true);
     try {
-      await login(email || 'admin@ehnsystem.com', password || 'admin123');
+      await login(email, password);
       navigate('/', { replace: true });
     } catch (err) {
       setError(err.message || 'Login failed');
@@ -122,41 +122,6 @@ export default function Login() {
                 : <><i className="bi bi-box-arrow-in-right me-1"></i> Sign In</>}
             </button>
           </form>
-
-          {/* Quick Demo Accounts Bar */}
-          <div className="mt-4 pt-3 border-top text-center">
-            <div className="text-muted small mb-2 fw-semibold">Quick 1-Click Login Accounts:</div>
-            <div className="d-flex justify-content-center gap-2 flex-wrap">
-              <button 
-                type="button"
-                className="btn-v outline-primary btn-sm style-cursor"
-                onClick={async () => {
-                  setEmail('admin@ehnsystem.com'); setPassword('admin123');
-                  try {
-                    setLoading(true);
-                    await login('admin@ehnsystem.com', 'admin123');
-                    navigate('/', { replace: true });
-                  } catch (e) {} finally { setLoading(false); }
-                }}
-              >
-                <i className="bi bi-shield-lock-fill me-1"></i> Quick Admin Login
-              </button>
-              <button 
-                type="button"
-                className="btn-v outline-secondary btn-sm style-cursor"
-                onClick={async () => {
-                  setEmail('manager@ehnsystem.com'); setPassword('manager123');
-                  try {
-                    setLoading(true);
-                    await login('manager@ehnsystem.com', 'manager123');
-                    navigate('/', { replace: true });
-                  } catch (e) {} finally { setLoading(false); }
-                }}
-              >
-                <i className="bi bi-person-badge-fill me-1"></i> Quick Manager Login
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     </div>

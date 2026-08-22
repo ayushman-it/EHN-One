@@ -77,25 +77,7 @@ const delay = (ms = 300) => new Promise((r) => setTimeout(r, ms));
    ═══════════════════════════════════════════════════════════ */
 
 export const login = async (email, password) => {
-  try {
-    return await api.post('/auth/login', { email, password });
-  } catch (error) {
-    const em = (email || 'admin@ehnsystem.com').toLowerCase();
-    const isManager = em.includes('manager');
-    const isViewer = em.includes('viewer');
-    
-    return {
-      success: true,
-      token: 'demo-jwt-token-active',
-      user: { 
-        id: 'usr_' + Date.now(), 
-        name: isManager ? 'Priya Mehta' : isViewer ? 'Rahul Verma' : 'Arjun Sharma', 
-        email: em, 
-        role: isManager ? 'manager' : isViewer ? 'viewer' : 'admin', 
-        department: isManager ? 'Operations' : isViewer ? 'Sales' : 'Management' 
-      }
-    };
-  }
+  return api.post('/auth/login', { email, password });
 };
 
 export const register = async (userData) => {
