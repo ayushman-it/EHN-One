@@ -46,9 +46,13 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Update last login timestamp
-    user.lastLogin = new Date();
-    await user.save();
+    // Update last login timestamp safely (won't crash on read-only Atlas SQL endpoints)
+    try {
+      user.lastLogin = new Date();
+      await user.save();
+    } catch (saveErr) {
+      console.warn('⚠️ Notice: Could not update lastLogin on Atlas SQL endpoint:', saveErr.message);
+    }
 
     // Generate JWT Token
     const token = generateToken(user._id);
