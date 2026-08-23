@@ -9,8 +9,9 @@ const Customer = require('../models/Customer');
 const dispatchWhatsApp = async (phone, message, config) => {
   const token = config?.apiKey || config?.whatsapp?.apiKey || 'EAAX71GdiWggBSU0GVjd55F7AZB2H0vC8jhELg1y1ASa9EAko9Va8dd07h8SX6sQSiFX7xs9Np0JU7KFkehgGH6rRGSwVeeWRq98jexmRoDrty5XeKZCKN6denWuVXgnL1ABfNJwee4RaZA7AjoFcjdG4DnKpDgZBlldWZAnX03tOZC9oVdSTdMDWWNFooV68xnsQZDZD';
   const phoneId = config?.phoneNumberId || config?.whatsapp?.phoneNumberId || '1221104881094408';
-  const targetPhone = phone || config?.adminPhone || '919238695500';
-  const cleanPhone = (targetPhone || '').replace(/[^\d]/g, '');
+  
+  let targetPhone = phone || config?.adminPhone || '919238695500';
+  const cleanPhone = targetPhone.replace(/[^\d]/g, '');
 
   return new Promise((resolve) => {
     const postData = JSON.stringify({
@@ -37,12 +38,16 @@ const dispatchWhatsApp = async (phone, message, config) => {
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
-        console.log(`⏰ Server Scheduler WhatsApp Message Dispatched to +${cleanPhone}: Status ${res.statusCode}`);
+        console.log(`⏰ [SERVER SCHEDULER] WhatsApp Alert Dispatched to +${cleanPhone}: Status ${res.statusCode}`);
         resolve({ success: res.statusCode >= 200 && res.statusCode < 300, data });
       });
     });
 
-    req.on('error', (err) => resolve({ success: false, error: err.message }));
+    req.on('error', (err) => {
+      console.error('Server Scheduler Request error:', err.message);
+      resolve({ success: false, error: err.message });
+    });
+
     req.write(postData);
     req.end();
   });
@@ -55,10 +60,11 @@ const executeAutomationJob = async (auto) => {
     const config = settings?.whatsappConfig || {};
     const recipientPhone = auto.phone || config?.adminPhone || '919238695500';
     const todayStr = new Date().toISOString().split('T')[0];
+    const category = auto.category || auto.type;
 
     let messageContent = '';
 
-    if (auto.type === 'today_summary' || auto.type === 'sales_summary' || auto.category === 'sales_summary') {
+    if (category === 'today_summary' || category === 'sales_summary') {
       const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
       const endOfDay = new Date(); endOfDay.setHours(23,59,59,999);
 
@@ -75,14 +81,14 @@ const executeAutomationJob = async (auto) => {
 
 📅 *Date:* ${todayStr}
 
-🧾 *Today Invoices:* ${todayInvoices.length}
-💰 *Total Revenue:* ₹${totalRevenue.toLocaleString('en-IN')}
-✅ *Realized Paid Collections:* ₹${paidAmount.toLocaleString('en-IN')}
-⏳ *Pending Receivables:* ₹${pendingAmount.toLocaleString('en-IN')}
+Receipts: ${todayInvoices.length} Invoices
+Total Revenue: ₹${totalRevenue.toLocaleString('en-IN')}
+Realized Collections: ₹${paidAmount.toLocaleString('en-IN')}
+Pending Receivables: ₹${pendingAmount.toLocaleString('en-IN')}
 
 _Automated Server Scheduler - EHN One ERP_`;
     } 
-    else if (auto.type === 'stock_report' || auto.type === 'stock_summary' || auto.category === 'stock_summary') {
+    else if (category === 'stock_report' || category === 'stock_summary') {
       const products = await Product.find().lean();
       const total = products.length;
       const lowStock = products.filter(p => (p.quantity || p.stock || 0) <= (p.minQuantity || p.minStockAlert || 10) && (p.quantity || p.stock || 0) > 0).length;
@@ -94,17 +100,17 @@ _Automated Server Scheduler - EHN One ERP_`;
 
 📅 *Date:* ${todayStr}
 
-📊 *Total Catalog SKUs:* ${total}
-✅ *In Stock Items:* ${inStock}
-⚠️ *Low Stock Reorder Alerts:* ${lowStock}
-❌ *Out of Stock Items:* ${outOfStock}
+Catalog SKUs: ${total}
+In Stock Items: ${inStock}
+Low Stock Alerts: ${lowStock}
+Out of Stock: ${outOfStock}
 
 _Automated Server Scheduler - EHN One ERP_`;
     }
-    else if (auto.type === 'low_stock' || auto.category === 'low_stock') {
+    else if (category === 'low_stock') {
       const lowProducts = await Product.find({ quantity: { $lte: 10 } }).lean();
       if (lowProducts.length === 0) {
-        messageContent = `🚨 *LOW STOCK ALERT - Kedvass Hygiene Products*\n\n✅ All registered SKUs adequately stocked! No reorder required today.`;
+        messageContent = `🚨 *LOW STOCK ALERT - Kedvass Hygiene Products*\n\nAll registered SKUs adequately stocked! No reorder required today.`;
       } else {
         messageContent = `🚨 *AUTOMATED LOW STOCK ALERT*
 *Kedvass Hygiene Products*
@@ -112,18 +118,18 @@ _Automated Server Scheduler - EHN One ERP_`;
 The following ${lowProducts.length} product(s) require reorder:
 ${lowProducts.map(p => `• *${p.name}*: ${p.quantity || p.stock || 0} units remaining (Min: 10)`).join('\n')}
 
-⚠️ *Action Required:* Please issue purchase orders to suppliers.`;
+Action Required: Please issue purchase orders to suppliers.`;
       }
     }
-    else if (auto.type === 'payment_reminder' || auto.category === 'payment_dues') {
+    else if (category === 'payment_reminder' || category === 'payment_dues') {
       const debtors = await Customer.find({ balance: { $gt: 0 } }).lean();
       const totalOutstanding = debtors.reduce((sum, d) => sum + (Number(d.balance || d.dueAmount) || 0), 0);
 
       messageContent = `💰 *CUSTOMER OUTSTANDING RECEIVABLES AUDIT*
 *Kedvass Hygiene Products*
 
-📊 *Clients with Pending Dues:* ${debtors.length}
-💵 *Total Outstanding Receivables:* ₹${totalOutstanding.toLocaleString('en-IN')}
+Clients with Pending Dues: ${debtors.length}
+Total Outstanding Receivables: ₹${totalOutstanding.toLocaleString('en-IN')}
 
 Top Pending Accounts:
 ${debtors.slice(0, 5).map(d => `• *${d.name}*: ₹${Number(d.balance || d.dueAmount).toLocaleString('en-IN')}`).join('\n')}
@@ -131,7 +137,9 @@ ${debtors.slice(0, 5).map(d => `• *${d.name}*: ₹${Number(d.balance || d.dueA
 _Automated Server Scheduler - EHN One ERP_`;
     }
     else {
-      messageContent = auto.customMessage || auto.message || `Automated Reminder for ${auto.name || auto.title} - EHN One ERP`;
+      const titleStr = auto.title || auto.name || 'EHN One Scheduled Reminder';
+      const msgStr = auto.message || auto.customMessage || auto.aiPrompt || 'Friendly system reminder notification.';
+      messageContent = `*SCHEDULED REMINDER: ${titleStr.toUpperCase()}*\n*Kedvass Hygiene Products*\n\n${msgStr}\n\n_Auto-scheduled via EHN One Server Scheduler_`;
     }
 
     const result = await dispatchWhatsApp(recipientPhone, messageContent, config);
@@ -151,7 +159,7 @@ _Automated Server Scheduler - EHN One ERP_`;
   }
 };
 
-// Scheduler Runner (Checks every 30 seconds for 100% server-side execution reliability)
+// Scheduler Runner (Checks every 20 seconds for 100% server-side execution reliability)
 let schedulerInterval = null;
 
 const startScheduler = () => {
@@ -162,7 +170,7 @@ const startScheduler = () => {
   schedulerInterval = setInterval(async () => {
     try {
       const now = new Date();
-      const currentHHMM = now.toTimeString().substring(0, 5); // "20:00"
+      const currentHHMM = now.toTimeString().substring(0, 5); // e.g. "14:30"
       const todayStr = now.toISOString().split('T')[0];
 
       // Query MongoDB Automations
@@ -172,21 +180,28 @@ const startScheduler = () => {
         const autoTime = auto.time;
         if (!autoTime) continue;
 
-        if (autoTime === currentHHMM) {
-          const lastRun = auto.lastTriggered ? new Date(auto.lastTriggered) : null;
-          const diffMinutes = lastRun ? (now - lastRun) / (1000 * 60) : 9999;
+        const startDate = auto.startDate || auto.date || todayStr;
+        const endDate = auto.endDate || startDate || todayStr;
 
-          // Prevent double trigger within 5 minutes
-          if (diffMinutes > 5) {
-            console.log(`⏰ [SERVER SCHEDULER] Triggering Job "${auto.name || auto.title}" @ ${currentHHMM} for +${auto.phone || 'Admin'}...`);
-            await executeAutomationJob(auto);
-          }
+        const isWithinDateRange = (todayStr >= startDate) && (todayStr <= endDate);
+        const isTimeMatch = (autoTime === currentHHMM);
+        const lastSentKey = `${todayStr}_${currentHHMM}`;
+
+        if (isWithinDateRange && isTimeMatch && auto.lastSent !== lastSentKey) {
+          console.log(`⏰ [SERVER SCHEDULER MATCH @ ${currentHHMM}] Executing "${auto.title || auto.name}" for +${auto.phone || 'Admin'}...`);
+          
+          auto.lastSent = lastSentKey;
+          auto.lastTriggered = now;
+          auto.triggeredCount = (auto.triggeredCount || 0) + 1;
+          await auto.save();
+
+          await executeAutomationJob(auto);
         }
       }
     } catch (err) {
       console.error('Error in Server WhatsApp Scheduler loop:', err);
     }
-  }, 30000); // Check every 30 seconds
+  }, 20000); // Check every 20 seconds
 };
 
 module.exports = {

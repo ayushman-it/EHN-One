@@ -167,8 +167,9 @@ export default function Automations() {
   });
 
   const saveAdminPhone = (newPhone) => {
-    setAdminPhone(newPhone);
-    localStorage.setItem('ehn_admin_whatsapp_phone', newPhone);
+    const clean = newPhone.replace(/^[+]+/, '');
+    setAdminPhone(`+${clean}`);
+    localStorage.setItem('ehn_admin_whatsapp_phone', `+${clean}`);
   };
 
   const saveAutoReplyRules = (newList) => {
@@ -181,10 +182,39 @@ export default function Automations() {
     localStorage.setItem('ehn_custom_automations_list', JSON.stringify(newList));
   };
 
-  const saveRemindersToStorage = (newReminders) => {
+  const saveRemindersToStorage = async (newReminders) => {
     setReminders(newReminders);
     try {
       localStorage.setItem('ehn_scheduled_reminders', JSON.stringify(newReminders));
+    } catch (e) {}
+
+    // POST to MongoDB Backend /api/automations for Server-Side 24/7 Scheduler
+    try {
+      const token = localStorage.getItem('token');
+      for (const rem of newReminders) {
+        await fetch('/api/automations', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': token ? `Bearer ${token}` : ''
+          },
+          body: JSON.stringify({
+            title: rem.title,
+            name: rem.title,
+            category: rem.category,
+            type: rem.category || 'stock_report',
+            startDate: rem.startDate || rem.date,
+            endDate: rem.endDate || rem.startDate || rem.date,
+            date: rem.startDate || rem.date,
+            time: rem.time,
+            frequency: rem.frequency,
+            phone: rem.phone,
+            message: rem.message,
+            customMessage: rem.message,
+            enabled: rem.enabled
+          })
+        });
+      }
     } catch (e) {}
   };
 
@@ -553,7 +583,9 @@ export default function Automations() {
                         </span>
                       </td>
                       <td>
-                        <span className="fw-bold text-success font-monospace" style={{ fontSize: '0.8rem' }}>+{r.phone}</span>
+                        <span className="fw-bold text-success font-monospace" style={{ fontSize: '0.8rem' }}>
+                          +{(r.phone || '').replace(/^[+]+/, '')}
+                        </span>
                       </td>
                       <td>
                         <div className="form-check form-switch mb-0">
@@ -915,10 +947,12 @@ export default function Automations() {
               </span>
               <button type="button" className="btn-close btn-close-white" onClick={() => setShowTaskModal(false)}></button>
             </div>
-            <form onSubmit={(e) => {
+            <form onSubmit={async (e) => {
               e.preventDefault();
               if (!taskForm.title.trim() || !taskForm.phone.trim()) return;
-              saveRemindersToStorage([{ id: `REM-${Date.now()}`, ...taskForm, enabled: true }, ...reminders]);
+              const cleanPhone = taskForm.phone.replace(/^[+]+/, '');
+              const newRem = { id: `REM-${Date.now()}`, ...taskForm, phone: `+${cleanPhone}`, enabled: true };
+              await saveRemindersToStorage([newRem, ...reminders]);
               setShowTaskModal(false);
             }}>
               <div className="modal-box-body p-3.5 bg-white">
