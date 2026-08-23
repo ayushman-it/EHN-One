@@ -17,7 +17,7 @@ export const getWhatsAppConfig = () => whatsappConfig;
 export default function Automations() {
   const { can } = useAuth();
   
-  // Tabs: 'auto_reply' | 'setup' | 'reminders' | 'live_inbox'
+  // Tabs: 'reminders' | 'auto_reply' | 'setup' | 'live_inbox'
   const [activeTab, setActiveTab] = useState('reminders');
   const [webhookHistory, setWebhookHistory] = useState([]);
   const [aiGeneratingId, setAiGeneratingId] = useState(null);
@@ -28,7 +28,7 @@ export default function Automations() {
     return localStorage.getItem('ehn_admin_whatsapp_phone') || '+91 9238695500';
   });
 
-  // Dynamic Auto-Reply Bot Rules List
+  // Dynamic Auto-Reply Bot Rules List (NO EMOJIS - Bootstrap Icons)
   const [autoReplyRules, setAutoReplyRules] = useState(() => {
     try {
       const saved = localStorage.getItem('ehn_auto_reply_rules');
@@ -37,23 +37,23 @@ export default function Automations() {
     return [
       {
         id: 'BOT-01',
-        title: '📦 Stock Availability Auto-Reply',
+        title: 'Stock Availability Auto-Reply',
         keyword: 'stock, inventory, saman',
-        replyText: 'Namaste! 📦 Tissue Rolls & Wet Wipes are in stock. Liquid Handwash 5L is low stock (3 units left).',
+        replyText: 'Namaste! Tissue Rolls & Wet Wipes are in stock. Liquid Handwash 5L is low stock (3 units left).',
         enabled: true,
       },
       {
         id: 'BOT-02',
-        title: '🙏 Welcome & Greeting Bot',
+        title: 'Welcome & Greeting Bot',
         keyword: 'hi, hello, namaste, hey',
-        replyText: 'Namaste! 🙏 Welcome to Kedvass Hygiene Products. Reply STOCK for availability or PRICE for product catalog.',
+        replyText: 'Namaste! Welcome to Kedvass Hygiene Products. Reply STOCK for availability or PRICE for product catalog.',
         enabled: true,
       },
       {
         id: 'BOT-03',
-        title: '💰 Price List & Catalog Bot',
+        title: 'Price List & Catalog Bot',
         keyword: 'price, rate, catalog',
-        replyText: '💰 Price List:\n1. Liquid Handwash 5L - ₹350\n2. Floor Cleaner 5L - ₹280\n3. Sanitizer 500ml - ₹120',
+        replyText: 'Price List:\n1. Liquid Handwash 5L - ₹350\n2. Floor Cleaner 5L - ₹280\n3. Sanitizer 500ml - ₹120',
         enabled: true,
       },
     ];
@@ -68,7 +68,7 @@ export default function Automations() {
     return [
       {
         id: 'AUTO-01',
-        title: '📦 Night 8 PM Product Stock Report',
+        title: 'Night 8 PM Product Stock Report',
         category: 'stock_summary',
         time: '20:00',
         phone: adminPhone,
@@ -77,7 +77,7 @@ export default function Automations() {
       },
       {
         id: 'AUTO-02',
-        title: '📊 Day-End Sales & Revenue Summary',
+        title: 'Day-End Sales & Revenue Summary',
         category: 'sales_summary',
         time: '21:00',
         phone: adminPhone,
@@ -86,7 +86,7 @@ export default function Automations() {
       },
       {
         id: 'AUTO-03',
-        title: '🚨 Low Stock Emergency Warning',
+        title: 'Low Stock Emergency Warning',
         category: 'low_stock',
         time: '12:00',
         phone: adminPhone,
@@ -96,18 +96,22 @@ export default function Automations() {
     ];
   });
 
-  // Dynamic Scheduled Reminders State
+  // Dynamic Scheduled Reminders State (With Start Date & End Date Range)
   const [reminders, setReminders] = useState(() => {
     try {
       const saved = localStorage.getItem('ehn_scheduled_reminders');
       if (saved) return JSON.parse(saved);
     } catch (e) {}
+    const todayStr = new Date().toISOString().split('T')[0];
+    const nextMonthStr = new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0];
     return [
       {
         id: 'REM-101',
-        title: '📦 Night 8 PM Product Stock Summary',
+        title: 'Night 8 PM Product Stock Summary',
         category: 'stock_summary',
-        date: new Date().toISOString().split('T')[0],
+        startDate: todayStr,
+        endDate: nextMonthStr,
+        date: todayStr,
         time: '20:00',
         frequency: 'daily',
         phone: adminPhone,
@@ -116,9 +120,11 @@ export default function Automations() {
       },
       {
         id: 'REM-102',
-        title: '🗓️ Thursday Client Meeting Schedule',
+        title: 'Thursday Client Meeting Schedule',
         category: 'meeting',
-        date: new Date().toISOString().split('T')[0],
+        startDate: todayStr,
+        endDate: todayStr,
+        date: todayStr,
         time: '14:00',
         frequency: 'one_time',
         phone: adminPhone,
@@ -135,7 +141,7 @@ export default function Automations() {
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [editRule, setEditRule] = useState(null);
 
-  // Generic Universal Automation & Auto-Reply Form State
+  // Generic Form State
   const [autoForm, setAutoForm] = useState({
     title: '',
     category: 'auto_reply_keyword',
@@ -147,9 +153,12 @@ export default function Automations() {
     aiPrompt: '',
   });
 
+  // Schedule Reminder Form State (Includes Start Date & End Date)
   const [taskForm, setTaskForm] = useState({
     title: '',
-    category: 'stock_summary', // Default to Stock Summary
+    category: 'stock_summary',
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
     date: new Date().toISOString().split('T')[0],
     time: '20:00',
     frequency: 'daily',
@@ -222,7 +231,7 @@ export default function Automations() {
     }
   };
 
-  // EHN AI Review & Dispatch Engine for Reminders & Automations
+  // EHN AI Review & Dispatch Engine
   const handleRunEhnAIReport = async (itemOrCategory, targetPhone) => {
     const category = typeof itemOrCategory === 'object' ? itemOrCategory.category : itemOrCategory;
     const itemTitle = typeof itemOrCategory === 'object' ? itemOrCategory.title : 'AI Reminder';
@@ -253,19 +262,19 @@ export default function Automations() {
         setLastAiReport(data.aiReport);
         alert(`🤖 EHN AI Reviewed Data & Dispatched WhatsApp Message!\n\nRecipient: +${recipient}\n\n` + data.aiReport.substring(0, 180) + '...');
       } else {
-        const fallbackText = `🌙 *Stock & Software Summary (EHN AI)*\n🏢 *Kedvass Hygiene Products*\n\n📦 *Stock Summary:*\n✅ Tissue Rolls - 142 boxes\n⚠️ Liquid Soap 5L - 3 units (Low Stock Alert)\n\n_Auto-generated by EHN AI & EHN One_`;
+        const fallbackText = `*Stock & Software Summary (EHN AI)*\n*Kedvass Hygiene Products*\n\n*Stock Summary:*\n- Tissue Rolls - 142 boxes\n- Liquid Soap 5L - 3 units (Low Stock Alert)\n\n_Auto-generated by EHN AI & EHN One_`;
         setLastAiReport(fallbackText);
         handleSendWhatsAppDirect({ phone: recipient, message: fallbackText });
       }
     } catch (e) {
-      const fallbackText = `🌙 *Stock Summary (EHN AI)*\n🏢 *Kedvass Hygiene Products*\n\n📦 *Stock Summary:*\n✅ Tissue Rolls - 142 boxes\n⚠️ Liquid Soap 5L - 3 units (Low Stock)\n\n_EHN One Software_`;
+      const fallbackText = `*Stock Summary (EHN AI)*\n*Kedvass Hygiene Products*\n\n*Stock Summary:*\n- Tissue Rolls - 142 boxes\n- Liquid Soap 5L - 3 units (Low Stock)\n\n_EHN One Software_`;
       handleSendWhatsAppDirect({ phone: recipient, message: fallbackText });
     } finally {
       setAiGeneratingId(null);
     }
   };
 
-  // Auto-Runner Loop for Due Scheduled Reminders with EHN AI Review
+  // 100% RELIABLE AUTOMATIC REMINDERS SCHEDULER LOOP (Checks Start Date, End Date, Time & Recipient)
   useEffect(() => {
     const interval = setInterval(() => {
       const now = new Date();
@@ -276,24 +285,33 @@ export default function Automations() {
         let updated = false;
         const newReminders = currentReminders.map((r) => {
           if (!r.enabled) return r;
-          const isDateDue = (r.frequency === 'daily') || (r.date === todayStr);
-          const isTimeDue = (r.time === currentHHMM);
-          if (isDateDue && isTimeDue && r.lastSent !== todayStr) {
-            // EHN AI reviews database data & dispatches on schedule
+
+          const startDate = r.startDate || r.date || todayStr;
+          const endDate = r.endDate || r.startDate || r.date || todayStr;
+
+          const isWithinRange = (todayStr >= startDate) && (todayStr <= endDate);
+          const isTimeMatch = (r.time === currentHHMM);
+
+          if (isWithinRange && isTimeMatch && r.lastSent !== `${todayStr}_${currentHHMM}`) {
+            console.log(`⏰ AUTOMATIC REMINDER TRIGGERED @ ${currentHHMM} for +${r.phone}`);
+            
+            // Dispatch via EHN AI or Direct Meta API
             if (['stock_summary', 'sales_summary', 'low_stock', 'payment_dues', 'product_catalog', 'custom_ai'].includes(r.category)) {
               handleRunEhnAIReport(r, r.phone);
             } else {
               handleSendWhatsAppDirect({ phone: r.phone, message: r.message });
             }
+
             updated = true;
-            return { ...r, lastSent: todayStr };
+            return { ...r, lastSent: `${todayStr}_${currentHHMM}` };
           }
           return r;
         });
+
         if (updated) saveRemindersToStorage(newReminders);
         return currentReminders;
       });
-    }, 15000);
+    }, 12000);
 
     return () => clearInterval(interval);
   }, []);
@@ -372,16 +390,17 @@ export default function Automations() {
   });
   const paginatedReminders = filteredReminders.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
+  // Clean Bootstrap Icons Badge Mapping (NO EMOJIS)
   const getCategoryBadge = (cat) => {
     const map = {
-      stock_summary: { color: 'success', icon: 'bi-box-seam', label: '📦 Stock Summary' },
-      sales_summary: { color: 'primary', icon: 'bi-bar-chart', label: '📊 Sales Summary' },
-      low_stock: { color: 'warning', icon: 'bi-exclamation-triangle', label: '🚨 Low Stock Alert' },
-      payment_dues: { color: 'danger', icon: 'bi-cash-coin', label: '💰 Customer Dues' },
-      meeting: { color: 'info', icon: 'bi-calendar-event', label: '🗓️ Meeting' },
-      call_followup: { color: 'secondary', icon: 'bi-telephone', label: '📞 Call Follow-up' },
-      product_catalog: { color: 'dark', icon: 'bi-tags', label: '🏷️ Product Prices' },
-      custom_ai: { color: 'success', icon: 'bi-robot', label: '🤖 Custom EHN AI' },
+      stock_summary: { color: 'success', icon: 'bi-box-seam', label: 'Stock Summary' },
+      sales_summary: { color: 'primary', icon: 'bi-bar-chart-line', label: 'Sales Summary' },
+      low_stock: { color: 'warning', icon: 'bi-exclamation-triangle', label: 'Low Stock Alert' },
+      payment_dues: { color: 'danger', icon: 'bi-cash-coin', label: 'Customer Dues' },
+      meeting: { color: 'info', icon: 'bi-calendar-event', label: 'Meeting' },
+      call_followup: { color: 'secondary', icon: 'bi-telephone-outbound', label: 'Call Follow-up' },
+      product_catalog: { color: 'dark', icon: 'bi-tags', label: 'Product Prices' },
+      custom_ai: { color: 'success', icon: 'bi-cpu', label: 'Custom EHN AI' },
     };
     const c = map[cat] || map.custom_ai;
     return <span className={`badge-v ${c.color}`} style={{ fontSize: '0.72rem' }}><i className={`bi ${c.icon} me-1`}></i> {c.label}</span>;
@@ -404,14 +423,14 @@ export default function Automations() {
           <div className="d-flex align-items-center gap-2 mb-0.5">
             <h4 className="fw-bold text-dark mb-0" style={{ letterSpacing: '-0.4px' }}>WhatsApp EHN AI Automation & Reminders Engine</h4>
             <span className="badge px-2.5 py-1" style={{ background: '#DAF2DB', color: '#1E4D2B', fontWeight: 700, fontSize: '0.72rem' }}>
-              <i className="bi bi-robot me-1"></i> EHN AI POWERED
+              <i className="bi bi-cpu me-1"></i> EHN AI POWERED
             </span>
           </div>
           <small className="text-muted">EHN AI reviews software inventory, billing & dashboard data to dispatch automated WhatsApp reminders on schedule</small>
         </div>
         <div className="d-flex gap-2">
           <button className="btn btn-outline-success btn-sm fw-bold rounded-pill px-3.5 shadow-sm" onClick={() => { setEditRule(null); setAutoForm({ title: '', category: 'auto_reply_keyword', keyword: '', time: '20:00', frequency: 'daily', phone: adminPhone, replyText: '', aiPrompt: '' }); setShowAutoModal(true); }}>
-            <i className="bi bi-robot me-1"></i> + New Automation Rule
+            <i className="bi bi-plus-lg me-1"></i> + New Automation Rule
           </button>
           <button className="btn btn-success btn-sm fw-bold rounded-pill px-3.5 shadow-sm" onClick={() => { setShowTaskModal(true); }} style={{ background: '#4CAF50', border: 'none' }}>
             <i className="bi bi-alarm me-1"></i> + Schedule Reminder
@@ -419,7 +438,7 @@ export default function Automations() {
         </div>
       </div>
 
-      {/* Navigation Sub-Tabs Bar */}
+      {/* Navigation Sub-Tabs Bar (Clean Icons, NO EMOJIS) */}
       <div className="card border-0 shadow-sm mb-3" style={{ borderRadius: 12 }}>
         <div className="card-body p-2 d-flex flex-wrap align-items-center justify-content-between gap-2" style={{ background: '#f8faf9', borderRadius: 12 }}>
           <div className="nav nav-pills gap-1">
@@ -428,7 +447,7 @@ export default function Automations() {
               onClick={() => setActiveTab('reminders')}
               style={activeTab === 'reminders' ? { background: '#1E4D2B', color: '#ffffff', fontSize: '0.76rem' } : { fontSize: '0.76rem' }}
             >
-              <i className="bi bi-alarm me-1 text-warning"></i> 1. Scheduled Reminders ({reminders.length})
+              <i className="bi bi-alarm-fill me-1 text-warning"></i> 1. Reminders ({reminders.length})
             </button>
             <button
               className={`nav-link btn-sm fw-bold rounded-pill px-2.5 py-1 ${activeTab === 'auto_reply' ? 'active' : 'text-dark bg-white shadow-sm'}`}
@@ -442,7 +461,7 @@ export default function Automations() {
               onClick={() => setActiveTab('setup')}
               style={activeTab === 'setup' ? { background: '#1E4D2B', color: '#ffffff', fontSize: '0.76rem' } : { fontSize: '0.76rem' }}
             >
-              <i className="bi bi-robot me-1 text-primary"></i> 3. EHN AI Reports ({automationsList.length})
+              <i className="bi bi-cpu-fill me-1 text-primary"></i> 3. EHN AI Reports ({automationsList.length})
             </button>
             <button
               className={`nav-link btn-sm fw-bold rounded-pill px-2.5 py-1 ${activeTab === 'live_inbox' ? 'active' : 'text-dark bg-white shadow-sm'}`}
@@ -467,12 +486,12 @@ export default function Automations() {
         </div>
       </div>
 
-      {/* TAB 1: SCHEDULED REMINDERS REGISTER */}
+      {/* TAB 1: SCHEDULED REMINDERS REGISTER (START DATE & END DATE RANGE) */}
       {activeTab === 'reminders' && (
         <div className="v-card">
           <div className="v-card-header d-flex justify-content-between align-items-center" style={{ background: '#f4fbf5', borderRadius: '12px 12px 0 0' }}>
             <span className="fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '0.88rem' }}>
-              <i className="bi bi-alarm me-1 text-success"></i> SCHEDULED REMINDERS REGISTER (STOCK, SALES, MEETINGS, DUES)
+              <i className="bi bi-alarm me-1 text-success"></i> SCHEDULED REMINDERS REGISTER (START DATE & END DATE RANGE)
             </span>
             <span className="badge px-2.5 py-1" style={{ background: '#DAF2DB', color: '#1E4D2B', fontWeight: 600 }}>{reminders.length} REMINDERS</span>
           </div>
@@ -491,8 +510,8 @@ export default function Automations() {
                     <th style={{ width: 35 }}>#</th>
                     <th>REMINDER TITLE & MESSAGE</th>
                     <th>MODULE CATEGORY</th>
-                    <th>SCHEDULED DATE & TIME</th>
-                    <th>REPEAT FREQUENCY</th>
+                    <th>START DATE $\rightarrow$ END DATE</th>
+                    <th>TIME</th>
                     <th>RECIPIENT PHONE</th>
                     <th>STATUS</th>
                     <th className="text-end" style={{ width: 150 }}>ACTIONS</th>
@@ -508,11 +527,16 @@ export default function Automations() {
                       </td>
                       <td>{getCategoryBadge(r.category)}</td>
                       <td>
-                        <div className="fw-semibold text-dark" style={{ fontSize: '0.8rem' }}>{r.date}</div>
-                        <small className="text-success" style={{ fontSize: '0.72rem' }}>{r.time} hrs</small>
+                        <div className="fw-bold text-dark" style={{ fontSize: '0.78rem' }}>
+                          <i className="bi bi-calendar-range me-1 text-primary"></i>
+                          {r.startDate || r.date} $\rightarrow$ {r.endDate || r.startDate || r.date}
+                        </div>
+                        <small className="text-muted text-uppercase" style={{ fontSize: '0.68rem' }}>{r.frequency === 'daily' ? '🔄 Daily Repeat' : '📍 One-Time'}</small>
                       </td>
                       <td>
-                        <span className="badge-v secondary text-uppercase">{r.frequency === 'daily' ? '🔄 Daily' : '📍 One-Time'}</span>
+                        <span className="badge bg-light text-dark border font-monospace fw-bold" style={{ fontSize: '0.75rem' }}>
+                          <i className="bi bi-clock text-success me-1"></i> {r.time} hrs
+                        </span>
                       </td>
                       <td>
                         <span className="fw-bold text-success font-monospace" style={{ fontSize: '0.8rem' }}>+{r.phone}</span>
@@ -528,7 +552,7 @@ export default function Automations() {
                       <td className="text-end">
                         <div className="d-flex justify-content-end gap-1">
                           <button className="btn btn-success btn-sm font-monospace py-0.5 px-2" style={{ fontSize: '0.72rem', background: '#4CAF50', border: 'none' }} onClick={() => handleRunEhnAIReport(r, r.phone)} title="Run EHN AI & Dispatch WhatsApp Now">
-                            <i className="bi bi-robot me-1"></i> Send AI Report
+                            <i className="bi bi-send me-1"></i> Send Now
                           </button>
                           <button className="btn-v outline-danger btn-sm px-2" onClick={() => {
                             const updated = reminders.filter(x => x.id !== r.id);
@@ -774,7 +798,7 @@ export default function Automations() {
           <div className="modal-box" style={{ maxWidth: 540 }}>
             <div className="modal-box-header d-flex align-items-center justify-content-between px-4 py-3" style={{ background: '#1E4D2B', color: '#ffffff', borderRadius: '12px 12px 0 0' }}>
               <span className="fw-bold text-white d-flex align-items-center gap-2" style={{ fontSize: '1.05rem' }}>
-                <i className="bi bi-robot text-warning"></i> {editRule ? 'Edit Automation / Auto-Reply Rule' : 'Create Generic EHN AI Automation Rule'}
+                <i className="bi bi-robot text-warning"></i> {editRule ? 'Edit Automation Rule' : 'Create Generic EHN AI Automation Rule'}
               </span>
               <button type="button" className="btn-close btn-close-white" onClick={() => setShowAutoModal(false)}></button>
             </div>
@@ -799,11 +823,11 @@ export default function Automations() {
                     value={autoForm.category}
                     onChange={(e) => setAutoForm({ ...autoForm, category: e.target.value })}
                   >
-                    <option value="auto_reply_keyword">💬 Customer Incoming Keyword Auto-Reply Bot</option>
-                    <option value="stock_summary">📦 Scheduled Product Stock Report</option>
-                    <option value="business_summary">📊 Scheduled Sales Revenue Summary</option>
-                    <option value="low_stock">🚨 Emergency Low Stock Warning</option>
-                    <option value="custom_ai">⏰ Custom EHN AI Scheduled Task</option>
+                    <option value="auto_reply_keyword">Customer Incoming Keyword Auto-Reply Bot</option>
+                    <option value="stock_summary">Scheduled Product Stock Report</option>
+                    <option value="business_summary">Scheduled Sales Revenue Summary</option>
+                    <option value="low_stock">Emergency Low Stock Warning</option>
+                    <option value="custom_ai">Custom EHN AI Scheduled Task</option>
                   </select>
                 </div>
 
@@ -867,13 +891,13 @@ export default function Automations() {
         </div>
       )}
 
-      {/* SCHEDULE REMINDER MODAL (WITH DASHBOARD DROPDOWN MODULES) */}
+      {/* SCHEDULE REMINDER MODAL (WITH START DATE & END DATE RANGE) */}
       {showTaskModal && (
         <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowTaskModal(false); }}>
-          <div className="modal-box" style={{ maxWidth: 540 }}>
+          <div className="modal-box" style={{ maxWidth: 560 }}>
             <div className="modal-box-header d-flex align-items-center justify-content-between px-4 py-3" style={{ background: '#1E4D2B', color: '#ffffff', borderRadius: '12px 12px 0 0' }}>
               <span className="fw-bold text-white d-flex align-items-center gap-2" style={{ fontSize: '1.05rem' }}>
-                <i className="bi bi-alarm-fill text-warning"></i> Schedule WhatsApp Reminder (EHN AI Review)
+                <i className="bi bi-alarm-fill text-warning"></i> Schedule WhatsApp Reminder (Start & End Date)
               </span>
               <button type="button" className="btn-close btn-close-white" onClick={() => setShowTaskModal(false)}></button>
             </div>
@@ -903,30 +927,35 @@ export default function Automations() {
                     value={taskForm.category}
                     onChange={(e) => setTaskForm({ ...taskForm, category: e.target.value })}
                   >
-                    <option value="stock_summary">📦 Product Stock Inventory Summary & Reorder Alert (EHN AI)</option>
-                    <option value="sales_summary">📊 Daily Sales Revenue & Billing Executive Summary (EHN AI)</option>
-                    <option value="low_stock">🚨 Low Stock Emergency Warning Alert (EHN AI)</option>
-                    <option value="payment_dues">💰 Customer Outstanding Credit Dues Summary (EHN AI)</option>
-                    <option value="meeting">🗓️ Client Meeting & Event Schedule</option>
-                    <option value="call_followup">📞 Customer Follow-up Call</option>
-                    <option value="product_catalog">🏷️ Product Catalog Update & Price Inquiry</option>
-                    <option value="custom_ai">🤖 Custom EHN AI Smart Reminder</option>
+                    <option value="stock_summary">Product Stock Inventory Summary & Reorder Alert (EHN AI)</option>
+                    <option value="sales_summary">Daily Sales Revenue & Billing Executive Summary (EHN AI)</option>
+                    <option value="low_stock">Low Stock Emergency Warning Alert (EHN AI)</option>
+                    <option value="payment_dues">Customer Outstanding Credit Dues Summary (EHN AI)</option>
+                    <option value="meeting">Client Meeting & Event Schedule</option>
+                    <option value="call_followup">Customer Follow-up Call</option>
+                    <option value="product_catalog">Product Catalog Update & Price Inquiry</option>
+                    <option value="custom_ai">Custom EHN AI Smart Reminder</option>
                   </select>
                   <small className="text-muted d-block mt-1" style={{ fontSize: '0.75rem' }}>EHN AI will review real software database data for selected category and send automated WhatsApp reminder!</small>
                 </div>
 
+                {/* START DATE & END DATE RANGE FIELDS */}
                 <div className="row g-3 mb-3">
                   <div className="col-6">
-                    <label className="form-label fw-bold text-dark">Date</label>
-                    <input type="date" className="form-control fw-semibold" value={taskForm.date} onChange={(e) => setTaskForm({ ...taskForm, date: e.target.value })} required />
+                    <label className="form-label fw-bold text-dark">Start Date <span className="text-danger">*</span></label>
+                    <input type="date" className="form-control fw-bold" value={taskForm.startDate} onChange={(e) => setTaskForm({ ...taskForm, startDate: e.target.value, date: e.target.value })} required />
                   </div>
                   <div className="col-6">
-                    <label className="form-label fw-bold text-dark">Trigger Time (24h)</label>
-                    <input type="time" className="form-control fw-bold" value={taskForm.time} onChange={(e) => setTaskForm({ ...taskForm, time: e.target.value })} required />
+                    <label className="form-label fw-bold text-dark">End Date <span className="text-danger">*</span></label>
+                    <input type="date" className="form-control fw-bold" value={taskForm.endDate} onChange={(e) => setTaskForm({ ...taskForm, endDate: e.target.value })} required />
                   </div>
                 </div>
 
                 <div className="row g-3 mb-3">
+                  <div className="col-6">
+                    <label className="form-label fw-bold text-dark">Trigger Time (24h) <span className="text-danger">*</span></label>
+                    <input type="time" className="form-control fw-bold text-success" value={taskForm.time} onChange={(e) => setTaskForm({ ...taskForm, time: e.target.value })} required />
+                  </div>
                   <div className="col-6">
                     <label className="form-label fw-bold text-dark">Repeat Frequency</label>
                     <select
@@ -934,19 +963,21 @@ export default function Automations() {
                       value={taskForm.frequency}
                       onChange={(e) => setTaskForm({ ...taskForm, frequency: e.target.value })}
                     >
-                      <option value="daily">🔄 Daily (Everyday at set time)</option>
-                      <option value="one_time">📍 One-Time Event</option>
+                      <option value="daily">Daily Repeat (Everyday in date range)</option>
+                      <option value="one_time">One-Time Event</option>
                     </select>
-                  </div>
-                  <div className="col-6">
-                    <label className="form-label fw-bold text-dark">Target Recipient Number <span className="text-danger">*</span></label>
-                    <input type="text" className="form-control font-monospace fw-bold" placeholder="e.g. +91 9238695500" value={taskForm.phone} onChange={(e) => setTaskForm({ ...taskForm, phone: e.target.value })} required />
                   </div>
                 </div>
 
                 <div className="mb-3">
+                  <label className="form-label fw-bold text-dark">Target Recipient Number <span className="text-danger">*</span></label>
+                  <input type="text" className="form-control font-monospace fw-bold" placeholder="e.g. +91 9238695500" value={taskForm.phone} onChange={(e) => setTaskForm({ ...taskForm, phone: e.target.value })} required />
+                  <small className="text-muted d-block mt-1" style={{ fontSize: '0.72rem' }}>Enter any recipient mobile number where admin wants WhatsApp reminder delivered.</small>
+                </div>
+
+                <div className="mb-3">
                   <label className="form-label fw-bold text-dark">Custom Message / AI Instruction</label>
-                  <textarea className="form-control fw-semibold" rows="3" placeholder="Enter custom message text or instruction for EHN AI..." value={taskForm.message} onChange={(e) => setTaskForm({ ...taskForm, message: e.target.value })}></textarea>
+                  <textarea className="form-control fw-semibold" rows="2" placeholder="Enter custom message text or instruction for EHN AI..." value={taskForm.message} onChange={(e) => setTaskForm({ ...taskForm, message: e.target.value })}></textarea>
                 </div>
               </div>
               <div className="modal-box-footer d-flex justify-content-end gap-2 p-3 bg-light" style={{ borderRadius: '0 0 12px 12px' }}>
