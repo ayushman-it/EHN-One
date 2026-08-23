@@ -880,7 +880,7 @@ body {
   padding: 24px; 
   flex: 1;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: auto;
   scroll-behavior: smooth;
   min-height: 0; /* Important for flexbox scrolling */
   max-height: calc(90vh - 160px); /* Ensure scrolling works on smaller screens */

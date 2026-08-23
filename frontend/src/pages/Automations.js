@@ -23,11 +23,6 @@ export default function Automations() {
   const [aiGeneratingId, setAiGeneratingId] = useState(null);
   const [lastAiReport, setLastAiReport] = useState('');
 
-  // AI Command Bot State
-  const [aiCommandInput, setAiCommandInput] = useState('');
-  const [aiCommandLoading, setAiCommandLoading] = useState(false);
-  const [aiCommandLogs, setAiCommandLogs] = useState([]);
-
   // Dynamic Admin WhatsApp Recipient Number
   const [adminPhone, setAdminPhone] = useState(() => {
     return localStorage.getItem('ehn_admin_whatsapp_phone') || '+91 9238695500';
@@ -44,21 +39,21 @@ export default function Automations() {
         id: 'BOT-01',
         title: 'Stock Availability Auto-Reply',
         keyword: 'stock, inventory, saman',
-        replyText: 'Namaste! Tissue Rolls & Wet Wipes are in stock. Liquid Handwash 5L is low stock (3 units left).',
+        replyText: 'Namaste! Real-time inventory status audit executed for Kedvass Hygiene Products.',
         enabled: true,
       },
       {
         id: 'BOT-02',
-        title: 'Welcome & Greeting Bot',
-        keyword: 'hi, hello, namaste, hey',
-        replyText: 'Namaste! Welcome to Kedvass Hygiene Products. Reply STOCK for availability or PRICE for product catalog.',
+        title: 'Executive Master Menu Bot',
+        keyword: 'hi, hello, namaste, menu, help',
+        replyText: 'Namaste! Welcome to Kedvass Hygiene Products (EHN One). Reply STOCK for inventory audit or REVENUE for sales summary.',
         enabled: true,
       },
       {
         id: 'BOT-03',
-        title: 'Price List & Catalog Bot',
+        title: 'Price Catalog Bot',
         keyword: 'price, rate, catalog',
-        replyText: 'Price List:\n1. Liquid Handwash 5L - ₹350\n2. Floor Cleaner 5L - ₹280\n3. Sanitizer 500ml - ₹120',
+        replyText: 'Standard Catalog Rates: Liquid Handwash 5L - ₹350, Floor Cleaner 5L - ₹280',
         enabled: true,
       },
     ];
@@ -193,63 +188,6 @@ export default function Automations() {
     } catch (e) {}
   };
 
-  // Conversational AI Natural Language Command Bot Handler
-  const handleExecuteAiCommand = async (commandTextStr) => {
-    const queryText = commandTextStr || aiCommandInput;
-    if (!queryText || !queryText.trim()) return;
-
-    setAiCommandLoading(true);
-
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/settings/ai-command-bot', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : ''
-        },
-        body: JSON.stringify({ userCommand: queryText, defaultPhone: adminPhone })
-      });
-
-      const data = await res.json();
-      if (res.ok && data.success) {
-        // Execute parsed action dynamically in UI state & database
-        if (data.action === 'CREATE_REMINDER' && data.data) {
-          const todayStr = new Date().toISOString().split('T')[0];
-          const newRem = {
-            id: `REM-${Date.now()}`,
-            title: data.data.title || 'EHN AI Scheduled Reminder',
-            category: data.data.category || 'meeting',
-            startDate: data.data.startDate || todayStr,
-            endDate: data.data.endDate || data.data.startDate || todayStr,
-            date: data.data.startDate || todayStr,
-            time: data.data.time || '20:30',
-            frequency: data.data.frequency || 'one_time',
-            phone: data.data.phone || adminPhone,
-            enabled: true,
-            message: data.data.message || queryText
-          };
-          saveRemindersToStorage([newRem, ...reminders]);
-          setActiveTab('reminders');
-        } else if (data.action === 'UPDATE_AUTOMATION' && data.data) {
-          if (data.data.time) {
-            const updated = automationsList.map(a => ({ ...a, time: data.data.time }));
-            saveAutomationsList(updated);
-          }
-        }
-
-        setAiCommandLogs(prev => [{ prompt: queryText, reply: data.reply, time: new Date().toLocaleTimeString('en-IN') }, ...prev]);
-        setAiCommandInput('');
-      } else {
-        alert('EHN AI Bot: ' + (data.message || 'Could not parse command'));
-      }
-    } catch (e) {
-      alert('Failed to connect to EHN AI Command Bot');
-    } finally {
-      setAiCommandLoading(false);
-    }
-  };
-
   // Fetch Live Meta Webhook Logs
   useEffect(() => {
     const fetchLiveLogs = async () => {
@@ -284,7 +222,7 @@ export default function Automations() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        alert(`✅ WhatsApp Alert Dispatched via Meta Cloud API!\n\nRecipient: +${cleanPhone}`);
+        alert(`WhatsApp Alert Dispatched via Meta Cloud API!\n\nRecipient: +${cleanPhone}`);
       } else {
         window.open(waWebUrl, '_blank');
       }
@@ -322,7 +260,7 @@ export default function Automations() {
       const data = await res.json();
       if (res.ok && data.success) {
         setLastAiReport(data.aiReport);
-        alert(`🤖 EHN AI Reviewed Data & Dispatched WhatsApp Message!\n\nRecipient: +${recipient}\n\n` + data.aiReport.substring(0, 180) + '...');
+        alert(`EHN AI Reviewed Data & Dispatched WhatsApp Message!\n\nRecipient: +${recipient}\n\n` + data.aiReport.substring(0, 180) + '...');
       } else {
         const fallbackText = `*INTERNAL MANAGEMENT AUDIT (EHN AI)*\n*Kedvass Hygiene Products*\n\n*System Status:*\nReal-time database audit triggered for ${itemTitle}.\n\n_Auto-generated by EHN AI & EHN One ERP_`;
         setLastAiReport(fallbackText);
@@ -335,47 +273,6 @@ export default function Automations() {
       setAiGeneratingId(null);
     }
   };
-
-  // 100% RELIABLE AUTOMATIC REMINDERS SCHEDULER LOOP
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const now = new Date();
-      const todayStr = now.toISOString().split('T')[0];
-      const currentHHMM = now.toTimeString().substring(0, 5);
-
-      setReminders((currentReminders) => {
-        let updated = false;
-        const newReminders = currentReminders.map((r) => {
-          if (!r.enabled) return r;
-
-          const startDate = r.startDate || r.date || todayStr;
-          const endDate = r.endDate || r.startDate || r.date || todayStr;
-
-          const isWithinRange = (todayStr >= startDate) && (todayStr <= endDate);
-          const isTimeMatch = (r.time === currentHHMM);
-
-          if (isWithinRange && isTimeMatch && r.lastSent !== `${todayStr}_${currentHHMM}`) {
-            console.log(`⏰ AUTOMATIC REMINDER TRIGGERED @ ${currentHHMM} for +${r.phone}`);
-            
-            if (['stock_summary', 'sales_summary', 'low_stock', 'payment_dues', 'product_catalog', 'custom_ai'].includes(r.category)) {
-              handleRunEhnAIReport(r, r.phone);
-            } else {
-              handleSendWhatsAppDirect({ phone: r.phone, message: r.message });
-            }
-
-            updated = true;
-            return { ...r, lastSent: `${todayStr}_${currentHHMM}` };
-          }
-          return r;
-        });
-
-        if (updated) saveRemindersToStorage(newReminders);
-        return currentReminders;
-      });
-    }, 12000);
-
-    return () => clearInterval(interval);
-  }, []);
 
   // Save Universal Generic Rule
   const handleSaveUniversalRule = (e) => {
@@ -451,7 +348,7 @@ export default function Automations() {
   });
   const paginatedReminders = filteredReminders.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  // Clean Bootstrap Icons Badge Mapping
+  // Clean Bootstrap Icons Badge Mapping (NO EMOJIS)
   const getCategoryBadge = (cat) => {
     const map = {
       stock_summary: { color: 'success', icon: 'bi-box-seam', label: 'Stock Summary' },
@@ -478,85 +375,80 @@ export default function Automations() {
 
   return (
     <div className="py-2">
-      {/* Modern Executive Workspace Header */}
-      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+      {/* Sleek Modern Header */}
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
         <div>
           <div className="d-flex align-items-center gap-2 mb-0.5">
-            <h4 className="fw-bold text-dark mb-0" style={{ letterSpacing: '-0.4px' }}>WhatsApp EHN AI Automation & Reminders Engine</h4>
-            <span className="badge px-2.5 py-1" style={{ background: '#DAF2DB', color: '#1E4D2B', fontWeight: 700, fontSize: '0.72rem' }}>
+            <h5 className="fw-bold text-dark mb-0" style={{ letterSpacing: '-0.3px' }}>EHN AI Automations & Reminders</h5>
+            <span className="badge px-2 py-0.5" style={{ background: '#DAF2DB', color: '#1E4D2B', fontWeight: 700, fontSize: '0.68rem' }}>
               <i className="bi bi-cpu me-1"></i> EHN AI POWERED
             </span>
           </div>
-          <small className="text-muted">EHN AI reviews software inventory, billing & dashboard data to dispatch automated WhatsApp reminders on schedule</small>
+          <small className="text-muted" style={{ fontSize: '0.78rem' }}>AI-driven automated WhatsApp reminders & database audits</small>
         </div>
         <div className="d-flex gap-2">
-          <button className="btn btn-outline-success btn-sm fw-bold rounded-pill px-3.5 shadow-sm" onClick={() => { setEditRule(null); setAutoForm({ title: '', category: 'auto_reply_keyword', keyword: '', time: '20:00', frequency: 'daily', phone: adminPhone, replyText: '', aiPrompt: '' }); setShowAutoModal(true); }}>
-            <i className="bi bi-plus-lg me-1"></i> + New Automation Rule
+          <button className="btn btn-outline-success btn-sm fw-bold rounded-pill px-3.5 shadow-sm" style={{ fontSize: '0.78rem' }} onClick={() => { setEditRule(null); setAutoForm({ title: '', category: 'auto_reply_keyword', keyword: '', time: '20:00', frequency: 'daily', phone: adminPhone, replyText: '', aiPrompt: '' }); setShowAutoModal(true); }}>
+            <i className="bi bi-plus-lg me-1"></i> New Rule
           </button>
-          <button className="btn btn-success btn-sm fw-bold rounded-pill px-3.5 shadow-sm" onClick={() => { setShowTaskModal(true); }} style={{ background: '#4CAF50', border: 'none' }}>
-            <i className="bi bi-alarm me-1"></i> + Schedule Reminder
+          <button className="btn btn-success btn-sm fw-bold rounded-pill px-3.5 shadow-sm" style={{ background: '#1E4D2B', border: 'none', fontSize: '0.78rem' }} onClick={() => { setShowTaskModal(true); }}>
+            <i className="bi bi-alarm me-1"></i> Schedule Reminder
           </button>
         </div>
       </div>
 
-      {/* CONVERSATIONAL NATURAL LANGUAGE EHN AI BOT COMMAND ASSISTANT */}
-      <div className="card border-0 shadow-sm mb-3" style={{ borderRadius: 12, background: 'linear-gradient(135deg, #1E4D2B 0%, #153820 100%)', color: '#ffffff' }}>
-        <div className="card-body p-3">
-          <div className="d-flex align-items-center justify-content-between mb-2">
-            <div className="d-flex align-items-center gap-2">
-              <i className="bi bi-robot text-warning" style={{ fontSize: '1.3rem' }}></i>
+      {/* Executive Metric Summary Cards (Spacious Clean Padding) */}
+      <div className="row g-2 mb-3">
+        <div className="col-xl-3 col-sm-6">
+          <div className="card border-0 shadow-sm p-3 h-100" style={{ borderRadius: 12, borderLeft: '3.5px solid #1E4D2B' }}>
+            <div className="d-flex align-items-center justify-content-between">
               <div>
-                <span className="fw-bold text-white" style={{ fontSize: '0.92rem' }}>EHN AI Conversational Admin Command Bot</span>
-                <small className="text-white-50 d-block" style={{ fontSize: '0.73rem' }}>Type natural Hindi/English commands to setup reminders, edit timing, or run reports instantly!</small>
+                <small className="text-muted fw-bold text-uppercase d-block mb-1" style={{ fontSize: '0.65rem', letterSpacing: '0.5px' }}>ACTIVE REMINDERS</small>
+                <h5 className="fw-bold text-dark mb-0">{reminders.filter(r => r.enabled).length} Reminders</h5>
+              </div>
+              <div className="p-2.5 rounded-circle" style={{ background: '#DAF2DB', color: '#1E4D2B' }}>
+                <i className="bi bi-alarm-fill" style={{ fontSize: '1.1rem' }}></i>
               </div>
             </div>
-            <span className="badge bg-warning text-dark font-monospace" style={{ fontSize: '0.68rem', fontWeight: 700 }}>NATURAL LANGUAGE AI</span>
           </div>
-
-          <form onSubmit={(e) => { e.preventDefault(); handleExecuteAiCommand(); }} className="d-flex gap-2 mb-2">
-            <input
-              type="text"
-              className="form-control form-control-sm fw-semibold text-dark shadow-sm"
-              style={{ borderRadius: 8, fontSize: '0.85rem' }}
-              placeholder='Try typing: "Meri meeting hai aaj 9 baje, 8:30 PM ka reminder setup kar do"'
-              value={aiCommandInput}
-              onChange={(e) => setAiCommandInput(e.target.value)}
-              disabled={aiCommandLoading}
-            />
-            <button
-              type="submit"
-              className="btn btn-warning btn-sm fw-bold px-3 shadow-sm d-flex align-items-center gap-1"
-              style={{ borderRadius: 8, fontSize: '0.8rem', whiteSpace: 'nowrap' }}
-              disabled={aiCommandLoading || !aiCommandInput.trim()}
-            >
-              {aiCommandLoading ? <span className="spinner-border spinner-border-sm me-1"></span> : <i className="bi bi-send-fill"></i>}
-              Ask EHN AI Bot
-            </button>
-          </form>
-
-          {/* Quick Chip Suggestions */}
-          <div className="d-flex flex-wrap gap-1.5 align-items-center">
-            <small className="text-white-50 fw-bold me-1" style={{ fontSize: '0.7rem' }}>QUICK COMMANDS:</small>
-            <button type="button" className="btn btn-sm btn-outline-light py-0 px-2 font-monospace" style={{ fontSize: '0.68rem', borderRadius: 20 }} onClick={() => handleExecuteAiCommand("Meri meeting hai aaj 9 baje, 8:30 PM ka reminder setup kar do")}>
-              💬 "Meeting aaj 9 baje, 8:30 PM reminder set kar do"
-            </button>
-            <button type="button" className="btn btn-sm btn-outline-light py-0 px-2 font-monospace" style={{ fontSize: '0.68rem', borderRadius: 20 }} onClick={() => handleExecuteAiCommand("Stock report ka time change karke 10 PM kar do")}>
-              ⏱️ "Stock report time 10 PM kar do"
-            </button>
-            <button type="button" className="btn btn-sm btn-outline-light py-0 px-2 font-monospace" style={{ fontSize: '0.68rem', borderRadius: 20 }} onClick={() => handleExecuteAiCommand("Aaj ki sales revenue report WhatsApp par bhej do")}>
-              📊 "Sales revenue report bhej do"
-            </button>
-          </div>
-
-          {/* Bot Response Stream */}
-          {aiCommandLogs.length > 0 && (
-            <div className="mt-2.5 p-2 rounded bg-white text-dark border" style={{ maxHeight: 110, overflowY: 'auto', fontSize: '0.78rem' }}>
-              <div className="fw-bold text-success mb-1">
-                <i className="bi bi-check-circle-fill me-1"></i> {aiCommandLogs[0].reply}
+        </div>
+        <div className="col-xl-3 col-sm-6">
+          <div className="card border-0 shadow-sm p-3 h-100" style={{ borderRadius: 12, borderLeft: '3.5px solid #4CAF50' }}>
+            <div className="d-flex align-items-center justify-content-between">
+              <div>
+                <small className="text-muted fw-bold text-uppercase d-block mb-1" style={{ fontSize: '0.65rem', letterSpacing: '0.5px' }}>AUTO-REPLY BOT</small>
+                <h5 className="fw-bold text-success mb-0">{autoReplyRules.filter(r => r.enabled).length} Rules</h5>
               </div>
-              <small className="text-muted font-monospace d-block">Executed @ {aiCommandLogs[0].time}</small>
+              <div className="p-2.5 rounded-circle" style={{ background: '#E8F5E9', color: '#2E7D32' }}>
+                <i className="bi bi-chat-dots-fill" style={{ fontSize: '1.1rem' }}></i>
+              </div>
             </div>
-          )}
+          </div>
+        </div>
+        <div className="col-xl-3 col-sm-6">
+          <div className="card border-0 shadow-sm p-3 h-100" style={{ borderRadius: 12, borderLeft: '3.5px solid #0284c7' }}>
+            <div className="d-flex align-items-center justify-content-between">
+              <div>
+                <small className="text-muted fw-bold text-uppercase d-block mb-1" style={{ fontSize: '0.65rem', letterSpacing: '0.5px' }}>AI AUDIT ENGINE</small>
+                <h5 className="fw-bold text-primary mb-0">{automationsList.length} Automations</h5>
+              </div>
+              <div className="p-2.5 rounded-circle" style={{ background: '#e0f2fe', color: '#0284c7' }}>
+                <i className="bi bi-cpu-fill" style={{ fontSize: '1.1rem' }}></i>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="col-xl-3 col-sm-6">
+          <div className="card border-0 shadow-sm p-3 h-100" style={{ borderRadius: 12, borderLeft: '3.5px solid #25D366' }}>
+            <div className="d-flex align-items-center justify-content-between">
+              <div>
+                <small className="text-muted fw-bold text-uppercase d-block mb-1" style={{ fontSize: '0.65rem', letterSpacing: '0.5px' }}>WHATSAPP GATEWAY</small>
+                <h5 className="fw-bold text-dark mb-0 font-monospace" style={{ fontSize: '0.82rem' }}>24/7 SERVER SCHEDULER</h5>
+              </div>
+              <div className="p-2.5 rounded-circle" style={{ background: '#e8f5e9', color: '#25D366' }}>
+                <i className="bi bi-whatsapp" style={{ fontSize: '1.1rem' }}></i>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -565,28 +457,28 @@ export default function Automations() {
         <div className="card-body p-2 d-flex flex-wrap align-items-center justify-content-between gap-2" style={{ background: '#f8faf9', borderRadius: 12 }}>
           <div className="nav nav-pills gap-1">
             <button
-              className={`nav-link btn-sm fw-bold rounded-pill px-2.5 py-1 ${activeTab === 'reminders' ? 'active' : 'text-dark bg-white shadow-sm'}`}
+              className={`nav-link btn-sm fw-bold rounded-pill px-3 py-1 ${activeTab === 'reminders' ? 'active' : 'text-dark bg-white shadow-sm'}`}
               onClick={() => setActiveTab('reminders')}
               style={activeTab === 'reminders' ? { background: '#1E4D2B', color: '#ffffff', fontSize: '0.76rem' } : { fontSize: '0.76rem' }}
             >
               <i className="bi bi-alarm-fill me-1 text-warning"></i> 1. Reminders ({reminders.length})
             </button>
             <button
-              className={`nav-link btn-sm fw-bold rounded-pill px-2.5 py-1 ${activeTab === 'auto_reply' ? 'active' : 'text-dark bg-white shadow-sm'}`}
+              className={`nav-link btn-sm fw-bold rounded-pill px-3 py-1 ${activeTab === 'auto_reply' ? 'active' : 'text-dark bg-white shadow-sm'}`}
               onClick={() => setActiveTab('auto_reply')}
               style={activeTab === 'auto_reply' ? { background: '#1E4D2B', color: '#ffffff', fontSize: '0.76rem' } : { fontSize: '0.76rem' }}
             >
               <i className="bi bi-chat-dots-fill me-1 text-success"></i> 2. Auto-Reply Bot ({autoReplyRules.length})
             </button>
             <button
-              className={`nav-link btn-sm fw-bold rounded-pill px-2.5 py-1 ${activeTab === 'setup' ? 'active' : 'text-dark bg-white shadow-sm'}`}
+              className={`nav-link btn-sm fw-bold rounded-pill px-3 py-1 ${activeTab === 'setup' ? 'active' : 'text-dark bg-white shadow-sm'}`}
               onClick={() => setActiveTab('setup')}
               style={activeTab === 'setup' ? { background: '#1E4D2B', color: '#ffffff', fontSize: '0.76rem' } : { fontSize: '0.76rem' }}
             >
               <i className="bi bi-cpu-fill me-1 text-primary"></i> 3. EHN AI Reports ({automationsList.length})
             </button>
             <button
-              className={`nav-link btn-sm fw-bold rounded-pill px-2.5 py-1 ${activeTab === 'live_inbox' ? 'active' : 'text-dark bg-white shadow-sm'}`}
+              className={`nav-link btn-sm fw-bold rounded-pill px-3 py-1 ${activeTab === 'live_inbox' ? 'active' : 'text-dark bg-white shadow-sm'}`}
               onClick={() => setActiveTab('live_inbox')}
               style={activeTab === 'live_inbox' ? { background: '#1E4D2B', color: '#ffffff', fontSize: '0.76rem' } : { fontSize: '0.76rem' }}
             >
@@ -613,7 +505,7 @@ export default function Automations() {
         <div className="v-card">
           <div className="v-card-header d-flex justify-content-between align-items-center" style={{ background: '#f4fbf5', borderRadius: '12px 12px 0 0' }}>
             <span className="fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '0.88rem' }}>
-              <i className="bi bi-alarm me-1 text-success"></i> SCHEDULED REMINDERS REGISTER (START DATE & END DATE RANGE)
+              <i className="bi bi-alarm me-1 text-success"></i> SCHEDULED REMINDERS REGISTER (24/7 SERVER SCHEDULER)
             </span>
             <span className="badge px-2.5 py-1" style={{ background: '#DAF2DB', color: '#1E4D2B', fontWeight: 600 }}>{reminders.length} REMINDERS</span>
           </div>
@@ -653,7 +545,7 @@ export default function Automations() {
                           <i className="bi bi-calendar-range me-1 text-primary"></i>
                           {r.startDate || r.date} $\rightarrow$ {r.endDate || r.startDate || r.date}
                         </div>
-                        <small className="text-muted text-uppercase" style={{ fontSize: '0.68rem' }}>{r.frequency === 'daily' ? '🔄 Daily Repeat' : '📍 One-Time'}</small>
+                        <small className="text-muted text-uppercase" style={{ fontSize: '0.68rem' }}>{r.frequency === 'daily' ? 'Daily Repeat' : 'One-Time'}</small>
                       </td>
                       <td>
                         <span className="badge bg-light text-dark border font-monospace fw-bold" style={{ fontSize: '0.75rem' }}>
@@ -697,22 +589,22 @@ export default function Automations() {
       {activeTab === 'auto_reply' && (
         <div className="row g-3">
           <div className="col-12">
-            <div className="p-2.5 rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-2 border bg-white shadow-sm" style={{ borderColor: '#DAF2DB' }}>
+            <div className="p-3 rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-2 border bg-white shadow-sm" style={{ borderColor: '#DAF2DB' }}>
               <div className="d-flex align-items-center gap-2">
                 <i className="bi bi-whatsapp text-success" style={{ fontSize: '1.25rem' }}></i>
                 <div>
-                  <span className="fw-bold text-dark me-2" style={{ fontSize: '0.85rem' }}>Customer Incoming Message Auto-Reply Bot</span>
+                  <span className="fw-bold text-dark me-2" style={{ fontSize: '0.85rem' }}>WhatsApp Webhook Auto-Reply Engine</span>
                   <span className="badge bg-success font-monospace" style={{ fontSize: '0.65rem' }}>ACTIVE</span>
                 </div>
               </div>
-              <small className="text-muted">When a customer sends a message with a keyword, Meta Webhook instantly sends auto-reply back!</small>
+              <small className="text-muted">Responds with real live MongoDB data for Stock, Revenue, Customers, Ledger & Warehouses!</small>
             </div>
           </div>
 
           {autoReplyRules.map((rule) => (
             <div className="col-md-6 col-lg-4" key={rule.id}>
               <div className="card h-100 border-0 shadow-sm" style={{ borderRadius: 12, background: '#ffffff', borderLeft: '4px solid #25D366' }}>
-                <div className="card-body p-3">
+                <div className="card-body p-3.5">
                   <div className="d-flex align-items-start justify-content-between mb-2">
                     <div>
                       <h6 className="fw-bold text-dark mb-1" style={{ fontSize: '0.9rem' }}>{rule.title}</h6>
@@ -730,7 +622,7 @@ export default function Automations() {
                     </div>
                   </div>
 
-                  <div className="p-2 rounded border mb-3" style={{ background: '#F4FBF5', fontSize: '0.78rem', color: '#1E4D2B' }}>
+                  <div className="p-2.5 rounded border mb-3" style={{ background: '#F4FBF5', fontSize: '0.78rem', color: '#1E4D2B' }}>
                     <i className="bi bi-reply-fill text-success me-1"></i> <strong>Auto-Reply Content:</strong>
                     <div className="mt-1 fw-semibold text-dark">{rule.replyText}</div>
                   </div>
@@ -759,7 +651,7 @@ export default function Automations() {
       {activeTab === 'setup' && (
         <div className="row g-3">
           <div className="col-12">
-            <div className="p-2.5 rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-2 border bg-white shadow-sm" style={{ borderColor: '#DAF2DB' }}>
+            <div className="p-3 rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-2 border bg-white shadow-sm" style={{ borderColor: '#DAF2DB' }}>
               <div className="d-flex align-items-center gap-2">
                 <i className="bi bi-cpu-fill text-success" style={{ fontSize: '1.25rem' }}></i>
                 <div>
@@ -774,7 +666,7 @@ export default function Automations() {
           {automationsList.map((item) => (
             <div className="col-md-6 col-lg-4" key={item.id}>
               <div className="card h-100 border-0 shadow-sm" style={{ borderRadius: 12, background: '#ffffff', borderTop: '3.5px solid #1E4D2B' }}>
-                <div className="card-body p-3">
+                <div className="card-body p-3.5">
                   <div className="d-flex align-items-start justify-content-between mb-2">
                     <div>
                       <h6 className="fw-bold text-dark mb-1" style={{ fontSize: '0.9rem' }}>{item.title}</h6>
@@ -792,7 +684,7 @@ export default function Automations() {
                     </div>
                   </div>
 
-                  <div className="p-2 rounded bg-light border mb-3" style={{ fontSize: '0.75rem', color: '#444' }}>
+                  <div className="p-2.5 rounded bg-light border mb-3" style={{ fontSize: '0.75rem', color: '#444' }}>
                     <i className="bi bi-magic me-1 text-primary"></i> <strong>AI Instruction:</strong> {item.aiPrompt}
                   </div>
 
@@ -832,7 +724,7 @@ export default function Automations() {
           {lastAiReport && (
             <div className="col-12 mt-2">
               <div className="card border-0 shadow-sm" style={{ borderRadius: 12, background: '#E8F5E9', borderLeft: '4px solid #25D366' }}>
-                <div className="card-body p-3">
+                <div className="card-body p-3.5">
                   <div className="d-flex align-items-center justify-content-between mb-2">
                     <span className="fw-bold text-success" style={{ fontSize: '0.85rem' }}>
                       <i className="bi bi-whatsapp me-1"></i> LAST GENERATED EHN AI WHATSAPP REPORT:
@@ -898,7 +790,7 @@ export default function Automations() {
                             </div>
                           ) : isStatus ? (
                             <span className="badge-v success">
-                              {isStatus.status === 'read' ? '✓✓ Read (Blue Ticks)' : isStatus.status === 'delivered' ? '✓✓ Delivered' : '✓ Sent'}
+                              {isStatus.status === 'read' ? 'Read (Blue Ticks)' : isStatus.status === 'delivered' ? 'Delivered' : 'Sent'}
                             </span>
                           ) : (
                             <pre className="m-0 text-muted" style={{ fontSize: '0.68rem' }}>{JSON.stringify(item.body)}</pre>
@@ -914,20 +806,20 @@ export default function Automations() {
         </div>
       )}
 
-      {/* UNIVERSAL GENERIC AUTOMATION & AUTO-REPLY BUILDER MODAL */}
+      {/* UNIVERSAL GENERIC AUTOMATION BUILDER MODAL */}
       {showAutoModal && (
         <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowAutoModal(false); }}>
           <div className="modal-box" style={{ maxWidth: 540 }}>
-            <div className="modal-box-header d-flex align-items-center justify-content-between px-4 py-3" style={{ background: '#1E4D2B', color: '#ffffff', borderRadius: '12px 12px 0 0' }}>
-              <span className="fw-bold text-white d-flex align-items-center gap-2" style={{ fontSize: '1.05rem' }}>
-                <i className="bi bi-robot text-warning"></i> {editRule ? 'Edit Automation Rule' : 'Create Generic EHN AI Automation Rule'}
+            <div className="modal-box-header d-flex align-items-center justify-content-between px-3.5 py-2.5" style={{ background: '#1E4D2B', color: '#ffffff', borderRadius: '12px 12px 0 0' }}>
+              <span className="fw-bold text-white d-flex align-items-center gap-2" style={{ fontSize: '0.98rem' }}>
+                <i className="bi bi-cpu text-warning me-1"></i> {editRule ? 'Edit Automation Rule' : 'New Automation Rule'}
               </span>
               <button type="button" className="btn-close btn-close-white" onClick={() => setShowAutoModal(false)}></button>
             </div>
             <form onSubmit={handleSaveUniversalRule}>
-              <div className="modal-box-body p-4 bg-white">
+              <div className="modal-box-body p-3.5 bg-white">
                 <div className="mb-3">
-                  <label className="form-label fw-bold text-dark">Automation Rule Title <span className="text-danger">*</span></label>
+                  <label className="form-label fw-bold text-dark" style={{ fontSize: '0.82rem' }}>Automation Rule Title <span className="text-danger">*</span></label>
                   <input
                     type="text"
                     className="form-control fw-semibold"
@@ -939,7 +831,7 @@ export default function Automations() {
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label fw-bold text-dark">Rule Category / Trigger Type</label>
+                  <label className="form-label fw-bold text-dark" style={{ fontSize: '0.82rem' }}>Rule Category / Trigger Type</label>
                   <select
                     className="form-select fw-bold text-dark"
                     value={autoForm.category}
@@ -955,7 +847,7 @@ export default function Automations() {
 
                 {autoForm.category === 'auto_reply_keyword' ? (
                   <div className="mb-3">
-                    <label className="form-label fw-bold text-dark">Incoming Customer Trigger Keyword(s) <span className="text-danger">*</span></label>
+                    <label className="form-label fw-bold text-dark" style={{ fontSize: '0.82rem' }}>Incoming Customer Trigger Keyword(s) <span className="text-danger">*</span></label>
                     <input
                       type="text"
                       className="form-control font-monospace fw-bold"
@@ -969,7 +861,7 @@ export default function Automations() {
                 ) : (
                   <div className="row g-3 mb-3">
                     <div className="col-6">
-                      <label className="form-label fw-bold text-dark">Trigger Time (24h)</label>
+                      <label className="form-label fw-bold text-dark" style={{ fontSize: '0.82rem' }}>Trigger Time (24h)</label>
                       <input
                         type="time"
                         className="form-control fw-bold"
@@ -979,7 +871,7 @@ export default function Automations() {
                       />
                     </div>
                     <div className="col-6">
-                      <label className="form-label fw-bold text-dark">Recipient Phone</label>
+                      <label className="form-label fw-bold text-dark" style={{ fontSize: '0.82rem' }}>Recipient Phone</label>
                       <input
                         type="text"
                         className="form-control font-monospace fw-bold"
@@ -992,7 +884,7 @@ export default function Automations() {
                 )}
 
                 <div className="mb-3">
-                  <label className="form-label fw-bold text-dark">
+                  <label className="form-label fw-bold text-dark" style={{ fontSize: '0.82rem' }}>
                     {autoForm.category === 'auto_reply_keyword' ? 'Auto-Reply Response Content' : 'EHN AI Prompt / Instruction'}
                   </label>
                   <textarea
@@ -1006,7 +898,7 @@ export default function Automations() {
               </div>
               <div className="modal-box-footer d-flex justify-content-end gap-2 p-3 bg-light" style={{ borderRadius: '0 0 12px 12px' }}>
                 <button type="button" className="btn btn-outline-secondary btn-sm fw-semibold" onClick={() => setShowAutoModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-success btn-sm fw-bold px-4" style={{ background: '#1E4D2B', border: 'none' }}>Save Automation Rule</button>
+                <button type="submit" className="btn btn-success btn-sm fw-bold px-4" style={{ background: '#1E4D2B', border: 'none' }}>Save Rule</button>
               </div>
             </form>
           </div>
@@ -1016,10 +908,10 @@ export default function Automations() {
       {/* SCHEDULE REMINDER MODAL */}
       {showTaskModal && (
         <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowTaskModal(false); }}>
-          <div className="modal-box" style={{ maxWidth: 560 }}>
-            <div className="modal-box-header d-flex align-items-center justify-content-between px-4 py-3" style={{ background: '#1E4D2B', color: '#ffffff', borderRadius: '12px 12px 0 0' }}>
-              <span className="fw-bold text-white d-flex align-items-center gap-2" style={{ fontSize: '1.05rem' }}>
-                <i className="bi bi-alarm-fill text-warning"></i> Schedule WhatsApp Reminder (Start & End Date)
+          <div className="modal-box" style={{ maxWidth: 540 }}>
+            <div className="modal-box-header d-flex align-items-center justify-content-between px-3.5 py-2.5" style={{ background: '#1E4D2B', color: '#ffffff', borderRadius: '12px 12px 0 0' }}>
+              <span className="fw-bold text-white d-flex align-items-center gap-2" style={{ fontSize: '0.98rem' }}>
+                <i className="bi bi-alarm-fill text-warning me-1"></i> {editRule ? 'Edit Schedule Reminder' : 'Schedule Reminder'}
               </span>
               <button type="button" className="btn-close btn-close-white" onClick={() => setShowTaskModal(false)}></button>
             </div>
@@ -1029,9 +921,9 @@ export default function Automations() {
               saveRemindersToStorage([{ id: `REM-${Date.now()}`, ...taskForm, enabled: true }, ...reminders]);
               setShowTaskModal(false);
             }}>
-              <div className="modal-box-body p-4 bg-white">
+              <div className="modal-box-body p-3.5 bg-white">
                 <div className="mb-3">
-                  <label className="form-label fw-bold text-dark">Reminder Title <span className="text-danger">*</span></label>
+                  <label className="form-label fw-bold text-dark" style={{ fontSize: '0.82rem' }}>Reminder Title <span className="text-danger">*</span></label>
                   <input
                     type="text"
                     className="form-control fw-semibold"
@@ -1043,7 +935,7 @@ export default function Automations() {
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label fw-bold text-dark">Dashboard Module / Category Dropdown <span className="text-danger">*</span></label>
+                  <label className="form-label fw-bold text-dark" style={{ fontSize: '0.82rem' }}>Dashboard Module / Category Dropdown <span className="text-danger">*</span></label>
                   <select
                     className="form-select fw-bold text-dark"
                     value={taskForm.category}
@@ -1063,22 +955,22 @@ export default function Automations() {
 
                 <div className="row g-3 mb-3">
                   <div className="col-6">
-                    <label className="form-label fw-bold text-dark">Start Date <span className="text-danger">*</span></label>
+                    <label className="form-label fw-bold text-dark" style={{ fontSize: '0.82rem' }}>Start Date <span className="text-danger">*</span></label>
                     <input type="date" className="form-control fw-bold" value={taskForm.startDate} onChange={(e) => setTaskForm({ ...taskForm, startDate: e.target.value, date: e.target.value })} required />
                   </div>
                   <div className="col-6">
-                    <label className="form-label fw-bold text-dark">End Date <span className="text-danger">*</span></label>
+                    <label className="form-label fw-bold text-dark" style={{ fontSize: '0.82rem' }}>End Date <span className="text-danger">*</span></label>
                     <input type="date" className="form-control fw-bold" value={taskForm.endDate} onChange={(e) => setTaskForm({ ...taskForm, endDate: e.target.value })} required />
                   </div>
                 </div>
 
                 <div className="row g-3 mb-3">
                   <div className="col-6">
-                    <label className="form-label fw-bold text-dark">Trigger Time (24h) <span className="text-danger">*</span></label>
+                    <label className="form-label fw-bold text-dark" style={{ fontSize: '0.82rem' }}>Trigger Time (24h) <span className="text-danger">*</span></label>
                     <input type="time" className="form-control fw-bold text-success" value={taskForm.time} onChange={(e) => setTaskForm({ ...taskForm, time: e.target.value })} required />
                   </div>
                   <div className="col-6">
-                    <label className="form-label fw-bold text-dark">Repeat Frequency</label>
+                    <label className="form-label fw-bold text-dark" style={{ fontSize: '0.82rem' }}>Repeat Frequency</label>
                     <select
                       className="form-select fw-semibold"
                       value={taskForm.frequency}
@@ -1091,18 +983,18 @@ export default function Automations() {
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label fw-bold text-dark">Target Recipient Number <span className="text-danger">*</span></label>
+                  <label className="form-label fw-bold text-dark" style={{ fontSize: '0.82rem' }}>Target Recipient Number <span className="text-danger">*</span></label>
                   <input type="text" className="form-control font-monospace fw-bold" placeholder="e.g. +91 9238695500" value={taskForm.phone} onChange={(e) => setTaskForm({ ...taskForm, phone: e.target.value })} required />
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label fw-bold text-dark">Custom Message / AI Instruction</label>
+                  <label className="form-label fw-bold text-dark" style={{ fontSize: '0.82rem' }}>Custom Message / AI Instruction</label>
                   <textarea className="form-control fw-semibold" rows="2" placeholder="Enter custom message text or instruction for EHN AI..." value={taskForm.message} onChange={(e) => setTaskForm({ ...taskForm, message: e.target.value })}></textarea>
                 </div>
               </div>
               <div className="modal-box-footer d-flex justify-content-end gap-2 p-3 bg-light" style={{ borderRadius: '0 0 12px 12px' }}>
                 <button type="button" className="btn btn-outline-secondary btn-sm fw-semibold" onClick={() => setShowTaskModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-success btn-sm fw-bold px-4" style={{ background: '#1E4D2B', border: 'none' }}>Save Schedule Reminder</button>
+                <button type="submit" className="btn btn-success btn-sm fw-bold px-4" style={{ background: '#1E4D2B', border: 'none' }}>Save Reminder</button>
               </div>
             </form>
           </div>

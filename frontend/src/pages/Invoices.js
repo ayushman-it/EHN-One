@@ -610,7 +610,7 @@ function InvoicePreviewModal({ invoice, onClose }) {
 
   return (
     <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal-box" style={{ maxWidth: 850, padding: 0 }}>
+      <div className="modal-box" style={{ width: '95vw', maxWidth: 960, padding: 0 }}>
         <div className="modal-box-header d-flex align-items-center justify-content-between">
           <div className="d-flex align-items-center gap-2">
             <i className="bi bi-receipt" style={{ color: 'var(--primary)' }}></i>
@@ -623,8 +623,8 @@ function InvoicePreviewModal({ invoice, onClose }) {
             <button className="close-btn" onClick={onClose}><i className="bi bi-x-lg"></i></button>
           </div>
         </div>
-        <div className="modal-box-body p-4 bg-white" style={{ maxHeight: '78vh', overflowY: 'auto' }}>
-          <div className="border p-4 bg-white shadow-sm" style={{ border: '1.5px solid #000' }}>
+        <div className="modal-box-body p-3 p-md-4 bg-white" style={{ maxHeight: '82vh', overflowY: 'auto', overflowX: 'auto' }}>
+          <div className="border p-3 p-md-4 bg-white shadow-sm" style={{ border: '1.5px solid #000', minWidth: '100%' }}>
             <div className="d-flex justify-content-between border-bottom pb-3 mb-3">
               <div>
                 <h5 className="fw-bold mb-1">{companyName}</h5>
@@ -642,26 +642,28 @@ function InvoicePreviewModal({ invoice, onClose }) {
               <strong>Party Name:</strong> {invoice.customer?.name} ({invoice.customer?.location || 'N/A'})
             </div>
 
-            <table className="v-table mb-3">
-              <thead>
-                <tr>
-                  <th>Description of Goods</th>
-                  <th className="text-center">Qty</th>
-                  <th className="text-end">Rate (₹)</th>
-                  <th className="text-end">Amount (₹)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(invoice.items || []).map((it, idx) => (
-                  <tr key={idx}>
-                    <td className="fw-bold">{it.product}</td>
-                    <td className="text-center">{it.quantity} {it.unit || 'PCS'}</td>
-                    <td className="text-end">₹{(it.price || 0).toLocaleString('en-IN')}</td>
-                    <td className="text-end fw-bold">₹{(it.total || 0).toLocaleString('en-IN')}</td>
+            <div style={{ overflowX: 'auto' }}>
+              <table className="v-table mb-3" style={{ width: '100%' }}>
+                <thead>
+                  <tr>
+                    <th>DESCRIPTION OF GOODS</th>
+                    <th className="text-center" style={{ minWidth: 80 }}>QTY</th>
+                    <th className="text-end" style={{ minWidth: 100 }}>RATE (₹)</th>
+                    <th className="text-end" style={{ minWidth: 110 }}>AMOUNT (₹)</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {(invoice.items || []).map((it, idx) => (
+                    <tr key={idx}>
+                      <td className="fw-bold">{it.product}</td>
+                      <td className="text-center">{it.quantity} {it.unit || 'PCS'}</td>
+                      <td className="text-end">₹{(it.price || 0).toLocaleString('en-IN')}</td>
+                      <td className="text-end fw-bold">₹{(it.total || 0).toLocaleString('en-IN')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
             <div className="d-flex justify-content-between align-items-center pt-2 border-top">
               <div>
