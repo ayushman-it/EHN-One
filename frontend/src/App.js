@@ -12,6 +12,7 @@ import Customers    from './pages/Customers';
 import Warehouse    from './pages/Warehouse';
 import Categories   from './pages/Categories';
 import Automations  from './pages/Automations';
+import EhnAiAssistant from './pages/EhnAiAssistant';
 import Reports      from './pages/Reports';
 import Settings     from './pages/Settings';
 import Support      from './pages/Support';
@@ -31,6 +32,7 @@ const MENU = [
     collapsible: false,
     items: [
       { to: '/', icon: 'bi-speedometer2', label: 'Gateway Dashboard', permission: 'dashboard.view' },
+      { to: '/ai-assistant', icon: 'bi-robot', label: 'EHN AI Assistant', permission: 'dashboard.view' },
     ],
   },
   {
@@ -562,6 +564,7 @@ function MainLayout() {
               <Route path="/reports"     element={<ProtectedRoute permission="reports.view"><Reports /></ProtectedRoute>} />
               <Route path="/analytics"   element={<ProtectedRoute permission="analytics.view"><Reports defaultTab="overview" /></ProtectedRoute>} />
               <Route path="/automations" element={<ProtectedRoute permission="settings.view"><Automations /></ProtectedRoute>} />
+              <Route path="/ai-assistant" element={<ProtectedRoute permission="dashboard.view"><EhnAiAssistant /></ProtectedRoute>} />
               <Route path="/document-customizer" element={<ProtectedRoute permission="settings.view"><DocumentCustomizer /></ProtectedRoute>} />
               <Route path="/settings"    element={<ProtectedRoute permission="settings.view"><Settings /></ProtectedRoute>} />
               <Route path="/users"       element={<ProtectedRoute permission="users.view"><Users /></ProtectedRoute>} />
