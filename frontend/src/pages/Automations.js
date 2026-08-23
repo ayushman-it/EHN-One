@@ -23,12 +23,17 @@ export default function Automations() {
   const [aiGeneratingId, setAiGeneratingId] = useState(null);
   const [lastAiReport, setLastAiReport] = useState('');
 
+  // AI Command Bot State
+  const [aiCommandInput, setAiCommandInput] = useState('');
+  const [aiCommandLoading, setAiCommandLoading] = useState(false);
+  const [aiCommandLogs, setAiCommandLogs] = useState([]);
+
   // Dynamic Admin WhatsApp Recipient Number
   const [adminPhone, setAdminPhone] = useState(() => {
     return localStorage.getItem('ehn_admin_whatsapp_phone') || '+91 9238695500';
   });
 
-  // Dynamic Auto-Reply Bot Rules List (NO EMOJIS - Bootstrap Icons)
+  // Dynamic Auto-Reply Bot Rules List
   const [autoReplyRules, setAutoReplyRules] = useState(() => {
     try {
       const saved = localStorage.getItem('ehn_auto_reply_rules');
@@ -96,7 +101,7 @@ export default function Automations() {
     ];
   });
 
-  // Dynamic Scheduled Reminders State (With Start Date & End Date Range)
+  // Dynamic Scheduled Reminders State
   const [reminders, setReminders] = useState(() => {
     try {
       const saved = localStorage.getItem('ehn_scheduled_reminders');
@@ -153,7 +158,7 @@ export default function Automations() {
     aiPrompt: '',
   });
 
-  // Schedule Reminder Form State (Includes Start Date & End Date)
+  // Schedule Reminder Form State
   const [taskForm, setTaskForm] = useState({
     title: '',
     category: 'stock_summary',
@@ -186,6 +191,63 @@ export default function Automations() {
     try {
       localStorage.setItem('ehn_scheduled_reminders', JSON.stringify(newReminders));
     } catch (e) {}
+  };
+
+  // Conversational AI Natural Language Command Bot Handler
+  const handleExecuteAiCommand = async (commandTextStr) => {
+    const queryText = commandTextStr || aiCommandInput;
+    if (!queryText || !queryText.trim()) return;
+
+    setAiCommandLoading(true);
+
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/settings/ai-command-bot', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
+        body: JSON.stringify({ userCommand: queryText, defaultPhone: adminPhone })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        // Execute parsed action dynamically in UI state & database
+        if (data.action === 'CREATE_REMINDER' && data.data) {
+          const todayStr = new Date().toISOString().split('T')[0];
+          const newRem = {
+            id: `REM-${Date.now()}`,
+            title: data.data.title || 'EHN AI Scheduled Reminder',
+            category: data.data.category || 'meeting',
+            startDate: data.data.startDate || todayStr,
+            endDate: data.data.endDate || data.data.startDate || todayStr,
+            date: data.data.startDate || todayStr,
+            time: data.data.time || '20:30',
+            frequency: data.data.frequency || 'one_time',
+            phone: data.data.phone || adminPhone,
+            enabled: true,
+            message: data.data.message || queryText
+          };
+          saveRemindersToStorage([newRem, ...reminders]);
+          setActiveTab('reminders');
+        } else if (data.action === 'UPDATE_AUTOMATION' && data.data) {
+          if (data.data.time) {
+            const updated = automationsList.map(a => ({ ...a, time: data.data.time }));
+            saveAutomationsList(updated);
+          }
+        }
+
+        setAiCommandLogs(prev => [{ prompt: queryText, reply: data.reply, time: new Date().toLocaleTimeString('en-IN') }, ...prev]);
+        setAiCommandInput('');
+      } else {
+        alert('EHN AI Bot: ' + (data.message || 'Could not parse command'));
+      }
+    } catch (e) {
+      alert('Failed to connect to EHN AI Command Bot');
+    } finally {
+      setAiCommandLoading(false);
+    }
   };
 
   // Fetch Live Meta Webhook Logs
@@ -274,7 +336,7 @@ export default function Automations() {
     }
   };
 
-  // 100% RELIABLE AUTOMATIC REMINDERS SCHEDULER LOOP (Checks Start Date, End Date, Time & Recipient)
+  // 100% RELIABLE AUTOMATIC REMINDERS SCHEDULER LOOP
   useEffect(() => {
     const interval = setInterval(() => {
       const now = new Date();
@@ -295,7 +357,6 @@ export default function Automations() {
           if (isWithinRange && isTimeMatch && r.lastSent !== `${todayStr}_${currentHHMM}`) {
             console.log(`⏰ AUTOMATIC REMINDER TRIGGERED @ ${currentHHMM} for +${r.phone}`);
             
-            // Dispatch via EHN AI or Direct Meta API
             if (['stock_summary', 'sales_summary', 'low_stock', 'payment_dues', 'product_catalog', 'custom_ai'].includes(r.category)) {
               handleRunEhnAIReport(r, r.phone);
             } else {
@@ -390,7 +451,7 @@ export default function Automations() {
   });
   const paginatedReminders = filteredReminders.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  // Clean Bootstrap Icons Badge Mapping (NO EMOJIS)
+  // Clean Bootstrap Icons Badge Mapping
   const getCategoryBadge = (cat) => {
     const map = {
       stock_summary: { color: 'success', icon: 'bi-box-seam', label: 'Stock Summary' },
@@ -438,7 +499,68 @@ export default function Automations() {
         </div>
       </div>
 
-      {/* Navigation Sub-Tabs Bar (Clean Icons, NO EMOJIS) */}
+      {/* CONVERSATIONAL NATURAL LANGUAGE EHN AI BOT COMMAND ASSISTANT */}
+      <div className="card border-0 shadow-sm mb-3" style={{ borderRadius: 12, background: 'linear-gradient(135deg, #1E4D2B 0%, #153820 100%)', color: '#ffffff' }}>
+        <div className="card-body p-3">
+          <div className="d-flex align-items-center justify-content-between mb-2">
+            <div className="d-flex align-items-center gap-2">
+              <i className="bi bi-robot text-warning" style={{ fontSize: '1.3rem' }}></i>
+              <div>
+                <span className="fw-bold text-white" style={{ fontSize: '0.92rem' }}>EHN AI Conversational Admin Command Bot</span>
+                <small className="text-white-50 d-block" style={{ fontSize: '0.73rem' }}>Type natural Hindi/English commands to setup reminders, edit timing, or run reports instantly!</small>
+              </div>
+            </div>
+            <span className="badge bg-warning text-dark font-monospace" style={{ fontSize: '0.68rem', fontWeight: 700 }}>NATURAL LANGUAGE AI</span>
+          </div>
+
+          <form onSubmit={(e) => { e.preventDefault(); handleExecuteAiCommand(); }} className="d-flex gap-2 mb-2">
+            <input
+              type="text"
+              className="form-control form-control-sm fw-semibold text-dark shadow-sm"
+              style={{ borderRadius: 8, fontSize: '0.85rem' }}
+              placeholder='Try typing: "Meri meeting hai aaj 9 baje, 8:30 PM ka reminder setup kar do"'
+              value={aiCommandInput}
+              onChange={(e) => setAiCommandInput(e.target.value)}
+              disabled={aiCommandLoading}
+            />
+            <button
+              type="submit"
+              className="btn btn-warning btn-sm fw-bold px-3 shadow-sm d-flex align-items-center gap-1"
+              style={{ borderRadius: 8, fontSize: '0.8rem', whiteSpace: 'nowrap' }}
+              disabled={aiCommandLoading || !aiCommandInput.trim()}
+            >
+              {aiCommandLoading ? <span className="spinner-border spinner-border-sm me-1"></span> : <i className="bi bi-send-fill"></i>}
+              Ask EHN AI Bot
+            </button>
+          </form>
+
+          {/* Quick Chip Suggestions */}
+          <div className="d-flex flex-wrap gap-1.5 align-items-center">
+            <small className="text-white-50 fw-bold me-1" style={{ fontSize: '0.7rem' }}>QUICK COMMANDS:</small>
+            <button type="button" className="btn btn-sm btn-outline-light py-0 px-2 font-monospace" style={{ fontSize: '0.68rem', borderRadius: 20 }} onClick={() => handleExecuteAiCommand("Meri meeting hai aaj 9 baje, 8:30 PM ka reminder setup kar do")}>
+              💬 "Meeting aaj 9 baje, 8:30 PM reminder set kar do"
+            </button>
+            <button type="button" className="btn btn-sm btn-outline-light py-0 px-2 font-monospace" style={{ fontSize: '0.68rem', borderRadius: 20 }} onClick={() => handleExecuteAiCommand("Stock report ka time change karke 10 PM kar do")}>
+              ⏱️ "Stock report time 10 PM kar do"
+            </button>
+            <button type="button" className="btn btn-sm btn-outline-light py-0 px-2 font-monospace" style={{ fontSize: '0.68rem', borderRadius: 20 }} onClick={() => handleExecuteAiCommand("Aaj ki sales revenue report WhatsApp par bhej do")}>
+              📊 "Sales revenue report bhej do"
+            </button>
+          </div>
+
+          {/* Bot Response Stream */}
+          {aiCommandLogs.length > 0 && (
+            <div className="mt-2.5 p-2 rounded bg-white text-dark border" style={{ maxHeight: 110, overflowY: 'auto', fontSize: '0.78rem' }}>
+              <div className="fw-bold text-success mb-1">
+                <i className="bi bi-check-circle-fill me-1"></i> {aiCommandLogs[0].reply}
+              </div>
+              <small className="text-muted font-monospace d-block">Executed @ {aiCommandLogs[0].time}</small>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Navigation Sub-Tabs Bar */}
       <div className="card border-0 shadow-sm mb-3" style={{ borderRadius: 12 }}>
         <div className="card-body p-2 d-flex flex-wrap align-items-center justify-content-between gap-2" style={{ background: '#f8faf9', borderRadius: 12 }}>
           <div className="nav nav-pills gap-1">
@@ -486,7 +608,7 @@ export default function Automations() {
         </div>
       </div>
 
-      {/* TAB 1: SCHEDULED REMINDERS REGISTER (START DATE & END DATE RANGE) */}
+      {/* TAB 1: SCHEDULED REMINDERS REGISTER */}
       {activeTab === 'reminders' && (
         <div className="v-card">
           <div className="v-card-header d-flex justify-content-between align-items-center" style={{ background: '#f4fbf5', borderRadius: '12px 12px 0 0' }}>
@@ -891,7 +1013,7 @@ export default function Automations() {
         </div>
       )}
 
-      {/* SCHEDULE REMINDER MODAL (WITH START DATE & END DATE RANGE) */}
+      {/* SCHEDULE REMINDER MODAL */}
       {showTaskModal && (
         <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowTaskModal(false); }}>
           <div className="modal-box" style={{ maxWidth: 560 }}>
@@ -939,7 +1061,6 @@ export default function Automations() {
                   <small className="text-muted d-block mt-1" style={{ fontSize: '0.75rem' }}>EHN AI will review real software database data for selected category and send automated WhatsApp reminder!</small>
                 </div>
 
-                {/* START DATE & END DATE RANGE FIELDS */}
                 <div className="row g-3 mb-3">
                   <div className="col-6">
                     <label className="form-label fw-bold text-dark">Start Date <span className="text-danger">*</span></label>
@@ -972,7 +1093,6 @@ export default function Automations() {
                 <div className="mb-3">
                   <label className="form-label fw-bold text-dark">Target Recipient Number <span className="text-danger">*</span></label>
                   <input type="text" className="form-control font-monospace fw-bold" placeholder="e.g. +91 9238695500" value={taskForm.phone} onChange={(e) => setTaskForm({ ...taskForm, phone: e.target.value })} required />
-                  <small className="text-muted d-block mt-1" style={{ fontSize: '0.72rem' }}>Enter any recipient mobile number where admin wants WhatsApp reminder delivered.</small>
                 </div>
 
                 <div className="mb-3">

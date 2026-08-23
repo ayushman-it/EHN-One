@@ -103,6 +103,107 @@ router.post('/send-whatsapp', authorize('admin', 'manager'), async (req, res) =>
 });
 
 /**
+ * POST /api/settings/ai-command-bot
+ * Conversational Natural Language AI Command Bot for Admin
+ * Parses natural language commands like "meri meeting hai aaj 9 baje, 8:30 PM ka reminder set kar do"
+ */
+router.post('/ai-command-bot', authorize('admin', 'manager'), async (req, res) => {
+  try {
+    const { userCommand, defaultPhone } = req.body;
+    if (!userCommand) {
+      return res.status(400).json({ success: false, message: 'User command text is required' });
+    }
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const systemPrompt = `You are EHN AI Assistant for EHN One ERP System.
+Your job is to read the admin's natural language command in Hindi/Hinglish/English and parse it into a structured JSON action to create reminders, update automations, or run reports.
+
+TODAY'S DATE: ${todayStr}
+
+CRITICAL: Output JSON ONLY in this EXACT format (no markdown formatting around JSON):
+{
+  "action": "CREATE_REMINDER" | "UPDATE_AUTOMATION" | "DELETE_AUTOMATION" | "RUN_REPORT" | "CHAT",
+  "reply": "Friendly confirmation response in Hinglish explaining what action was performed",
+  "data": {
+    "title": "Extracted Title",
+    "category": "stock_summary" | "sales_summary" | "low_stock" | "payment_dues" | "meeting" | "call_followup" | "custom_ai",
+    "startDate": "${todayStr}",
+    "endDate": "${todayStr}",
+    "time": "24h HH:MM (e.g. 20:30 for 8:30 PM, 09:00 for 9 AM)",
+    "frequency": "daily" | "one_time",
+    "phone": "${defaultPhone || '+91 9238695500'}",
+    "message": "Extracted reminder text"
+  }
+}`;
+
+    const groqPayload = JSON.stringify({
+      model: 'qwen/qwen3.6-27b',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userCommand }
+      ],
+      temperature: 0.2,
+      max_tokens: 400
+    });
+
+    const groqOptions = {
+      hostname: 'api.groq.com',
+      port: 443,
+      path: '/openai/v1/chat/completions',
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${GROQ_API_KEY}`,
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(groqPayload)
+      }
+    };
+
+    const groqReq = https.request(groqOptions, (groqRes) => {
+      let gData = '';
+      groqRes.on('data', chunk => gData += chunk);
+      groqRes.on('end', () => {
+        try {
+          const gParsed = JSON.parse(gData);
+          let rawText = gParsed.choices && gParsed.choices[0] && gParsed.choices[0].message ? gParsed.choices[0].message.content : '';
+          
+          rawText = rawText.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+          rawText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+
+          let parsedResult;
+          try {
+            parsedResult = JSON.parse(rawText);
+          } catch (e) {
+            parsedResult = {
+              action: 'CHAT',
+              reply: `EHN AI Bot: ${rawText || 'Command processed.'}`,
+              data: {}
+            };
+          }
+
+          return res.json({
+            success: true,
+            action: parsedResult.action || 'CHAT',
+            reply: parsedResult.reply || 'Task processed by EHN AI.',
+            data: parsedResult.data || {}
+          });
+        } catch (e) {
+          return res.status(500).json({ success: false, message: 'Failed to process AI command' });
+        }
+      });
+    });
+
+    groqReq.on('error', (e) => {
+      return res.status(500).json({ success: false, message: e.message });
+    });
+
+    groqReq.write(groqPayload);
+    groqReq.end();
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
  * POST /api/settings/groq-ai-report
  * 100% REAL DATABASE AUDIT (NO DUMMY DATA FALLBACKS)
  * Generate Internal Executive Management Report based strictly on live MongoDB Database Data
