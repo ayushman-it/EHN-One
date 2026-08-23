@@ -104,7 +104,7 @@ const dispatchWhatsApp = async (phone, message, config) => {
   });
 };
 
-// Execute single automation job with 100% real database metrics
+// Execute single automation job with 100% real database metrics for ALL 8 dropdown categories
 const executeAutomationJob = async (auto) => {
   try {
     const settings = await Settings.findOne();
@@ -115,7 +115,8 @@ const executeAutomationJob = async (auto) => {
 
     let messageContent = '';
 
-    if (category === 'today_summary' || category === 'sales_summary') {
+    // 1. SALES REVENUE EXECUTIVE SUMMARY
+    if (category === 'today_summary' || category === 'sales_summary' || category === 'business_summary') {
       const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
       const endOfDay = new Date(); endOfDay.setHours(23,59,59,999);
 
@@ -127,18 +128,9 @@ const executeAutomationJob = async (auto) => {
       const paidAmount = todayInvoices.filter(i => i.status === 'paid').reduce((sum, inv) => sum + (Number(inv.total || inv.totalAmount) || 0), 0);
       const pendingAmount = totalRevenue - paidAmount;
 
-      messageContent = `📊 *DAILY SALES & BILLING EXECUTIVE REPORT*
-*Kedvass Hygiene Products*
-
-📅 *Date:* ${todayStr}
-
-Receipts: ${todayInvoices.length} Invoices
-Total Revenue: ₹${totalRevenue.toLocaleString('en-IN')}
-Realized Collections: ₹${paidAmount.toLocaleString('en-IN')}
-Pending Receivables: ₹${pendingAmount.toLocaleString('en-IN')}
-
-_Automated Server Scheduler - EHN One ERP_`;
+      messageContent = `*DAILY SALES & BILLING EXECUTIVE REPORT*\n*Kedvass Hygiene Products*\n\n📅 *Date:* ${todayStr}\n\nReceipts: ${todayInvoices.length} Invoices\nTotal Revenue: ₹${totalRevenue.toLocaleString('en-IN')}\nRealized Collections: ₹${paidAmount.toLocaleString('en-IN')}\nPending Receivables: ₹${pendingAmount.toLocaleString('en-IN')}\n\n_Automated Server Scheduler - EHN One ERP_`;
     } 
+    // 2. PRODUCT STOCK INVENTORY SUMMARY
     else if (category === 'stock_report' || category === 'stock_summary') {
       const products = await Product.find().lean();
       const total = products.length;
@@ -146,47 +138,41 @@ _Automated Server Scheduler - EHN One ERP_`;
       const outOfStock = products.filter(p => (p.quantity || p.stock || 0) <= 0).length;
       const inStock = total - lowStock - outOfStock;
 
-      messageContent = `📦 *INTERNAL INVENTORY STOCK AUDIT*
-*Kedvass Hygiene Products*
-
-📅 *Date:* ${todayStr}
-
-Catalog SKUs: ${total}
-In Stock Items: ${inStock}
-Low Stock Alerts: ${lowStock}
-Out of Stock: ${outOfStock}
-
-_Automated Server Scheduler - EHN One ERP_`;
+      messageContent = `*INTERNAL INVENTORY STOCK AUDIT*\n*Kedvass Hygiene Products*\n\n📅 *Date:* ${todayStr}\n\nCatalog SKUs: ${total}\nIn Stock Items: ${inStock}\nLow Stock Alerts: ${lowStock}\nOut of Stock: ${outOfStock}\n\n_Automated Server Scheduler - EHN One ERP_`;
     }
+    // 3. LOW STOCK WARNING ALERTS
     else if (category === 'low_stock') {
       const lowProducts = await Product.find({ quantity: { $lte: 10 } }).lean();
       if (lowProducts.length === 0) {
-        messageContent = `🚨 *LOW STOCK ALERT - Kedvass Hygiene Products*\n\nAll registered SKUs adequately stocked! No reorder required today.`;
+        messageContent = `*LOW STOCK ALERT - Kedvass Hygiene Products*\n\nAll registered SKUs adequately stocked! No reorder required today.`;
       } else {
-        messageContent = `🚨 *AUTOMATED LOW STOCK ALERT*
-*Kedvass Hygiene Products*
-
-The following ${lowProducts.length} product(s) require reorder:
-${lowProducts.map(p => `• *${p.name}*: ${p.quantity || p.stock || 0} units remaining (Min: 10)`).join('\n')}
-
-Action Required: Please issue purchase orders to suppliers.`;
+        messageContent = `*AUTOMATED LOW STOCK ALERT*\n*Kedvass Hygiene Products*\n\nThe following ${lowProducts.length} product(s) require reorder:\n${lowProducts.map(p => `• *${p.name}*: ${p.quantity || p.stock || 0} units remaining (Min: 10)`).join('\n')}\n\nAction Required: Please issue purchase orders to suppliers.`;
       }
     }
+    // 4. CUSTOMER OUTSTANDING DUES
     else if (category === 'payment_reminder' || category === 'payment_dues') {
       const debtors = await Customer.find({ balance: { $gt: 0 } }).lean();
       const totalOutstanding = debtors.reduce((sum, d) => sum + (Number(d.balance || d.dueAmount) || 0), 0);
 
-      messageContent = `💰 *CUSTOMER OUTSTANDING RECEIVABLES AUDIT*
-*Kedvass Hygiene Products*
-
-Clients with Pending Dues: ${debtors.length}
-Total Outstanding Receivables: ₹${totalOutstanding.toLocaleString('en-IN')}
-
-Top Pending Accounts:
-${debtors.slice(0, 5).map(d => `• *${d.name}*: ₹${Number(d.balance || d.dueAmount).toLocaleString('en-IN')}`).join('\n')}
-
-_Automated Server Scheduler - EHN One ERP_`;
+      messageContent = `*CUSTOMER OUTSTANDING RECEIVABLES AUDIT*\n*Kedvass Hygiene Products*\n\nClients with Pending Dues: ${debtors.length}\nTotal Outstanding Receivables: ₹${totalOutstanding.toLocaleString('en-IN')}\n\nTop Pending Accounts:\n${debtors.slice(0, 5).map(d => `• *${d.name}*: ₹${Number(d.balance || d.dueAmount).toLocaleString('en-IN')}`).join('\n')}\n\n_Automated Server Scheduler - EHN One ERP_`;
     }
+    // 5. PRODUCT CATALOG & PRICING INQUIRY
+    else if (category === 'product_catalog') {
+      const products = await Product.find().lean();
+      const catalogList = products.slice(0, 10).map(p => `• *${p.name}*: ₹${p.sellingPrice || p.price || 0}/${p.unit || 'unit'} (Stock: ${p.quantity || p.stock || 0})`);
+      messageContent = `*INTERNAL PRODUCT CATALOG & PRICING*\n*Kedvass Hygiene Products*\n\n📅 *Date:* ${todayStr}\n\n${catalogList.join('\n')}\n\n_EHN One Real-Time Catalog Engine_`;
+    }
+    // 6. CUSTOMER FOLLOW-UP CALL REMINDER
+    else if (category === 'call_followup') {
+      const msgStr = auto.message || auto.customMessage || 'Pending customer follow-up call schedule.';
+      messageContent = `*CUSTOMER FOLLOW-UP CALL REMINDER*\n*Kedvass Hygiene Products*\n\n📅 *Date:* ${todayStr}\n\n*Task:* ${auto.title || 'Follow-up Call'}\n*Notes:* ${msgStr}\n\n_EHN One Reminders Engine_`;
+    }
+    // 7. CLIENT MEETING SCHEDULE REMINDER
+    else if (category === 'meeting') {
+      const msgStr = auto.message || auto.customMessage || 'Friendly reminder for scheduled client meeting.';
+      messageContent = `*CLIENT MEETING REMINDER*\n*Kedvass Hygiene Products*\n\n📅 *Date:* ${todayStr}\n⏰ *Scheduled Time:* ${auto.time} hrs IST\n\n*Subject:* ${auto.title || 'Meeting'}\n*Details:* ${msgStr}\n\n_EHN One Reminders Engine_`;
+    }
+    // 8. CUSTOM EHN AI SMART REMINDER
     else {
       const titleStr = auto.title || auto.name || 'EHN One Scheduled Reminder';
       const msgStr = auto.message || auto.customMessage || auto.aiPrompt || 'Friendly system reminder notification.';
