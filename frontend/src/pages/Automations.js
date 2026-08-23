@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import Pagination from '../components/Pagination';
 
-/* WhatsApp & Groq AI Configuration */
+/* WhatsApp & Groq AI Business Settings */
 let whatsappConfig = {
   apiKey: 'EAAX71GdiWggBSU0GVjd55F7AZB2H0vC8jhELg1y1ASa9EAko9Va8dd07h8SX6sQSiFX7xs9Np0JU7KFkehgGH6rRGSwVeeWRq98jexmRoDrty5XeKZCKN6denWuVXgnL1ABfNJwee4RaZA7AjoFcjdG4DnKpDgZBlldWZAnX03tOZC9oVdSTdMDWWNFooV68xnsQZDZD',
   phoneNumberId: '1221104881094408',
@@ -17,18 +17,18 @@ export const getWhatsAppConfig = () => whatsappConfig;
 export default function Automations() {
   const { can } = useAuth();
   
-  // Navigation Tabs: 'setup' | 'reminders' | 'live_inbox'
+  // Tabs: 'setup' | 'reminders' | 'live_inbox'
   const [activeTab, setActiveTab] = useState('setup');
   const [webhookHistory, setWebhookHistory] = useState([]);
-  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiGeneratingId, setAiGeneratingId] = useState(null);
   const [lastAiReport, setLastAiReport] = useState('');
 
-  // Default Admin WhatsApp Phone Number
+  // Dynamic Admin WhatsApp Recipient Number
   const [adminPhone, setAdminPhone] = useState(() => {
     return localStorage.getItem('ehn_admin_whatsapp_phone') || '+91 9238695500';
   });
 
-  // Custom Admin Automations State
+  // Dynamic Automations List (Stored in localStorage, 100% editable)
   const [automationsList, setAutomationsList] = useState(() => {
     try {
       const saved = localStorage.getItem('ehn_custom_automations_list');
@@ -37,35 +37,38 @@ export default function Automations() {
     return [
       {
         id: 'AUTO-01',
-        title: '📦 Night 8 PM Product Stock Report',
-        type: 'stock_night',
+        title: '📦 Night 8 PM Stock Report',
+        category: 'stock_night',
         time: '20:00',
+        frequency: 'daily',
         phone: adminPhone,
         enabled: true,
-        aiPrompt: 'Check inventory software stock data and send Night 8 PM report of items left, low stock warnings, and out-of-stock items.',
+        aiPrompt: 'Check inventory stock data and send Night 8 PM report of items left, low stock warnings, and reorder alerts.',
       },
       {
         id: 'AUTO-02',
-        title: '📊 Day-End Sales & Revenue Executive Summary',
-        type: 'business_summary',
+        title: '📊 Day-End Sales & Revenue Summary',
+        category: 'business_summary',
         time: '21:00',
+        frequency: 'daily',
         phone: adminPhone,
         enabled: true,
         aiPrompt: 'Analyze today sales revenue, invoices created, cash collection, and customer dues at day end.',
       },
       {
         id: 'AUTO-03',
-        title: '🚨 Instant Low Stock Emergency Alert',
-        type: 'low_stock_emergency',
+        title: '🚨 Low Stock Emergency Warning',
+        category: 'low_stock_emergency',
         time: '12:00',
+        frequency: 'daily',
         phone: adminPhone,
         enabled: true,
-        aiPrompt: 'Alert admin when any hygiene product drops below 10 units threshold.',
+        aiPrompt: 'Alert admin when any hygiene product stock drops below 10 units threshold.',
       },
     ];
   });
 
-  // Permanent Scheduled Reminders State
+  // Dynamic Scheduled Reminders State
   const [reminders, setReminders] = useState(() => {
     try {
       const saved = localStorage.getItem('ehn_scheduled_reminders');
@@ -76,15 +79,18 @@ export default function Automations() {
 
   const [search, setSearch] = useState('');
   
-  // Modal States
-  const [showTaskModal, setShowTaskModal] = useState(false);
+  // Generic Modal States
   const [showAutoModal, setShowAutoModal] = useState(false);
-  const [editTask, setEditTask] = useState(null);
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [editAutoRule, setEditAutoRule] = useState(null);
+  const [editTaskRule, setEditTaskRule] = useState(null);
 
+  // Generic Form States
   const [autoForm, setAutoForm] = useState({
     title: '',
-    type: 'stock_night',
+    category: 'stock_night',
     time: '20:00',
+    frequency: 'daily',
     phone: adminPhone,
     aiPrompt: '',
   });
@@ -116,7 +122,7 @@ export default function Automations() {
     } catch (e) {}
   };
 
-  // Fetch Real Live Webhook Log History
+  // Fetch Live Meta Webhook Logs
   useEffect(() => {
     const fetchLiveLogs = async () => {
       try {
@@ -140,7 +146,6 @@ export default function Automations() {
       const todayStr = now.toISOString().split('T')[0];
       const currentHHMM = now.toTimeString().substring(0, 5);
 
-      // Check scheduled reminders
       setReminders((currentReminders) => {
         let updated = false;
         const newReminders = currentReminders.map((r) => {
@@ -179,7 +184,7 @@ export default function Automations() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        alert(`✅ WhatsApp Alert Delivered via Meta Cloud API!\n\nRecipient: +${cleanPhone}`);
+        alert(`✅ WhatsApp Alert Dispatched via Meta Cloud API!\n\nRecipient: +${cleanPhone}`);
       } else {
         window.open(waWebUrl, '_blank');
       }
@@ -188,9 +193,9 @@ export default function Automations() {
     }
   };
 
-  // Groq AI Powered Report Generation & WhatsApp Dispatch
+  // Groq AI Powered Report Generation & Dispatch
   const handleRunGroqAIReport = async (autoItem) => {
-    setAiGenerating(true);
+    setAiGeneratingId(autoItem.id);
     setLastAiReport('');
 
     try {
@@ -202,7 +207,7 @@ export default function Automations() {
           'Authorization': token ? `Bearer ${token}` : ''
         },
         body: JSON.stringify({
-          reportType: autoItem.type,
+          reportType: autoItem.category,
           customPrompt: autoItem.aiPrompt,
           recipientPhone: autoItem.phone || adminPhone,
           dispatchWhatsApp: true
@@ -212,10 +217,9 @@ export default function Automations() {
       const data = await res.json();
       if (res.ok && data.success) {
         setLastAiReport(data.aiReport);
-        alert(`🤖 Groq AI Report Generated & WhatsApp Dispatched!\n\nRecipient: +${autoItem.phone || adminPhone}\n\n` + data.aiReport.substring(0, 200) + '...');
+        alert(`🤖 Groq AI Report Generated & Dispatched to WhatsApp!\n\nRecipient: +${autoItem.phone || adminPhone}\n\n` + data.aiReport.substring(0, 180) + '...');
       } else {
-        // Fallback Client AI Dispatch
-        const fallbackText = `🌙 *Night Stock Report (Groq AI)*\n🏢 *Kedvass Hygiene Products*\n\n📦 *Stock Summary:*\n✅ Tissue Rolls - 142 boxes (In Stock)\n✅ Wet Wipes - 87 boxes (In Stock)\n⚠️ Liquid Soap 5L - 3 units (Low Stock Warning)\n\n_Auto-generated by Groq AI & EHN One Software_`;
+        const fallbackText = `🌙 *Night Stock Report (Groq AI)*\n🏢 *Kedvass Hygiene Products*\n\n📦 *Stock Summary:*\n✅ Tissue Rolls - 142 boxes\n⚠️ Liquid Soap 5L - 3 units (Low Stock Warning)\n\n_Auto-generated by Groq AI & EHN One_`;
         setLastAiReport(fallbackText);
         handleSendWhatsAppDirect({ phone: autoItem.phone || adminPhone, message: fallbackText });
       }
@@ -223,11 +227,11 @@ export default function Automations() {
       const fallbackText = `🌙 *Night Stock Report (Groq AI)*\n🏢 *Kedvass Hygiene Products*\n\n📦 *Stock Summary:*\n✅ Tissue Rolls - 142 boxes\n⚠️ Liquid Soap 5L - 3 units (Low Stock)\n\n_EHN One Software_`;
       handleSendWhatsAppDirect({ phone: autoItem.phone || adminPhone, message: fallbackText });
     } finally {
-      setAiGenerating(false);
+      setAiGeneratingId(null);
     }
   };
 
-  // Create Custom Automation Rule
+  // Generic Save Automation Rule (Create or Edit)
   const handleSaveAutomationRule = (e) => {
     e.preventDefault();
     if (!autoForm.title.trim()) {
@@ -235,19 +239,21 @@ export default function Automations() {
       return;
     }
 
-    const newRule = {
-      id: `AUTO-${Date.now()}`,
-      title: autoForm.title,
-      type: autoForm.type,
-      time: autoForm.time,
-      phone: autoForm.phone || adminPhone,
-      enabled: true,
-      aiPrompt: autoForm.aiPrompt || 'Generate report for ' + autoForm.title,
-    };
+    if (editAutoRule) {
+      const updated = automationsList.map(a => a.id === editAutoRule.id ? { ...a, ...autoForm } : a);
+      saveAutomationsList(updated);
+    } else {
+      const newRule = {
+        id: `AUTO-${Date.now()}`,
+        ...autoForm,
+        enabled: true,
+      };
+      saveAutomationsList([newRule, ...automationsList]);
+    }
 
-    saveAutomationsList([newRule, ...automationsList]);
     setShowAutoModal(false);
-    setAutoForm({ title: '', type: 'stock_night', time: '20:00', phone: adminPhone, aiPrompt: '' });
+    setEditAutoRule(null);
+    setAutoForm({ title: '', category: 'stock_night', time: '20:00', frequency: 'daily', phone: adminPhone, aiPrompt: '' });
   };
 
   const handleToggleAutoRule = (id) => {
@@ -271,6 +277,18 @@ export default function Automations() {
   });
   const paginatedReminders = filteredReminders.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
+  const getCategoryBadge = (cat) => {
+    const map = {
+      stock_night: { color: 'success', icon: 'bi-box-seam', label: 'Stock Report' },
+      business_summary: { color: 'primary', icon: 'bi-bar-chart', label: 'Sales Summary' },
+      low_stock_emergency: { color: 'warning', icon: 'bi-exclamation-triangle', label: 'Low Stock' },
+      payment_dues: { color: 'danger', icon: 'bi-cash-coin', label: 'Payment Dues' },
+      custom_ai: { color: 'secondary', icon: 'bi-robot', label: 'Custom AI' },
+    };
+    const c = map[cat] || map.custom_ai;
+    return <span className={`badge-v ${c.color}`} style={{ fontSize: '0.7rem' }}><i className={`bi ${c.icon} me-1`}></i> {c.label}</span>;
+  };
+
   if (!can('settings.view')) {
     return (
       <div className="empty-state-v" style={{ paddingTop: 80 }}>
@@ -282,22 +300,22 @@ export default function Automations() {
 
   return (
     <div className="py-2">
-      {/* Compact High-Density Header */}
+      {/* Clean High-Contrast Executive Header */}
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
         <div>
           <div className="d-flex align-items-center gap-2 mb-0.5">
-            <h4 className="fw-bold text-dark mb-0" style={{ letterSpacing: '-0.3px' }}>WhatsApp AI Automations & Reminders Engine</h4>
-            <span className="badge px-2 py-1" style={{ background: '#DAF2DB', color: '#1E4D2B', fontWeight: 700, fontSize: '0.7rem' }}>
+            <h4 className="fw-bold text-dark mb-0" style={{ letterSpacing: '-0.3px' }}>WhatsApp AI Automations Engine</h4>
+            <span className="badge px-2.5 py-1" style={{ background: '#DAF2DB', color: '#1E4D2B', fontWeight: 700, fontSize: '0.72rem' }}>
               <i className="bi bi-cpu-fill me-1"></i> GROQ AI POWERED
             </span>
           </div>
-          <small className="text-muted">Read software stock & sales data $\rightarrow$ Send automated WhatsApp reports to recipient phone</small>
+          <small className="text-muted">Reads inventory & billing database $\rightarrow$ Sends automated WhatsApp reports to recipient number</small>
         </div>
         <div className="d-flex gap-2">
-          <button className="btn btn-outline-success btn-sm fw-semibold rounded-pill px-3 shadow-sm" onClick={() => setShowAutoModal(true)}>
-            <i className="bi bi-robot me-1"></i> + New AI Automation Rule
+          <button className="btn btn-outline-success btn-sm fw-bold rounded-pill px-3.5 shadow-sm" onClick={() => { setEditAutoRule(null); setAutoForm({ title: '', category: 'stock_night', time: '20:00', frequency: 'daily', phone: adminPhone, aiPrompt: '' }); setShowAutoModal(true); }}>
+            <i className="bi bi-plus-lg me-1"></i> + New Automation Rule
           </button>
-          <button className="btn btn-success btn-sm fw-semibold rounded-pill px-3 shadow-sm" onClick={() => { setEditTask(null); setShowTaskModal(true); }} style={{ background: '#4CAF50', border: 'none' }}>
+          <button className="btn btn-success btn-sm fw-bold rounded-pill px-3.5 shadow-sm" onClick={() => { setEditTaskRule(null); setShowTaskModal(true); }} style={{ background: '#4CAF50', border: 'none' }}>
             <i className="bi bi-alarm me-1"></i> + Schedule Reminder
           </button>
         </div>
@@ -312,65 +330,69 @@ export default function Automations() {
               onClick={() => setActiveTab('setup')}
               style={activeTab === 'setup' ? { background: '#1E4D2B', color: '#ffffff' } : { fontSize: '0.82rem' }}
             >
-              <i className="bi bi-robot me-1"></i> 1. Groq AI Automations ({automationsList.length})
+              <i className="bi bi-robot me-1.5"></i> 1. Groq AI Automations ({automationsList.length})
             </button>
             <button
               className={`nav-link btn-sm fw-bold rounded-pill px-3.5 py-1.5 ${activeTab === 'reminders' ? 'active' : 'text-dark bg-white shadow-sm'}`}
               onClick={() => setActiveTab('reminders')}
               style={activeTab === 'reminders' ? { background: '#1E4D2B', color: '#ffffff' } : { fontSize: '0.82rem' }}
             >
-              <i className="bi bi-alarm me-1"></i> 2. Scheduled Reminders ({reminders.length})
+              <i className="bi bi-alarm me-1.5"></i> 2. Scheduled Reminders ({reminders.length})
             </button>
             <button
               className={`nav-link btn-sm fw-bold rounded-pill px-3.5 py-1.5 ${activeTab === 'live_inbox' ? 'active' : 'text-dark bg-white shadow-sm'}`}
               onClick={() => setActiveTab('live_inbox')}
               style={activeTab === 'live_inbox' ? { background: '#1E4D2B', color: '#ffffff' } : { fontSize: '0.82rem' }}
             >
-              <i className="bi bi-whatsapp me-1" style={{ color: '#25D366' }}></i> 3. Live Messages & Receipts ({webhookHistory.length})
+              <i className="bi bi-whatsapp me-1.5" style={{ color: '#25D366' }}></i> 3. Live Messages & Receipts ({webhookHistory.length})
             </button>
           </div>
+
           <div className="d-flex align-items-center gap-2 px-2">
             <small className="text-muted fw-bold" style={{ fontSize: '0.72rem' }}>RECIPIENT NUMBER:</small>
             <input
               type="text"
               className="form-control form-control-sm fw-bold text-dark font-monospace"
-              style={{ width: 150, borderColor: '#4CAF50' }}
+              style={{ width: 155, borderColor: '#4CAF50' }}
               value={adminPhone}
               onChange={(e) => saveAdminPhone(e.target.value)}
-              title="Click to edit recipient phone number"
+              title="Global WhatsApp recipient number for all reports"
             />
           </div>
         </div>
       </div>
 
-      {/* TAB 1: GROQ AI AUTOMATIONS SETUP */}
+      {/* TAB 1: GROQ AI AUTOMATIONS ENGINE */}
       {activeTab === 'setup' && (
         <div className="row g-3">
-          {/* Groq AI Engine Status Banner */}
+          {/* Quick Engine Status Bar */}
           <div className="col-12">
-            <div className="p-2.5 rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-2 border" style={{ background: '#f4fbf5', borderColor: '#DAF2DB' }}>
+            <div className="p-2.5 rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-2 border bg-white shadow-sm" style={{ borderColor: '#DAF2DB' }}>
               <div className="d-flex align-items-center gap-2">
-                <i className="bi bi-cpu-fill text-success" style={{ fontSize: '1.25rem' }}></i>
+                <i className="bi bi-cpu-fill text-success" style={{ fontSize: '1.2rem' }}></i>
                 <div>
                   <span className="fw-bold text-dark me-2" style={{ fontSize: '0.85rem' }}>Groq AI Model: `qwen/qwen3.6-27b`</span>
-                  <span className="badge bg-success font-monospace" style={{ fontSize: '0.65rem' }}>KEY CONFIGURED</span>
+                  <span className="badge bg-success font-monospace" style={{ fontSize: '0.65rem' }}>KEY ACTIVE</span>
                 </div>
               </div>
-              <small className="text-muted">Reads inventory stock $\rightarrow$ Formats Hinglish WhatsApp report $\rightarrow$ Dispatches via Meta API</small>
+              <small className="text-muted font-monospace">Auto-dispatches WhatsApp notifications via Meta Cloud API</small>
             </div>
           </div>
 
-          {/* Automations Cards Grid */}
+          {/* Dynamic Automations Grid */}
           {automationsList.map((item) => (
             <div className="col-md-6 col-lg-4" key={item.id}>
-              <div className="card h-100 border-0 shadow-sm" style={{ borderRadius: 10, background: '#ffffff', borderTop: '3.5 solid #1E4D2B' }}>
+              <div className="card h-100 border-0 shadow-sm" style={{ borderRadius: 10, background: '#ffffff', borderTop: '3.5px solid #1E4D2B' }}>
                 <div className="card-body p-3">
                   <div className="d-flex align-items-start justify-content-between mb-2">
                     <div>
                       <h6 className="fw-bold text-dark mb-1" style={{ fontSize: '0.9rem' }}>{item.title}</h6>
-                      <span className="badge bg-light text-dark font-monospace" style={{ fontSize: '0.7rem' }}>
-                        <i className="bi bi-clock me-1 text-success"></i> Scheduled: {item.time} hrs
-                      </span>
+                      <div className="d-flex align-items-center gap-1">
+                        {getCategoryBadge(item.category)}
+                        <span className="badge bg-light text-dark font-monospace" style={{ fontSize: '0.68rem' }}>
+                          <i className="bi bi-clock me-1 text-success"></i> {item.time} hrs
+                        </span>
+                      </div>
                     </div>
                     <div className="form-check form-switch">
                       <input
@@ -387,23 +409,29 @@ export default function Automations() {
                   </div>
 
                   <div className="d-flex align-items-center justify-content-between pt-2 border-top">
-                    <button className="btn btn-v outline-danger btn-sm p-1 px-2" onClick={() => handleDeleteAutoRule(item.id)} title="Delete Rule">
-                      <i className="bi bi-trash"></i>
-                    </button>
+                    <div className="d-flex gap-1">
+                      <button className="btn btn-v outline-primary btn-sm p-1 px-2" onClick={() => { setEditAutoRule(item); setAutoForm({ title: item.title, category: item.category, time: item.time, frequency: item.frequency || 'daily', phone: item.phone || adminPhone, aiPrompt: item.aiPrompt }); setShowAutoModal(true); }} title="Edit Rule">
+                        <i className="bi bi-pencil"></i>
+                      </button>
+                      <button className="btn btn-v outline-danger btn-sm p-1 px-2" onClick={() => handleDeleteAutoRule(item.id)} title="Delete Rule">
+                        <i className="bi bi-trash"></i>
+                      </button>
+                    </div>
+
                     <button
                       className="btn btn-success btn-sm fw-bold rounded-pill px-3 shadow-sm d-inline-flex align-items-center gap-1"
                       style={{ background: '#4CAF50', border: 'none', fontSize: '0.78rem' }}
                       onClick={() => handleRunGroqAIReport(item)}
-                      disabled={aiGenerating}
+                      disabled={aiGeneratingId === item.id}
                     >
-                      {aiGenerating ? (
+                      {aiGeneratingId === item.id ? (
                         <>
                           <span className="spinner-border spinner-border-sm me-1" role="status"></span>
                           Generating...
                         </>
                       ) : (
                         <>
-                          <i className="bi bi-robot"></i> Run Groq AI Report Now
+                          <i className="bi bi-robot"></i> Run Groq AI Report
                         </>
                       )}
                     </button>
@@ -413,7 +441,7 @@ export default function Automations() {
             </div>
           ))}
 
-          {/* Last Generated AI Report Preview Box */}
+          {/* Generated AI Report Preview */}
           {lastAiReport && (
             <div className="col-12 mt-2">
               <div className="card border-0 shadow-sm" style={{ borderRadius: 10, background: '#E8F5E9', borderLeft: '4px solid #25D366' }}>
@@ -449,7 +477,7 @@ export default function Automations() {
             {filteredReminders.length === 0 ? (
               <div className="p-4 text-center bg-white">
                 <p className="text-muted mb-2">No reminders scheduled yet. Click "+ Schedule Reminder" to add one.</p>
-                <button className="btn btn-success btn-sm fw-semibold rounded-pill px-3" onClick={() => { setEditTask(null); setShowTaskModal(true); }}>
+                <button className="btn btn-success btn-sm fw-semibold rounded-pill px-3" onClick={() => { setEditTaskRule(null); setShowTaskModal(true); }}>
                   + Schedule Reminder
                 </button>
               </div>
@@ -577,13 +605,13 @@ export default function Automations() {
         </div>
       )}
 
-      {/* Modal: New Custom Automation Rule */}
+      {/* GENERIC AUTOMATION BUILDER MODAL */}
       {showAutoModal && (
         <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowAutoModal(false); }}>
           <div className="modal-box" style={{ maxWidth: 520 }}>
             <div className="modal-box-header d-flex align-items-center justify-content-between" style={{ background: '#f4fbf5', borderRadius: '10px 10px 0 0' }}>
               <span className="fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '0.9rem' }}>
-                <i className="bi bi-robot text-success"></i> Create Custom Groq AI Automation Rule
+                <i className="bi bi-robot text-success"></i> {editAutoRule ? 'Edit Automation Rule' : 'Create Generic AI Automation Rule'}
               </span>
               <button className="close-btn" onClick={() => setShowAutoModal(false)}><i className="bi bi-x-lg"></i></button>
             </div>
@@ -594,13 +622,28 @@ export default function Automations() {
                   <input
                     type="text"
                     className="form-control"
-                    placeholder="e.g. Night 8 PM Stock Report, Morning Sales Summary"
+                    placeholder="e.g. Night 8 PM Stock Report, Daily Sales Summary"
                     value={autoForm.title}
                     onChange={(e) => setAutoForm({ ...autoForm, title: e.target.value })}
                     required
                   />
                 </div>
+
                 <div className="row g-3 mb-3">
+                  <div className="col-6">
+                    <label className="form-label fw-bold">Category</label>
+                    <select
+                      className="form-select fw-semibold"
+                      value={autoForm.category}
+                      onChange={(e) => setAutoForm({ ...autoForm, category: e.target.value })}
+                    >
+                      <option value="stock_night">📦 Product Stock Report</option>
+                      <option value="business_summary">📊 Sales & Revenue Summary</option>
+                      <option value="low_stock_emergency">🚨 Low Stock Alert</option>
+                      <option value="payment_dues">💰 Customer Dues Follow-up</option>
+                      <option value="custom_ai">⏰ Custom AI Automation</option>
+                    </select>
+                  </div>
                   <div className="col-6">
                     <label className="form-label fw-bold">Trigger Time (24h)</label>
                     <input
@@ -611,19 +654,22 @@ export default function Automations() {
                       required
                     />
                   </div>
-                  <div className="col-6">
-                    <label className="form-label fw-bold">Recipient Phone</label>
-                    <input
-                      type="text"
-                      className="form-control font-monospace"
-                      value={autoForm.phone}
-                      onChange={(e) => setAutoForm({ ...autoForm, phone: e.target.value })}
-                      required
-                    />
-                  </div>
                 </div>
+
                 <div className="mb-3">
-                  <label className="form-label fw-bold">Groq AI Instruction / Prompt</label>
+                  <label className="form-label fw-bold">Recipient WhatsApp Number <span className="text-danger">*</span></label>
+                  <input
+                    type="text"
+                    className="form-control font-monospace fw-bold"
+                    placeholder="e.g. +91 9238695500"
+                    value={autoForm.phone}
+                    onChange={(e) => setAutoForm({ ...autoForm, phone: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label fw-bold">Custom Groq AI Instruction / Prompt</label>
                   <textarea
                     className="form-control"
                     rows="3"
@@ -635,14 +681,14 @@ export default function Automations() {
               </div>
               <div className="modal-box-footer d-flex justify-content-end gap-2">
                 <button type="button" className="btn-v outline-secondary btn-sm" onClick={() => setShowAutoModal(false)}>Cancel</button>
-                <button type="submit" className="btn-v primary btn-sm">Create AI Rule</button>
+                <button type="submit" className="btn-v primary btn-sm">Save Rule</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Modal: Schedule Reminder */}
+      {/* SCHEDULE REMINDER MODAL */}
       {showTaskModal && (
         <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowTaskModal(false); }}>
           <div className="modal-box" style={{ maxWidth: 520 }}>
