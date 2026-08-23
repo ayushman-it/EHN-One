@@ -833,7 +833,7 @@ body {
 
 .modal-box, .modal-content {
   background: #fff;
-  border-radius: 16px !important;
+  border-radius: 0 !important;
   width: 100%;
   max-width: 600px;
   max-height: 90vh;
@@ -854,6 +854,7 @@ body {
 
 .modal-box-header, .modal-header {
   padding: 18px 24px;
+  border-radius: 0 !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.15);
   display: flex; align-items: center; gap: 10px;
   font-weight: 700; font-size: 1rem;
@@ -906,6 +907,7 @@ body {
 
 .modal-box-footer {
   padding: 16px 24px;
+  border-radius: 0 !important;
   border-top: 1px solid var(--border-color);
   display: flex; align-items: center; gap: 10px;
   justify-content: flex-end;

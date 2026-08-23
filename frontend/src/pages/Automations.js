@@ -877,8 +877,8 @@ export default function Automations() {
       {/* UNIVERSAL GENERIC AUTOMATION BUILDER MODAL */}
       {showAutoModal && (
         <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowAutoModal(false); }}>
-          <div className="modal-box" style={{ maxWidth: 540 }}>
-            <div className="modal-box-header d-flex align-items-center justify-content-between px-3.5 py-2.5" style={{ background: '#1E4D2B', color: '#ffffff', borderRadius: '12px 12px 0 0' }}>
+          <div className="modal-box" style={{ maxWidth: 540, borderRadius: 0 }}>
+            <div className="modal-box-header d-flex align-items-center justify-content-between px-3.5 py-2.5" style={{ background: '#1E4D2B', color: '#ffffff', borderRadius: 0 }}>
               <span className="fw-bold text-white d-flex align-items-center gap-2" style={{ fontSize: '0.98rem' }}>
                 <i className="bi bi-cpu text-warning me-1"></i> {editRule ? 'Edit Automation Rule' : 'New Automation Rule'}
               </span>
@@ -964,7 +964,7 @@ export default function Automations() {
                   ></textarea>
                 </div>
               </div>
-              <div className="modal-box-footer d-flex justify-content-end gap-2 p-3 bg-light" style={{ borderRadius: '0 0 12px 12px' }}>
+              <div className="modal-box-footer d-flex justify-content-end gap-2 p-3 bg-light" style={{ borderRadius: 0 }}>
                 <button type="button" className="btn btn-outline-secondary btn-sm fw-semibold" onClick={() => setShowAutoModal(false)}>Cancel</button>
                 <button type="submit" className="btn btn-success btn-sm fw-bold px-4" style={{ background: '#1E4D2B', border: 'none' }}>Save Rule</button>
               </div>
@@ -976,8 +976,8 @@ export default function Automations() {
       {/* SCHEDULE REMINDER MODAL */}
       {showTaskModal && (
         <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowTaskModal(false); }}>
-          <div className="modal-box" style={{ maxWidth: 540 }}>
-            <div className="modal-box-header d-flex align-items-center justify-content-between px-3.5 py-2.5" style={{ background: '#1E4D2B', color: '#ffffff', borderRadius: '12px 12px 0 0' }}>
+          <div className="modal-box" style={{ maxWidth: 540, borderRadius: 0 }}>
+            <div className="modal-box-header d-flex align-items-center justify-content-between px-3.5 py-2.5" style={{ background: '#1E4D2B', color: '#ffffff', borderRadius: 0 }}>
               <span className="fw-bold text-white d-flex align-items-center gap-2" style={{ fontSize: '0.98rem' }}>
                 <i className="bi bi-alarm-fill text-warning me-1"></i> {editRule ? 'Edit Schedule Reminder' : 'Schedule Reminder'}
               </span>
@@ -1062,7 +1062,7 @@ export default function Automations() {
                   <textarea className="form-control fw-semibold" rows="2" placeholder="Enter custom message text or instruction for EHN AI..." value={taskForm.message} onChange={(e) => setTaskForm({ ...taskForm, message: e.target.value })}></textarea>
                 </div>
               </div>
-              <div className="modal-box-footer d-flex justify-content-end gap-2 p-3 bg-light" style={{ borderRadius: '0 0 12px 12px' }}>
+              <div className="modal-box-footer d-flex justify-content-end gap-2 p-3 bg-light" style={{ borderRadius: 0 }}>
                 <button type="button" className="btn btn-outline-secondary btn-sm fw-semibold" onClick={() => setShowTaskModal(false)}>Cancel</button>
                 <button type="submit" className="btn btn-success btn-sm fw-bold px-4" style={{ background: '#1E4D2B', border: 'none' }}>Save Reminder</button>
               </div>
