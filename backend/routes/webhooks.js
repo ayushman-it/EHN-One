@@ -2,6 +2,23 @@ const express = require('express');
 const router = express.Router();
 const Settings = require('../models/Settings');
 
+let lastReceivedWebhookEvent = null;
+let webhookLogsHistory = [];
+
+/**
+ * GET /api/webhooks/meta/last-event
+ * Live Monitor Endpoint to inspect incoming Meta Webhook POST events
+ */
+router.get('/meta/last-event', (req, res) => {
+  res.json({
+    success: true,
+    serverTime: new Date().toISOString(),
+    totalReceived: webhookLogsHistory.length,
+    lastEvent: lastReceivedWebhookEvent,
+    recentHistory: webhookLogsHistory.slice(0, 15)
+  });
+});
+
 /**
  * GET /api/webhooks/meta
  * Meta Developer Portal Webhook Verification Handshake & Browser Health Status
@@ -49,29 +66,77 @@ router.get('/meta', async (req, res) => {
  * Receive incoming WhatsApp messages and delivery status updates from Meta Cloud API
  */
 router.post('/meta', (req, res) => {
-  const body = req.body;
+  const timestamp = new Date().toISOString();
+  const body = req.body || {};
+
+  console.log(`\n========================================`);
+  console.log(`[Meta Webhook POST Received @ ${timestamp}]`);
+  console.log(`Payload:`, JSON.stringify(body, null, 2));
+
+  let eventLog = {
+    timestamp,
+    ip: req.ip || req.headers['x-forwarded-for'],
+    stage: 'POST_RECEIVED',
+    body,
+    parsedMessage: null,
+    parsedStatus: null,
+  };
 
   if (body.object) {
+    eventLog.stage = 'OBJECT_MATCHED';
     if (body.entry && body.entry[0]?.changes && body.entry[0]?.changes[0]?.value) {
       const value = body.entry[0].changes[0].value;
+      eventLog.stage = 'CHANGES_PARSED';
 
-      // Handle Incoming Messages
+      // Handle Incoming Messages (e.g., "Hello webhook test 123")
       if (value.messages && value.messages[0]) {
-        const from = value.messages[0].from;
-        const msgText = value.messages[0].text?.body || '';
-        console.log(`📩 Incoming WhatsApp Message from +${from}: "${msgText}"`);
+        const msgObj = value.messages[0];
+        const from = msgObj.from;
+        const msgText = msgObj.text?.body || msgObj.caption || JSON.stringify(msgObj);
+        
+        console.log(`📩 INCOMING WHATSAPP MESSAGE:`);
+        console.log(`   From: +${from}`);
+        console.log(`   Text: "${msgText}"`);
+
+        eventLog.stage = 'MESSAGE_RECEIVED';
+        eventLog.parsedMessage = {
+          from,
+          text: msgText,
+          messageId: msgObj.id,
+          type: msgObj.type
+        };
       }
 
-      // Handle Message Delivery Receipts
+      // Handle Message Delivery Receipts (sent, delivered, read)
       if (value.statuses && value.statuses[0]) {
-        const status = value.statuses[0].status; // sent, delivered, read
-        const recipient = value.statuses[0].recipient_id;
-        console.log(`📊 WhatsApp Message Status for +${recipient}: ${status.toUpperCase()}`);
+        const statusObj = value.statuses[0];
+        const status = statusObj.status;
+        const recipient = statusObj.recipient_id;
+
+        console.log(`📊 WHATSAPP DELIVERY RECEIPT:`);
+        console.log(`   Recipient: +${recipient}`);
+        console.log(`   Status: ${status.toUpperCase()}`);
+
+        eventLog.stage = 'STATUS_RECEIPT';
+        eventLog.parsedStatus = {
+          recipient,
+          status,
+          messageId: statusObj.id
+        };
       }
     }
+
+    lastReceivedWebhookEvent = eventLog;
+    webhookLogsHistory.unshift(eventLog);
+    if (webhookLogsHistory.length > 50) webhookLogsHistory.pop();
+
+    console.log(`========================================\n`);
     return res.status(200).send('EVENT_RECEIVED');
   }
 
+  lastReceivedWebhookEvent = eventLog;
+  webhookLogsHistory.unshift(eventLog);
+  console.log(`========================================\n`);
   return res.status(200).send('OK');
 });
 
