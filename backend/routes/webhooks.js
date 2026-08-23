@@ -6,43 +6,40 @@ const VERIFY_TOKEN = 'ehn_one_whatsapp_verify_token_2026';
 
 /**
  * GET /api/webhooks/meta
- * Meta Developer Portal Webhook Verification Handshake & Health Check
+ * Meta Developer Portal Webhook Verification Handshake
  */
 router.get('/meta', async (req, res) => {
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
 
-  // If Meta Developer Portal is initiating verification
-  if (mode || token || challenge) {
-    let customVerifyToken = VERIFY_TOKEN;
-    try {
-      const settings = await Settings.findOne();
-      if (settings?.whatsapp?.webhookVerifyToken) {
-        customVerifyToken = settings.whatsapp.webhookVerifyToken;
-      }
-    } catch (e) {}
+  let customVerifyToken = VERIFY_TOKEN;
+  try {
+    const settings = await Settings.findOne();
+    if (settings?.whatsapp?.webhookVerifyToken) {
+      customVerifyToken = settings.whatsapp.webhookVerifyToken;
+    }
+  } catch (e) {}
 
-    if (mode === 'subscribe' && (token === customVerifyToken || token === VERIFY_TOKEN || !token)) {
+  // Meta Developer Portal Official Handshake Verification
+  if (mode === 'subscribe') {
+    if (token === customVerifyToken || token === VERIFY_TOKEN) {
       console.log('✅ Meta Webhook Verification Successful! Responding with challenge:', challenge);
       return res.status(200).send(challenge);
-    }
-
-    // Always accept token if mode is subscribe
-    if (mode === 'subscribe' && challenge) {
-      console.log('✅ Meta Webhook Verification Accepted. Challenge:', challenge);
-      return res.status(200).send(challenge);
+    } else {
+      console.warn('❌ Meta Webhook Verification Token Mismatch.');
+      return res.status(403).send('Forbidden');
     }
   }
 
-  // Friendly default response for browser / health checks (No 400 Bad Request error)
+  // Friendly default response for browser / health checks (No Bad Request error)
   return res.status(200).json({
     success: true,
     status: 'active',
     service: 'EHN One Meta WhatsApp Webhook Verification Endpoint',
     callbackUrl: 'https://admin.kedvasshygieneproducts.com/api/webhooks/meta',
     verifyToken: VERIFY_TOKEN,
-    instructions: 'Use this Callback URL and Verify Token in Meta Developer Portal Webhook Configuration.'
+    instructions: 'Enter Callback URL and Verify Token in Meta Developer Portal Webhook Configuration.'
   });
 });
 
