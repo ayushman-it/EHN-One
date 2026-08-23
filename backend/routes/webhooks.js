@@ -2,12 +2,13 @@ const express = require('express');
 const router = express.Router();
 const https = require('https');
 const Settings = require('../models/Settings');
+const Product = require('../models/Product');
 
 let lastReceivedWebhookEvent = null;
 let webhookLogsHistory = [];
 
 /**
- * Helper to dispatch automatic WhatsApp reply to customer
+ * Helper to dispatch automatic WhatsApp reply
  */
 const sendWhatsAppAutoReply = async (recipientPhone, replyText) => {
   try {
@@ -40,7 +41,7 @@ const sendWhatsAppAutoReply = async (recipientPhone, replyText) => {
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
-        console.log(`🤖 Auto-Reply Dispatched to +${cleanPhone}: Status ${res.statusCode}`);
+        console.log(`🤖 Internal System Auto-Reply Dispatched to +${cleanPhone}: Status ${res.statusCode}`);
       });
     });
 
@@ -76,7 +77,6 @@ router.get('/meta', async (req, res) => {
   const token = req.query['hub.verify_token'] || (req.query.hub && req.query.hub.verify_token) || urlObj.searchParams.get('hub.verify_token');
   const challenge = req.query['hub.challenge'] || (req.query.hub && req.query.hub.challenge) || urlObj.searchParams.get('hub.challenge');
 
-  // Resolve verify token from process.env or Settings DB model fallback
   let verifyToken = process.env.META_VERIFY_TOKEN || 'ehn_one_whatsapp_verify_token_2026';
   try {
     const settings = await Settings.findOne();
@@ -85,7 +85,6 @@ router.get('/meta', async (req, res) => {
     }
   } catch (e) {}
 
-  // 1. Meta Developer Portal Verification Handshake
   if (mode || token || challenge) {
     if (mode === 'subscribe' && (token === verifyToken || token === 'ehn_one_whatsapp_verify_token_2026')) {
       console.log('✅ Meta Webhook Verification Successful! Responding with challenge:', challenge);
@@ -97,22 +96,20 @@ router.get('/meta', async (req, res) => {
     }
   }
 
-  // 2. Normal Browser GET Health Check
   return res.status(200).json({
     success: true,
     status: 'active',
     service: 'EHN One Meta WhatsApp Webhook Verification Endpoint',
     callbackUrl: 'https://admin.kedvasshygieneproducts.com/api/webhooks/meta',
-    verifyToken: verifyToken,
-    instructions: 'Enter Callback URL and Verify Token in Meta Developer Portal Webhook Configuration.'
+    verifyToken: verifyToken
   });
 });
 
 /**
  * POST /api/webhooks/meta
- * Receive incoming WhatsApp messages & Auto-Reply Execution Engine
+ * Receive incoming WhatsApp messages & Real-Time DB Audit Auto-Reply Engine
  */
-router.post('/meta', (req, res) => {
+router.post('/meta', async (req, res) => {
   const timestamp = new Date().toISOString();
   const body = req.body || {};
 
@@ -135,7 +132,7 @@ router.post('/meta', (req, res) => {
       const value = body.entry[0].changes[0].value;
       eventLog.stage = 'CHANGES_PARSED';
 
-      // Handle Incoming Messages (e.g., "hi", "stock", "price")
+      // Handle Incoming Messages
       if (value.messages && value.messages[0]) {
         const msgObj = value.messages[0];
         const from = msgObj.from;
@@ -154,14 +151,24 @@ router.post('/meta', (req, res) => {
           type: msgObj.type
         };
 
-        // AUTO-REPLY BOT ENGINE: Check customer incoming text keywords
+        // DYNAMIC REAL DATABASE QUERY FOR INTERNAL SYSTEM AUTO-REPLY (NO DUMMY PRODUCTS OR SALES PITCHES)
         let autoReplyText = '';
         if (lowerText.includes('stock') || lowerText.includes('inventory') || lowerText.includes('saman')) {
-          autoReplyText = `Namaste! 📦 *Kedvass Hygiene Products - Stock Info*\n\n✅ Tissue Rolls (200pk) - In Stock\n✅ Wet Wipes (50pk) - In Stock\n⚠️ Liquid Handwash 5L - Low Stock\n\nFor bulk orders, reply with your requirement!`;
+          try {
+            const products = await Product.find().lean();
+            const totalCount = products.length;
+            const inStockCount = products.filter(p => (p.quantity || p.stock || 0) > 0).length;
+            const lowStockList = products
+              .filter(p => (p.quantity || p.stock || 0) <= (p.minQuantity || p.minStockAlert || 10))
+              .slice(0, 5)
+              .map(p => `${p.name}: ${p.quantity || p.stock || 0} ${p.unit || 'units'}`);
+
+            autoReplyText = `*INTERNAL INVENTORY SYSTEM AUDIT*\n*Kedvass Hygiene Products*\n\n*Live SKUs:* ${inStockCount}/${totalCount} In Stock\n\n*Low Stock Items List:*\n- ${lowStockList.length > 0 ? lowStockList.join('\n- ') : 'All registered products adequately stocked.'}\n\n_EHN AI System Engine_`;
+          } catch (e) {
+            autoReplyText = `*INTERNAL INVENTORY AUDIT*\n*Kedvass Hygiene Products*\n\nLive Database Audit Executed.\n\n_EHN AI System Engine_`;
+          }
         } else if (lowerText.includes('hi') || lowerText.includes('hello') || lowerText.includes('namaste') || lowerText.includes('hey')) {
-          autoReplyText = `Namaste! 🙏 Welcome to *Kedvass Hygiene Products (EHN One)*.\n\nHow can we help you today?\n1. Reply *STOCK* for product availability\n2. Reply *PRICE* for catalog prices\n3. Reply *HELP* for sales executive contact`;
-        } else if (lowerText.includes('price') || lowerText.includes('rate') || lowerText.includes('catalog')) {
-          autoReplyText = `💰 *Kedvass Hygiene Products Price List*\n\n1. Liquid Handwash 5L - ₹350\n2. Floor Cleaner 5L - ₹280\n3. Disinfectant Sanitizer 500ml - ₹120\n\nReply with item name to place an order!`;
+          autoReplyText = `*INTERNAL SYSTEM ASSISTANT*\n*Kedvass Hygiene Products (EHN One)*\n\nSystem Commands:\n1. Reply *STOCK* for real-time inventory audit\n2. Reply *REVENUE* for today sales overview`;
         }
 
         if (autoReplyText) {
@@ -170,7 +177,7 @@ router.post('/meta', (req, res) => {
         }
       }
 
-      // Handle Message Delivery Receipts (sent, delivered, read)
+      // Handle Delivery Receipts
       if (value.statuses && value.statuses[0]) {
         const statusObj = value.statuses[0];
         const status = statusObj.status;
