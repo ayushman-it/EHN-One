@@ -17,8 +17,8 @@ export const getWhatsAppConfig = () => whatsappConfig;
 export default function Automations() {
   const { can } = useAuth();
   
-  // Tabs: 'setup' | 'reminders' | 'live_inbox'
-  const [activeTab, setActiveTab] = useState('setup');
+  // Tabs: 'auto_reply' | 'setup' | 'reminders' | 'live_inbox'
+  const [activeTab, setActiveTab] = useState('auto_reply');
   const [webhookHistory, setWebhookHistory] = useState([]);
   const [aiGeneratingId, setAiGeneratingId] = useState(null);
   const [lastAiReport, setLastAiReport] = useState('');
@@ -28,7 +28,38 @@ export default function Automations() {
     return localStorage.getItem('ehn_admin_whatsapp_phone') || '+91 9238695500';
   });
 
-  // Dynamic Automations List (Stored in localStorage, 100% editable)
+  // Dynamic Auto-Reply Bot Rules List
+  const [autoReplyRules, setAutoReplyRules] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ehn_auto_reply_rules');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return [
+      {
+        id: 'BOT-01',
+        title: '📦 Stock Availability Auto-Reply',
+        keyword: 'stock, inventory, saman',
+        replyText: 'Namaste! 📦 Tissue Rolls & Wet Wipes are in stock. Liquid Handwash 5L is low stock (3 units left).',
+        enabled: true,
+      },
+      {
+        id: 'BOT-02',
+        title: '🙏 Welcome & Greeting Bot',
+        keyword: 'hi, hello, namaste, hey',
+        replyText: 'Namaste! 🙏 Welcome to Kedvass Hygiene Products. Reply STOCK for availability or PRICE for product catalog.',
+        enabled: true,
+      },
+      {
+        id: 'BOT-03',
+        title: '💰 Price List & Catalog Bot',
+        keyword: 'price, rate, catalog',
+        replyText: '💰 Price List:\n1. Liquid Handwash 5L - ₹350\n2. Floor Cleaner 5L - ₹280\n3. Sanitizer 500ml - ₹120',
+        enabled: true,
+      },
+    ];
+  });
+
+  // Dynamic Scheduled AI Automations List
   const [automationsList, setAutomationsList] = useState(() => {
     try {
       const saved = localStorage.getItem('ehn_custom_automations_list');
@@ -37,20 +68,18 @@ export default function Automations() {
     return [
       {
         id: 'AUTO-01',
-        title: '📦 Night 8 PM Stock Report',
+        title: '📦 Night 8 PM Product Stock Report',
         category: 'stock_night',
         time: '20:00',
-        frequency: 'daily',
         phone: adminPhone,
         enabled: true,
-        aiPrompt: 'Check inventory stock data and send Night 8 PM report of items left, low stock warnings, and reorder alerts.',
+        aiPrompt: 'Check inventory software stock data and send Night 8 PM report of items left, low stock warnings, and reorder alerts.',
       },
       {
         id: 'AUTO-02',
         title: '📊 Day-End Sales & Revenue Summary',
         category: 'business_summary',
         time: '21:00',
-        frequency: 'daily',
         phone: adminPhone,
         enabled: true,
         aiPrompt: 'Analyze today sales revenue, invoices created, cash collection, and customer dues at day end.',
@@ -60,7 +89,6 @@ export default function Automations() {
         title: '🚨 Low Stock Emergency Warning',
         category: 'low_stock_emergency',
         time: '12:00',
-        frequency: 'daily',
         phone: adminPhone,
         enabled: true,
         aiPrompt: 'Alert admin when any hygiene product stock drops below 10 units threshold.',
@@ -82,16 +110,17 @@ export default function Automations() {
   // Generic Modal States
   const [showAutoModal, setShowAutoModal] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
-  const [editAutoRule, setEditAutoRule] = useState(null);
-  const [editTaskRule, setEditTaskRule] = useState(null);
+  const [editRule, setEditRule] = useState(null);
 
-  // Generic Form States
+  // Generic Universal Automation & Auto-Reply Form State
   const [autoForm, setAutoForm] = useState({
     title: '',
-    category: 'stock_night',
+    category: 'auto_reply_keyword', // 'auto_reply_keyword' | 'stock_night' | 'business_summary' | 'low_stock_emergency' | 'custom_ai'
+    keyword: '',
     time: '20:00',
     frequency: 'daily',
     phone: adminPhone,
+    replyText: '',
     aiPrompt: '',
   });
 
@@ -108,6 +137,11 @@ export default function Automations() {
   const saveAdminPhone = (newPhone) => {
     setAdminPhone(newPhone);
     localStorage.setItem('ehn_admin_whatsapp_phone', newPhone);
+  };
+
+  const saveAutoReplyRules = (newList) => {
+    setAutoReplyRules(newList);
+    localStorage.setItem('ehn_auto_reply_rules', JSON.stringify(newList));
   };
 
   const saveAutomationsList = (newList) => {
@@ -137,34 +171,6 @@ export default function Automations() {
     fetchLiveLogs();
     const timer = setInterval(fetchLiveLogs, 4000);
     return () => clearInterval(timer);
-  }, []);
-
-  // Auto-Runner Loop for Due Automations & Reminders
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const now = new Date();
-      const todayStr = now.toISOString().split('T')[0];
-      const currentHHMM = now.toTimeString().substring(0, 5);
-
-      setReminders((currentReminders) => {
-        let updated = false;
-        const newReminders = currentReminders.map((r) => {
-          if (!r.enabled) return r;
-          const isDateDue = (r.frequency === 'daily') || (r.date === todayStr);
-          const isTimeDue = (r.time === currentHHMM);
-          if (isDateDue && isTimeDue && r.lastSent !== todayStr) {
-            handleSendWhatsAppDirect({ phone: r.phone, message: r.message });
-            updated = true;
-            return { ...r, lastSent: todayStr };
-          }
-          return r;
-        });
-        if (updated) saveRemindersToStorage(newReminders);
-        return currentReminders;
-      });
-    }, 15000);
-
-    return () => clearInterval(interval);
   }, []);
 
   // Direct Meta WhatsApp Dispatcher
@@ -231,29 +237,57 @@ export default function Automations() {
     }
   };
 
-  // Generic Save Automation Rule (Create or Edit)
-  const handleSaveAutomationRule = (e) => {
+  // Save Universal Generic Rule (Auto-Reply or Scheduled AI Rule)
+  const handleSaveUniversalRule = (e) => {
     e.preventDefault();
     if (!autoForm.title.trim()) {
       alert('Please enter automation title.');
       return;
     }
 
-    if (editAutoRule) {
-      const updated = automationsList.map(a => a.id === editAutoRule.id ? { ...a, ...autoForm } : a);
-      saveAutomationsList(updated);
+    if (autoForm.category === 'auto_reply_keyword') {
+      if (editRule) {
+        const updated = autoReplyRules.map(r => r.id === editRule.id ? { ...r, title: autoForm.title, keyword: autoForm.keyword, replyText: autoForm.replyText || autoForm.aiPrompt } : r);
+        saveAutoReplyRules(updated);
+      } else {
+        const newRule = {
+          id: `BOT-${Date.now()}`,
+          title: autoForm.title,
+          keyword: autoForm.keyword || 'info',
+          replyText: autoForm.replyText || autoForm.aiPrompt || 'Thank you for contacting us.',
+          enabled: true,
+        };
+        saveAutoReplyRules([newRule, ...autoReplyRules]);
+      }
     } else {
-      const newRule = {
-        id: `AUTO-${Date.now()}`,
-        ...autoForm,
-        enabled: true,
-      };
-      saveAutomationsList([newRule, ...automationsList]);
+      if (editRule) {
+        const updated = automationsList.map(a => a.id === editRule.id ? { ...a, ...autoForm } : a);
+        saveAutomationsList(updated);
+      } else {
+        const newRule = {
+          id: `AUTO-${Date.now()}`,
+          ...autoForm,
+          enabled: true,
+        };
+        saveAutomationsList([newRule, ...automationsList]);
+      }
     }
 
     setShowAutoModal(false);
-    setEditAutoRule(null);
-    setAutoForm({ title: '', category: 'stock_night', time: '20:00', frequency: 'daily', phone: adminPhone, aiPrompt: '' });
+    setEditRule(null);
+    setAutoForm({ title: '', category: 'auto_reply_keyword', keyword: '', time: '20:00', frequency: 'daily', phone: adminPhone, replyText: '', aiPrompt: '' });
+  };
+
+  const handleToggleAutoReply = (id) => {
+    const updated = autoReplyRules.map(r => r.id === id ? { ...r, enabled: !r.enabled } : r);
+    saveAutoReplyRules(updated);
+  };
+
+  const handleDeleteAutoReply = (id) => {
+    if (window.confirm('Delete this auto-reply rule?')) {
+      const updated = autoReplyRules.filter(r => r.id !== id);
+      saveAutoReplyRules(updated);
+    }
   };
 
   const handleToggleAutoRule = (id) => {
@@ -277,18 +311,6 @@ export default function Automations() {
   });
   const paginatedReminders = filteredReminders.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  const getCategoryBadge = (cat) => {
-    const map = {
-      stock_night: { color: 'success', icon: 'bi-box-seam', label: 'Stock Report' },
-      business_summary: { color: 'primary', icon: 'bi-bar-chart', label: 'Sales Summary' },
-      low_stock_emergency: { color: 'warning', icon: 'bi-exclamation-triangle', label: 'Low Stock' },
-      payment_dues: { color: 'danger', icon: 'bi-cash-coin', label: 'Payment Dues' },
-      custom_ai: { color: 'secondary', icon: 'bi-robot', label: 'Custom AI' },
-    };
-    const c = map[cat] || map.custom_ai;
-    return <span className={`badge-v ${c.color}`} style={{ fontSize: '0.7rem' }}><i className={`bi ${c.icon} me-1`}></i> {c.label}</span>;
-  };
-
   if (!can('settings.view')) {
     return (
       <div className="empty-state-v" style={{ paddingTop: 80 }}>
@@ -300,76 +322,144 @@ export default function Automations() {
 
   return (
     <div className="py-2">
-      {/* Clean High-Contrast Executive Header */}
+      {/* Modern Executive Workspace Header */}
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
         <div>
           <div className="d-flex align-items-center gap-2 mb-0.5">
-            <h4 className="fw-bold text-dark mb-0" style={{ letterSpacing: '-0.3px' }}>WhatsApp AI Automations Engine</h4>
+            <h4 className="fw-bold text-dark mb-0" style={{ letterSpacing: '-0.4px' }}>WhatsApp AI Automation & Auto-Reply Bot Engine</h4>
             <span className="badge px-2.5 py-1" style={{ background: '#DAF2DB', color: '#1E4D2B', fontWeight: 700, fontSize: '0.72rem' }}>
-              <i className="bi bi-cpu-fill me-1"></i> GROQ AI POWERED
+              <i className="bi bi-robot me-1"></i> GROQ AI & META BOT
             </span>
           </div>
-          <small className="text-muted">Reads inventory & billing database $\rightarrow$ Sends automated WhatsApp reports to recipient number</small>
+          <small className="text-muted">Configure automatic customer reply bots, scheduled stock reports, and automated WhatsApp reminders</small>
         </div>
         <div className="d-flex gap-2">
-          <button className="btn btn-outline-success btn-sm fw-bold rounded-pill px-3.5 shadow-sm" onClick={() => { setEditAutoRule(null); setAutoForm({ title: '', category: 'stock_night', time: '20:00', frequency: 'daily', phone: adminPhone, aiPrompt: '' }); setShowAutoModal(true); }}>
-            <i className="bi bi-plus-lg me-1"></i> + New Automation Rule
+          <button className="btn btn-outline-success btn-sm fw-bold rounded-pill px-3.5 shadow-sm" onClick={() => { setEditRule(null); setAutoForm({ title: '', category: 'auto_reply_keyword', keyword: '', time: '20:00', frequency: 'daily', phone: adminPhone, replyText: '', aiPrompt: '' }); setShowAutoModal(true); }}>
+            <i className="bi bi-robot me-1"></i> + New Automation / Auto-Reply Rule
           </button>
-          <button className="btn btn-success btn-sm fw-bold rounded-pill px-3.5 shadow-sm" onClick={() => { setEditTaskRule(null); setShowTaskModal(true); }} style={{ background: '#4CAF50', border: 'none' }}>
+          <button className="btn btn-success btn-sm fw-bold rounded-pill px-3.5 shadow-sm" onClick={() => { setShowTaskModal(true); }} style={{ background: '#4CAF50', border: 'none' }}>
             <i className="bi bi-alarm me-1"></i> + Schedule Reminder
           </button>
         </div>
       </div>
 
-      {/* Navigation Sub-Tabs */}
-      <div className="card border-0 shadow-sm mb-3" style={{ borderRadius: 10 }}>
-        <div className="card-body p-2 d-flex flex-wrap align-items-center justify-content-between gap-2" style={{ background: '#f8faf9', borderRadius: 10 }}>
+      {/* Navigation Sub-Tabs Bar */}
+      <div className="card border-0 shadow-sm mb-3" style={{ borderRadius: 12 }}>
+        <div className="card-body p-2 d-flex flex-wrap align-items-center justify-content-between gap-2" style={{ background: '#f8faf9', borderRadius: 12 }}>
           <div className="nav nav-pills gap-1.5">
+            <button
+              className={`nav-link btn-sm fw-bold rounded-pill px-3.5 py-1.5 ${activeTab === 'auto_reply' ? 'active' : 'text-dark bg-white shadow-sm'}`}
+              onClick={() => setActiveTab('auto_reply')}
+              style={activeTab === 'auto_reply' ? { background: '#1E4D2B', color: '#ffffff' } : { fontSize: '0.82rem' }}
+            >
+              <i className="bi bi-chat-dots-fill me-1.5 text-success"></i> 1. Auto-Reply Bot Rules ({autoReplyRules.length})
+            </button>
             <button
               className={`nav-link btn-sm fw-bold rounded-pill px-3.5 py-1.5 ${activeTab === 'setup' ? 'active' : 'text-dark bg-white shadow-sm'}`}
               onClick={() => setActiveTab('setup')}
               style={activeTab === 'setup' ? { background: '#1E4D2B', color: '#ffffff' } : { fontSize: '0.82rem' }}
             >
-              <i className="bi bi-robot me-1.5"></i> 1. Groq AI Automations ({automationsList.length})
+              <i className="bi bi-robot me-1.5"></i> 2. Groq AI Reports ({automationsList.length})
             </button>
             <button
               className={`nav-link btn-sm fw-bold rounded-pill px-3.5 py-1.5 ${activeTab === 'reminders' ? 'active' : 'text-dark bg-white shadow-sm'}`}
               onClick={() => setActiveTab('reminders')}
               style={activeTab === 'reminders' ? { background: '#1E4D2B', color: '#ffffff' } : { fontSize: '0.82rem' }}
             >
-              <i className="bi bi-alarm me-1.5"></i> 2. Scheduled Reminders ({reminders.length})
+              <i className="bi bi-alarm me-1.5"></i> 3. Scheduled Reminders ({reminders.length})
             </button>
             <button
               className={`nav-link btn-sm fw-bold rounded-pill px-3.5 py-1.5 ${activeTab === 'live_inbox' ? 'active' : 'text-dark bg-white shadow-sm'}`}
               onClick={() => setActiveTab('live_inbox')}
               style={activeTab === 'live_inbox' ? { background: '#1E4D2B', color: '#ffffff' } : { fontSize: '0.82rem' }}
             >
-              <i className="bi bi-whatsapp me-1.5" style={{ color: '#25D366' }}></i> 3. Live Messages & Receipts ({webhookHistory.length})
+              <i className="bi bi-whatsapp me-1.5" style={{ color: '#25D366' }}></i> 4. Live Logs & Blue Ticks ({webhookHistory.length})
             </button>
           </div>
 
           <div className="d-flex align-items-center gap-2 px-2">
-            <small className="text-muted fw-bold" style={{ fontSize: '0.72rem' }}>RECIPIENT NUMBER:</small>
+            <small className="text-muted fw-bold" style={{ fontSize: '0.72rem' }}>ADMIN NUMBER:</small>
             <input
               type="text"
               className="form-control form-control-sm fw-bold text-dark font-monospace"
               style={{ width: 155, borderColor: '#4CAF50' }}
               value={adminPhone}
               onChange={(e) => saveAdminPhone(e.target.value)}
-              title="Global WhatsApp recipient number for all reports"
+              title="Admin recipient phone number"
             />
           </div>
         </div>
       </div>
 
-      {/* TAB 1: GROQ AI AUTOMATIONS ENGINE */}
-      {activeTab === 'setup' && (
+      {/* TAB 1: AUTO-REPLY BOT RULES */}
+      {activeTab === 'auto_reply' && (
         <div className="row g-3">
-          {/* Quick Engine Status Bar */}
           <div className="col-12">
             <div className="p-2.5 rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-2 border bg-white shadow-sm" style={{ borderColor: '#DAF2DB' }}>
               <div className="d-flex align-items-center gap-2">
-                <i className="bi bi-cpu-fill text-success" style={{ fontSize: '1.2rem' }}></i>
+                <i className="bi bi-whatsapp text-success" style={{ fontSize: '1.25rem' }}></i>
+                <div>
+                  <span className="fw-bold text-dark me-2" style={{ fontSize: '0.85rem' }}>Customer Incoming Message Auto-Reply Bot</span>
+                  <span className="badge bg-success font-monospace" style={{ fontSize: '0.65rem' }}>ACTIVE</span>
+                </div>
+              </div>
+              <small className="text-muted">When a customer sends a message with a keyword, Meta Webhook instantly sends auto-reply back!</small>
+            </div>
+          </div>
+
+          {autoReplyRules.map((rule) => (
+            <div className="col-md-6 col-lg-4" key={rule.id}>
+              <div className="card h-100 border-0 shadow-sm" style={{ borderRadius: 12, background: '#ffffff', borderLeft: '4px solid #25D366' }}>
+                <div className="card-body p-3">
+                  <div className="d-flex align-items-start justify-content-between mb-2">
+                    <div>
+                      <h6 className="fw-bold text-dark mb-1" style={{ fontSize: '0.9rem' }}>{rule.title}</h6>
+                      <span className="badge bg-light text-dark border font-monospace" style={{ fontSize: '0.7rem' }}>
+                        <i className="bi bi-key-fill text-warning me-1"></i> Trigger Keyword: "{rule.keyword}"
+                      </span>
+                    </div>
+                    <div className="form-check form-switch">
+                      <input
+                        className="form-check-input style-cursor"
+                        type="checkbox"
+                        checked={rule.enabled}
+                        onChange={() => handleToggleAutoReply(rule.id)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-2 rounded border mb-3" style={{ background: '#F4FBF5', fontSize: '0.78rem', color: '#1E4D2B' }}>
+                    <i className="bi bi-reply-fill text-success me-1"></i> <strong>Auto-Reply Content:</strong>
+                    <div className="mt-1 fw-semibold text-dark">{rule.replyText}</div>
+                  </div>
+
+                  <div className="d-flex align-items-center justify-content-between pt-2 border-top">
+                    <div className="d-flex gap-1">
+                      <button className="btn btn-v outline-primary btn-sm p-1 px-2" onClick={() => { setEditRule(rule); setAutoForm({ title: rule.title, category: 'auto_reply_keyword', keyword: rule.keyword, time: '20:00', frequency: 'daily', phone: adminPhone, replyText: rule.replyText, aiPrompt: rule.replyText }); setShowAutoModal(true); }}>
+                        <i className="bi bi-pencil"></i> Edit Rule
+                      </button>
+                      <button className="btn btn-v outline-danger btn-sm p-1 px-2" onClick={() => handleDeleteAutoReply(rule.id)}>
+                        <i className="bi bi-trash"></i>
+                      </button>
+                    </div>
+                    <button className="btn btn-outline-success btn-sm font-monospace py-0.5 px-2" style={{ fontSize: '0.72rem' }} onClick={() => handleSendWhatsAppDirect({ phone: adminPhone, message: rule.replyText })}>
+                      <i className="bi bi-send me-1"></i> Test Reply
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* TAB 2: GROQ AI REPORTS ENGINE */}
+      {activeTab === 'setup' && (
+        <div className="row g-3">
+          <div className="col-12">
+            <div className="p-2.5 rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-2 border bg-white shadow-sm" style={{ borderColor: '#DAF2DB' }}>
+              <div className="d-flex align-items-center gap-2">
+                <i className="bi bi-cpu-fill text-success" style={{ fontSize: '1.25rem' }}></i>
                 <div>
                   <span className="fw-bold text-dark me-2" style={{ fontSize: '0.85rem' }}>Groq AI Model: `qwen/qwen3.6-27b`</span>
                   <span className="badge bg-success font-monospace" style={{ fontSize: '0.65rem' }}>KEY ACTIVE</span>
@@ -379,20 +469,16 @@ export default function Automations() {
             </div>
           </div>
 
-          {/* Dynamic Automations Grid */}
           {automationsList.map((item) => (
             <div className="col-md-6 col-lg-4" key={item.id}>
-              <div className="card h-100 border-0 shadow-sm" style={{ borderRadius: 10, background: '#ffffff', borderTop: '3.5px solid #1E4D2B' }}>
+              <div className="card h-100 border-0 shadow-sm" style={{ borderRadius: 12, background: '#ffffff', borderTop: '3.5px solid #1E4D2B' }}>
                 <div className="card-body p-3">
                   <div className="d-flex align-items-start justify-content-between mb-2">
                     <div>
                       <h6 className="fw-bold text-dark mb-1" style={{ fontSize: '0.9rem' }}>{item.title}</h6>
-                      <div className="d-flex align-items-center gap-1">
-                        {getCategoryBadge(item.category)}
-                        <span className="badge bg-light text-dark font-monospace" style={{ fontSize: '0.68rem' }}>
-                          <i className="bi bi-clock me-1 text-success"></i> {item.time} hrs
-                        </span>
-                      </div>
+                      <span className="badge bg-light text-dark font-monospace" style={{ fontSize: '0.68rem' }}>
+                        <i className="bi bi-clock me-1 text-success"></i> {item.time} hrs
+                      </span>
                     </div>
                     <div className="form-check form-switch">
                       <input
@@ -410,7 +496,7 @@ export default function Automations() {
 
                   <div className="d-flex align-items-center justify-content-between pt-2 border-top">
                     <div className="d-flex gap-1">
-                      <button className="btn btn-v outline-primary btn-sm p-1 px-2" onClick={() => { setEditAutoRule(item); setAutoForm({ title: item.title, category: item.category, time: item.time, frequency: item.frequency || 'daily', phone: item.phone || adminPhone, aiPrompt: item.aiPrompt }); setShowAutoModal(true); }} title="Edit Rule">
+                      <button className="btn btn-v outline-primary btn-sm p-1 px-2" onClick={() => { setEditRule(item); setAutoForm({ title: item.title, category: item.category, keyword: '', time: item.time, frequency: item.frequency || 'daily', phone: item.phone || adminPhone, replyText: '', aiPrompt: item.aiPrompt }); setShowAutoModal(true); }} title="Edit Rule">
                         <i className="bi bi-pencil"></i>
                       </button>
                       <button className="btn btn-v outline-danger btn-sm p-1 px-2" onClick={() => handleDeleteAutoRule(item.id)} title="Delete Rule">
@@ -431,7 +517,7 @@ export default function Automations() {
                         </>
                       ) : (
                         <>
-                          <i className="bi bi-robot"></i> Run Groq AI Report
+                          <i className="bi bi-robot"></i> Run AI Report
                         </>
                       )}
                     </button>
@@ -441,10 +527,9 @@ export default function Automations() {
             </div>
           ))}
 
-          {/* Generated AI Report Preview */}
           {lastAiReport && (
             <div className="col-12 mt-2">
-              <div className="card border-0 shadow-sm" style={{ borderRadius: 10, background: '#E8F5E9', borderLeft: '4px solid #25D366' }}>
+              <div className="card border-0 shadow-sm" style={{ borderRadius: 12, background: '#E8F5E9', borderLeft: '4px solid #25D366' }}>
                 <div className="card-body p-3">
                   <div className="d-flex align-items-center justify-content-between mb-2">
                     <span className="fw-bold text-success" style={{ fontSize: '0.85rem' }}>
@@ -464,10 +549,10 @@ export default function Automations() {
         </div>
       )}
 
-      {/* TAB 2: SCHEDULED REMINDERS REGISTER */}
+      {/* TAB 3: SCHEDULED REMINDERS REGISTER */}
       {activeTab === 'reminders' && (
         <div className="v-card">
-          <div className="v-card-header d-flex justify-content-between align-items-center" style={{ background: '#f4fbf5', borderRadius: '10px 10px 0 0' }}>
+          <div className="v-card-header d-flex justify-content-between align-items-center" style={{ background: '#f4fbf5', borderRadius: '12px 12px 0 0' }}>
             <span className="fw-bold text-dark" style={{ fontSize: '0.88rem' }}>
               <i className="bi bi-alarm me-2 text-success"></i> SCHEDULED REMINDERS REGISTER
             </span>
@@ -477,7 +562,7 @@ export default function Automations() {
             {filteredReminders.length === 0 ? (
               <div className="p-4 text-center bg-white">
                 <p className="text-muted mb-2">No reminders scheduled yet. Click "+ Schedule Reminder" to add one.</p>
-                <button className="btn btn-success btn-sm fw-semibold rounded-pill px-3" onClick={() => { setEditTaskRule(null); setShowTaskModal(true); }}>
+                <button className="btn btn-success btn-sm fw-semibold rounded-pill px-3" onClick={() => setShowTaskModal(true)}>
                   + Schedule Reminder
                 </button>
               </div>
@@ -542,10 +627,10 @@ export default function Automations() {
         </div>
       )}
 
-      {/* TAB 3: LIVE MESSAGES & RECEIPTS */}
+      {/* TAB 4: LIVE MESSAGES & RECEIPTS */}
       {activeTab === 'live_inbox' && (
         <div className="v-card">
-          <div className="v-card-header d-flex justify-content-between align-items-center" style={{ background: '#f4fbf5', borderRadius: '10px 10px 0 0' }}>
+          <div className="v-card-header d-flex justify-content-between align-items-center" style={{ background: '#f4fbf5', borderRadius: '12px 12px 0 0' }}>
             <span className="fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '0.88rem' }}>
               <i className="bi bi-whatsapp text-success"></i> REAL-TIME LIVE WHATSAPP MESSAGES & BLUE TICK RECEIPTS
             </span>
@@ -605,83 +690,99 @@ export default function Automations() {
         </div>
       )}
 
-      {/* GENERIC AUTOMATION BUILDER MODAL */}
+      {/* UNIVERSAL GENERIC AUTOMATION & AUTO-REPLY BUILDER MODAL */}
       {showAutoModal && (
         <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowAutoModal(false); }}>
-          <div className="modal-box" style={{ maxWidth: 520 }}>
-            <div className="modal-box-header d-flex align-items-center justify-content-between" style={{ background: '#f4fbf5', borderRadius: '10px 10px 0 0' }}>
-              <span className="fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '0.9rem' }}>
-                <i className="bi bi-robot text-success"></i> {editAutoRule ? 'Edit Automation Rule' : 'Create Generic AI Automation Rule'}
+          <div className="modal-box" style={{ maxWidth: 540 }}>
+            <div className="modal-box-header d-flex align-items-center justify-content-between" style={{ background: '#f4fbf5', borderRadius: '12px 12px 0 0' }}>
+              <span className="fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '0.95rem' }}>
+                <i className="bi bi-robot text-success"></i> {editRule ? 'Edit Automation / Auto-Reply Rule' : 'Create Generic Automation / Auto-Reply Rule'}
               </span>
               <button className="close-btn" onClick={() => setShowAutoModal(false)}><i className="bi bi-x-lg"></i></button>
             </div>
-            <form onSubmit={handleSaveAutomationRule}>
+            <form onSubmit={handleSaveUniversalRule}>
               <div className="modal-box-body p-3">
                 <div className="mb-3">
                   <label className="form-label fw-bold">Automation Rule Title <span className="text-danger">*</span></label>
                   <input
                     type="text"
                     className="form-control"
-                    placeholder="e.g. Night 8 PM Stock Report, Daily Sales Summary"
+                    placeholder="e.g. Stock Auto-Reply Bot, Night 8 PM Stock Report"
                     value={autoForm.title}
                     onChange={(e) => setAutoForm({ ...autoForm, title: e.target.value })}
                     required
                   />
                 </div>
 
-                <div className="row g-3 mb-3">
-                  <div className="col-6">
-                    <label className="form-label fw-bold">Category</label>
-                    <select
-                      className="form-select fw-semibold"
-                      value={autoForm.category}
-                      onChange={(e) => setAutoForm({ ...autoForm, category: e.target.value })}
-                    >
-                      <option value="stock_night">📦 Product Stock Report</option>
-                      <option value="business_summary">📊 Sales & Revenue Summary</option>
-                      <option value="low_stock_emergency">🚨 Low Stock Alert</option>
-                      <option value="payment_dues">💰 Customer Dues Follow-up</option>
-                      <option value="custom_ai">⏰ Custom AI Automation</option>
-                    </select>
-                  </div>
-                  <div className="col-6">
-                    <label className="form-label fw-bold">Trigger Time (24h)</label>
+                <div className="mb-3">
+                  <label className="form-label fw-bold">Rule Category / Trigger Type</label>
+                  <select
+                    className="form-select fw-semibold"
+                    value={autoForm.category}
+                    onChange={(e) => setAutoForm({ ...autoForm, category: e.target.value })}
+                  >
+                    <option value="auto_reply_keyword">💬 Customer Incoming Keyword Auto-Reply Bot</option>
+                    <option value="stock_night">📦 Scheduled Product Stock Report</option>
+                    <option value="business_summary">📊 Scheduled Sales Revenue Summary</option>
+                    <option value="low_stock_emergency">🚨 Emergency Low Stock Warning</option>
+                    <option value="custom_ai">⏰ Custom AI Scheduled Task</option>
+                  </select>
+                </div>
+
+                {autoForm.category === 'auto_reply_keyword' ? (
+                  <div className="mb-3">
+                    <label className="form-label fw-bold">Incoming Customer Trigger Keyword(s) <span className="text-danger">*</span></label>
                     <input
-                      type="time"
-                      className="form-control fw-bold"
-                      value={autoForm.time}
-                      onChange={(e) => setAutoForm({ ...autoForm, time: e.target.value })}
+                      type="text"
+                      className="form-control font-monospace"
+                      placeholder="e.g. stock, price, hi, catalog, address"
+                      value={autoForm.keyword}
+                      onChange={(e) => setAutoForm({ ...autoForm, keyword: e.target.value })}
                       required
                     />
+                    <small className="text-muted d-block" style={{ fontSize: '0.72rem' }}>When a customer sends a WhatsApp text containing these keywords, bot auto-replies!</small>
                   </div>
-                </div>
+                ) : (
+                  <div className="row g-3 mb-3">
+                    <div className="col-6">
+                      <label className="form-label fw-bold">Trigger Time (24h)</label>
+                      <input
+                        type="time"
+                        className="form-control fw-bold"
+                        value={autoForm.time}
+                        onChange={(e) => setAutoForm({ ...autoForm, time: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="col-6">
+                      <label className="form-label fw-bold">Recipient Phone</label>
+                      <input
+                        type="text"
+                        className="form-control font-monospace fw-bold"
+                        value={autoForm.phone}
+                        onChange={(e) => setAutoForm({ ...autoForm, phone: e.target.value })}
+                        required
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <div className="mb-3">
-                  <label className="form-label fw-bold">Recipient WhatsApp Number <span className="text-danger">*</span></label>
-                  <input
-                    type="text"
-                    className="form-control font-monospace fw-bold"
-                    placeholder="e.g. +91 9238695500"
-                    value={autoForm.phone}
-                    onChange={(e) => setAutoForm({ ...autoForm, phone: e.target.value })}
-                    required
-                  />
-                </div>
-
-                <div className="mb-3">
-                  <label className="form-label fw-bold">Custom Groq AI Instruction / Prompt</label>
+                  <label className="form-label fw-bold">
+                    {autoForm.category === 'auto_reply_keyword' ? 'Auto-Reply Response Content' : 'Groq AI Prompt / Instruction'}
+                  </label>
                   <textarea
                     className="form-control"
                     rows="3"
-                    placeholder="Describe what Groq AI should check (e.g., Check software inventory and send Night 8 PM report of items left)..."
-                    value={autoForm.aiPrompt}
-                    onChange={(e) => setAutoForm({ ...autoForm, aiPrompt: e.target.value })}
+                    placeholder={autoForm.category === 'auto_reply_keyword' ? 'Enter exact message content to send back to customer...' : 'Describe what Groq AI should check (e.g. Check inventory and send Night 8 PM report)...'}
+                    value={autoForm.category === 'auto_reply_keyword' ? autoForm.replyText : autoForm.aiPrompt}
+                    onChange={(e) => setAutoForm({ ...autoForm, replyText: e.target.value, aiPrompt: e.target.value })}
                   ></textarea>
                 </div>
               </div>
               <div className="modal-box-footer d-flex justify-content-end gap-2">
                 <button type="button" className="btn-v outline-secondary btn-sm" onClick={() => setShowAutoModal(false)}>Cancel</button>
-                <button type="submit" className="btn-v primary btn-sm">Save Rule</button>
+                <button type="submit" className="btn-v primary btn-sm">Save Automation Rule</button>
               </div>
             </form>
           </div>
@@ -692,7 +793,7 @@ export default function Automations() {
       {showTaskModal && (
         <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowTaskModal(false); }}>
           <div className="modal-box" style={{ maxWidth: 520 }}>
-            <div className="modal-box-header d-flex align-items-center justify-content-between" style={{ background: '#f4fbf5', borderRadius: '10px 10px 0 0' }}>
+            <div className="modal-box-header d-flex align-items-center justify-content-between" style={{ background: '#f4fbf5', borderRadius: '12px 12px 0 0' }}>
               <span className="fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '0.9rem' }}>
                 <i className="bi bi-alarm text-success"></i> Schedule WhatsApp Reminder
               </span>

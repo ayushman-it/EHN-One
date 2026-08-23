@@ -1,9 +1,56 @@
 const express = require('express');
 const router = express.Router();
+const https = require('https');
 const Settings = require('../models/Settings');
 
 let lastReceivedWebhookEvent = null;
 let webhookLogsHistory = [];
+
+/**
+ * Helper to dispatch automatic WhatsApp reply to customer
+ */
+const sendWhatsAppAutoReply = async (recipientPhone, replyText) => {
+  try {
+    let settings = await Settings.findOne();
+    const token = settings?.whatsappConfig?.apiKey || settings?.whatsapp?.apiKey || 'EAAX71GdiWggBSU0GVjd55F7AZB2H0vC8jhELg1y1ASa9EAko9Va8dd07h8SX6sQSiFX7xs9Np0JU7KFkehgGH6rRGSwVeeWRq98jexmRoDrty5XeKZCKN6denWuVXgnL1ABfNJwee4RaZA7AjoFcjdG4DnKpDgZBlldWZAnX03tOZC9oVdSTdMDWWNFooV68xnsQZDZD';
+    const phoneId = settings?.whatsappConfig?.phoneNumberId || settings?.whatsapp?.phoneNumberId || '1221104881094408';
+
+    const cleanPhone = recipientPhone.replace(/[^\d]/g, '');
+
+    const payload = JSON.stringify({
+      messaging_product: 'whatsapp',
+      to: cleanPhone,
+      type: 'text',
+      text: { body: replyText }
+    });
+
+    const options = {
+      hostname: 'graph.facebook.com',
+      port: 443,
+      path: `/v25.0/${phoneId}/messages`,
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(payload)
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        console.log(`🤖 Auto-Reply Dispatched to +${cleanPhone}: Status ${res.statusCode}`);
+      });
+    });
+
+    req.on('error', (e) => console.error('Auto-Reply error:', e.message));
+    req.write(payload);
+    req.end();
+  } catch (e) {
+    console.error('Auto-reply exception:', e.message);
+  }
+};
 
 /**
  * GET /api/webhooks/meta/last-event
@@ -15,7 +62,7 @@ router.get('/meta/last-event', (req, res) => {
     serverTime: new Date().toISOString(),
     totalReceived: webhookLogsHistory.length,
     lastEvent: lastReceivedWebhookEvent,
-    recentHistory: webhookLogsHistory.slice(0, 15)
+    recentHistory: webhookLogsHistory.slice(0, 20)
   });
 });
 
@@ -50,7 +97,7 @@ router.get('/meta', async (req, res) => {
     }
   }
 
-  // 2. Normal Browser GET Health Check (No Meta query params sent)
+  // 2. Normal Browser GET Health Check
   return res.status(200).json({
     success: true,
     status: 'active',
@@ -63,7 +110,7 @@ router.get('/meta', async (req, res) => {
 
 /**
  * POST /api/webhooks/meta
- * Receive incoming WhatsApp messages and delivery status updates from Meta Cloud API
+ * Receive incoming WhatsApp messages & Auto-Reply Execution Engine
  */
 router.post('/meta', (req, res) => {
   const timestamp = new Date().toISOString();
@@ -71,7 +118,6 @@ router.post('/meta', (req, res) => {
 
   console.log(`\n========================================`);
   console.log(`[Meta Webhook POST Received @ ${timestamp}]`);
-  console.log(`Payload:`, JSON.stringify(body, null, 2));
 
   let eventLog = {
     timestamp,
@@ -80,6 +126,7 @@ router.post('/meta', (req, res) => {
     body,
     parsedMessage: null,
     parsedStatus: null,
+    autoReplySent: null
   };
 
   if (body.object) {
@@ -88,11 +135,12 @@ router.post('/meta', (req, res) => {
       const value = body.entry[0].changes[0].value;
       eventLog.stage = 'CHANGES_PARSED';
 
-      // Handle Incoming Messages (e.g., "Hello webhook test 123")
+      // Handle Incoming Messages (e.g., "hi", "stock", "price")
       if (value.messages && value.messages[0]) {
         const msgObj = value.messages[0];
         const from = msgObj.from;
-        const msgText = msgObj.text?.body || msgObj.caption || JSON.stringify(msgObj);
+        const msgText = (msgObj.text?.body || msgObj.caption || '').trim();
+        const lowerText = msgText.toLowerCase();
         
         console.log(`📩 INCOMING WHATSAPP MESSAGE:`);
         console.log(`   From: +${from}`);
@@ -105,6 +153,21 @@ router.post('/meta', (req, res) => {
           messageId: msgObj.id,
           type: msgObj.type
         };
+
+        // AUTO-REPLY BOT ENGINE: Check customer incoming text keywords
+        let autoReplyText = '';
+        if (lowerText.includes('stock') || lowerText.includes('inventory') || lowerText.includes('saman')) {
+          autoReplyText = `Namaste! 📦 *Kedvass Hygiene Products - Stock Info*\n\n✅ Tissue Rolls (200pk) - In Stock\n✅ Wet Wipes (50pk) - In Stock\n⚠️ Liquid Handwash 5L - Low Stock\n\nFor bulk orders, reply with your requirement!`;
+        } else if (lowerText.includes('hi') || lowerText.includes('hello') || lowerText.includes('namaste') || lowerText.includes('hey')) {
+          autoReplyText = `Namaste! 🙏 Welcome to *Kedvass Hygiene Products (EHN One)*.\n\nHow can we help you today?\n1. Reply *STOCK* for product availability\n2. Reply *PRICE* for catalog prices\n3. Reply *HELP* for sales executive contact`;
+        } else if (lowerText.includes('price') || lowerText.includes('rate') || lowerText.includes('catalog')) {
+          autoReplyText = `💰 *Kedvass Hygiene Products Price List*\n\n1. Liquid Handwash 5L - ₹350\n2. Floor Cleaner 5L - ₹280\n3. Disinfectant Sanitizer 500ml - ₹120\n\nReply with item name to place an order!`;
+        }
+
+        if (autoReplyText) {
+          eventLog.autoReplySent = autoReplyText;
+          sendWhatsAppAutoReply(from, autoReplyText);
+        }
       }
 
       // Handle Message Delivery Receipts (sent, delivered, read)
@@ -136,7 +199,6 @@ router.post('/meta', (req, res) => {
 
   lastReceivedWebhookEvent = eventLog;
   webhookLogsHistory.unshift(eventLog);
-  console.log(`========================================\n`);
   return res.status(200).send('OK');
 });
 
