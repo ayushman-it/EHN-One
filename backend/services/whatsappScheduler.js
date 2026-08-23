@@ -5,28 +5,55 @@ const Invoice = require('../models/Invoice');
 const Product = require('../models/Product');
 const Customer = require('../models/Customer');
 
-// Get India Standard Time (IST - Asia/Kolkata) HH:MM and YYYY-MM-DD
+// Get India Standard Time (IST - Asia/Kolkata) Hours, Minutes, and YYYY-MM-DD
 const getIndiaTimeDetails = () => {
   const now = new Date();
   
-  // Format HH:MM 24-hour in IST
-  const timeOptions = { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false };
-  const timeFormatter = new Intl.DateTimeFormat('en-GB', timeOptions);
-  const timeParts = timeFormatter.formatToParts(now);
-  let hh = '00', mm = '00';
-  for (const p of timeParts) {
-    if (p.type === 'hour') hh = p.value;
-    if (p.type === 'minute') mm = p.value;
+  // Format IST time
+  const timeFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Kolkata',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: false
+  });
+  
+  const timeStr = timeFormatter.format(now); // e.g. "14:48"
+  const digitsOnly = timeStr.replace(/[^\d]/g, '');
+  
+  let istHour = 0, istMinute = 0;
+  if (digitsOnly.length >= 4) {
+    istHour = parseInt(digitsOnly.substring(0, 2), 10);
+    istMinute = parseInt(digitsOnly.substring(2, 4), 10);
+  } else {
+    // Fallback: Add +5h30m to UTC
+    const utcMs = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const istDate = new Date(utcMs + (330 * 60000));
+    istHour = istDate.getHours();
+    istMinute = istDate.getMinutes();
   }
-  if (hh === '24') hh = '00';
-  const currentHHMM = `${hh.padStart(2, '0')}:${mm.padStart(2, '0')}`;
+
+  const currentISTMinutes = istHour * 60 + istMinute;
+  const currentHHMM = `${String(istHour).padStart(2, '0')}:${String(istMinute).padStart(2, '0')}`;
 
   // Format YYYY-MM-DD in IST
-  const dateOptions = { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' };
-  const dateFormatter = new Intl.DateTimeFormat('en-CA', dateOptions);
-  const todayStr = dateFormatter.format(now);
+  const dateFormatter = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' });
+  const todayStr = dateFormatter.format(now); // YYYY-MM-DD
 
-  return { currentHHMM, todayStr, now };
+  return { currentISTMinutes, currentHHMM, todayStr, now };
+};
+
+// Convert string like "14:46", "14:46 hrs IST", "2:46 PM" to minutes from midnight
+const parseTimeToMinutes = (timeStr) => {
+  if (!timeStr) return -1;
+  const digits = timeStr.replace(/[^\d]/g, '');
+  if (digits.length >= 4) {
+    const hh = parseInt(digits.substring(0, 2), 10);
+    const mm = parseInt(digits.substring(2, 4), 10);
+    if (hh >= 0 && hh < 24 && mm >= 0 && mm < 60) {
+      return hh * 60 + mm;
+    }
+  }
+  return -1;
 };
 
 // Send HTTP POST to Meta Graph API
@@ -193,26 +220,32 @@ const startScheduler = () => {
 
   schedulerInterval = setInterval(async () => {
     try {
-      const { currentHHMM, todayStr, now } = getIndiaTimeDetails();
+      const { currentISTMinutes, currentHHMM, todayStr, now } = getIndiaTimeDetails();
+      const todayNum = parseInt(todayStr.replace(/[^\d]/g, ''), 10);
 
       // Query MongoDB Automations
       const automations = await Automation.find({ enabled: true });
 
       for (const auto of automations) {
-        const autoTime = auto.time;
-        if (!autoTime) continue;
+        const autoMins = parseTimeToMinutes(auto.time);
+        if (autoMins < 0) continue;
 
-        const startDate = auto.startDate || auto.date || todayStr;
-        const endDate = auto.endDate || startDate || todayStr;
+        const startDateStr = (auto.startDate || auto.date || todayStr).substring(0, 10);
+        const endDateStr = (auto.endDate || startDateStr || todayStr).substring(0, 10);
+        
+        const startNum = parseInt(startDateStr.replace(/[^\d]/g, ''), 10) || todayNum;
+        const endNum = parseInt(endDateStr.replace(/[^\d]/g, ''), 10) || todayNum;
 
-        const isWithinDateRange = (todayStr >= startDate) && (todayStr <= endDate);
-        const isTimeMatch = (autoTime === currentHHMM);
-        const lastSentKey = `${todayStr}_${currentHHMM}`;
+        const isWithinDateRange = (todayNum >= startNum) && (todayNum <= endNum);
+        
+        // Match if current IST minute is between autoMins and autoMins + 15 minutes, AND hasn't been sent today!
+        const isTimeDue = (currentISTMinutes >= autoMins) && (currentISTMinutes <= autoMins + 15);
+        const lastSentDateStr = auto.lastSent ? auto.lastSent.split('_')[0] : '';
 
-        if (isWithinDateRange && isTimeMatch && auto.lastSent !== lastSentKey) {
-          console.log(`⏰ [SERVER SCHEDULER MATCH AT ${currentHHMM} IST] Executing "${auto.title || auto.name}" for +${auto.phone || 'Admin'}...`);
+        if (isWithinDateRange && isTimeDue && lastSentDateStr !== todayStr) {
+          console.log(`⏰ [SERVER SCHEDULER MATCH AT ${currentHHMM} IST] Triggering "${auto.title || auto.name}" for +${auto.phone || 'Admin'}...`);
           
-          auto.lastSent = lastSentKey;
+          auto.lastSent = `${todayStr}_${currentHHMM}`;
           auto.lastTriggered = now;
           auto.triggeredCount = (auto.triggeredCount || 0) + 1;
           await auto.save();
