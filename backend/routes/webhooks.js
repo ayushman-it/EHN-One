@@ -7,9 +7,10 @@ const Settings = require('../models/Settings');
  * Meta Developer Portal Webhook Verification Handshake & Browser Health Status
  */
 router.get('/meta', async (req, res) => {
-  const mode = req.query['hub.mode'];
-  const token = req.query['hub.verify_token'];
-  const challenge = req.query['hub.challenge'];
+  const urlObj = new URL(req.originalUrl || req.url, 'https://admin.kedvasshygieneproducts.com');
+  const mode = req.query['hub.mode'] || (req.query.hub && req.query.hub.mode) || urlObj.searchParams.get('hub.mode');
+  const token = req.query['hub.verify_token'] || (req.query.hub && req.query.hub.verify_token) || urlObj.searchParams.get('hub.verify_token');
+  const challenge = req.query['hub.challenge'] || (req.query.hub && req.query.hub.challenge) || urlObj.searchParams.get('hub.challenge');
 
   // Resolve verify token from process.env or Settings DB model fallback
   let verifyToken = process.env.META_VERIFY_TOKEN || 'ehn_one_whatsapp_verify_token_2026';
