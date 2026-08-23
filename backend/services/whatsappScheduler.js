@@ -7,7 +7,7 @@ const Customer = require('../models/Customer');
 
 // Send HTTP POST to Meta Graph API
 const dispatchWhatsApp = async (phone, message, config) => {
-  const token = config?.apiKey || config?.whatsapp?.apiKey || 'EAAX71GdiWggBSVNQf5y7pT71r7SZCC7OU8UDLGvRiDZAABnlo7OAMtayZAsnj5BcTcH7BwPcN6DiJc2EsU3n0uzof31uINkUZBO6hb1kZAog5BElfQzBqZAXpshREnQmZAcVW8nnYe7vOyLajLRG7grw4QD3ivr0J5tQfbBxQDjPNYrR5JXqnw0SrSjI1t5EgIzgwZDZD';
+  const token = config?.apiKey || config?.whatsapp?.apiKey || 'EAAX71GdiWggBSU0GVjd55F7AZB2H0vC8jhELg1y1ASa9EAko9Va8dd07h8SX6sQSiFX7xs9Np0JU7KFkehgGH6rRGSwVeeWRq98jexmRoDrty5XeKZCKN6denWuVXgnL1ABfNJwee4RaZA7AjoFcjdG4DnKpDgZBlldWZAnX03tOZC9oVdSTdMDWWNFooV68xnsQZDZD';
   const phoneId = config?.phoneNumberId || config?.whatsapp?.phoneNumberId || '1221104881094408';
   const cleanPhone = (phone || '').replace(/[^\d]/g, '');
 
