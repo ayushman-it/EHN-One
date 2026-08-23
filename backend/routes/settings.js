@@ -4,6 +4,7 @@ const https = require('https');
 const Settings = require('../models/Settings');
 const Product = require('../models/Product');
 const Invoice = require('../models/Invoice');
+const Customer = require('../models/Customer');
 const { authorize } = require('../middleware/auth');
 
 // Obscure Groq API key to pass secret scanning push protection
@@ -103,13 +104,14 @@ router.post('/send-whatsapp', authorize('admin', 'manager'), async (req, res) =>
 
 /**
  * POST /api/settings/groq-ai-report
- * Generate Internal Management & Category-Wise Stock Report via EHN AI & Option to Dispatch to WhatsApp
+ * 100% REAL DATABASE AUDIT (NO DUMMY DATA FALLBACKS)
+ * Generate Internal Executive Management Report based strictly on live MongoDB Database Data
  */
 router.post('/groq-ai-report', authorize('admin', 'manager'), async (req, res) => {
   try {
     const { reportType, customPrompt, recipientPhone, dispatchWhatsApp = true } = req.body;
 
-    // Dynamically query real MongoDB database metrics
+    // 100% REAL LIVE DATABASE METRICS (ZERO DUMMY DATA)
     let totalSKUs = 0;
     let inStock = 0;
     let categoryMap = {};
@@ -117,15 +119,16 @@ router.post('/groq-ai-report', authorize('admin', 'manager'), async (req, res) =
     let outOfStockItems = [];
     let todayRevenueStr = '₹0';
     let invoicesCount = 0;
+    let totalPendingDuesStr = '₹0';
 
     try {
       const products = await Product.find().lean();
       totalSKUs = products.length;
       inStock = products.filter(p => (p.quantity || p.stock || 0) > 0).length;
 
-      // Group products by Category for internal audit
+      // Group real products by Category for internal management audit
       products.forEach(p => {
-        const catName = p.category || 'General Hygiene';
+        const catName = p.category || 'General Products';
         if (!categoryMap[catName]) categoryMap[catName] = [];
         categoryMap[catName].push(`${p.name}: ${p.quantity || p.stock || 0} ${p.unit || 'units'}`);
       });
@@ -137,7 +140,9 @@ router.post('/groq-ai-report', authorize('admin', 'manager'), async (req, res) =
       outOfStockItems = products
         .filter(p => (p.quantity || p.stock || 0) === 0)
         .map(p => p.name);
-    } catch (e) {}
+    } catch (e) {
+      console.error('Product audit query error:', e.message);
+    }
 
     try {
       const todayStart = new Date();
@@ -146,25 +151,26 @@ router.post('/groq-ai-report', authorize('admin', 'manager'), async (req, res) =
       invoicesCount = invoices.length;
       const totalRev = invoices.reduce((sum, inv) => sum + (inv.totalAmount || inv.total || 0), 0);
       todayRevenueStr = `₹${totalRev.toLocaleString('en-IN')}`;
-    } catch (e) {}
-
-    // Fallbacks if database is newly initialized
-    if (totalSKUs === 0) {
-      totalSKUs = 145;
-      inStock = 141;
-      categoryMap = {
-        'Paper Products': ['Tissue Rolls (200pk): 142 boxes', 'Hand Towels: 85 packs'],
-        'Disinfectants & Cleansers': ['Floor Cleaner 5L: 3 units (Low Stock)', 'Liquid Handwash 5L: 5 units (Low Stock)'],
-        'Sanitizers': ['Hand Sanitizer 500ml: 45 bottles']
-      };
-      lowStockItems = ['Floor Cleaner 5L (3 units left)', 'Liquid Handwash 5L (5 units left)'];
+    } catch (e) {
+      console.error('Invoice query error:', e.message);
     }
 
-    if (todayRevenueStr === '₹0') todayRevenueStr = '₹1,48,500';
+    try {
+      if (Customer) {
+        const customers = await Customer.find().lean();
+        const pendingDuesSum = customers.reduce((sum, c) => sum + (c.balance || c.pendingAmount || c.dueAmount || 0), 0);
+        totalPendingDuesStr = `₹${pendingDuesSum.toLocaleString('en-IN')}`;
+      }
+    } catch (e) {}
 
-    const categorySummaryStr = Object.keys(categoryMap)
-      .map(cat => `*${cat}:*\n  - ${categoryMap[cat].slice(0, 4).join('\n  - ')}`)
+    // Formulate 100% Real Category Audit Summary string from real DB
+    let categorySummaryStr = Object.keys(categoryMap)
+      .map(cat => `*${cat}:*\n  - ${categoryMap[cat].join('\n  - ')}`)
       .join('\n');
+
+    if (!categorySummaryStr) {
+      categorySummaryStr = '*Database Status:* Current database has 0 registered product SKUs.';
+    }
 
     const liveContext = {
       company: 'Kedvass Hygiene Products',
@@ -173,45 +179,50 @@ router.post('/groq-ai-report', authorize('admin', 'manager'), async (req, res) =
       totalSKUs,
       inStock,
       categorySummary: categorySummaryStr,
-      lowStockItems,
-      outOfStockItems,
+      lowStockItems: lowStockItems.length > 0 ? lowStockItems : ['None (All products adequately stocked)'],
+      outOfStockItems: outOfStockItems.length > 0 ? outOfStockItems : ['None'],
       todayRevenue: todayRevenueStr,
-      invoicesCreated: invoicesCount || 12,
+      invoicesCreated: invoicesCount,
+      totalPendingDues: totalPendingDuesStr
     };
 
-    // STRICT INTERNAL MANAGEMENT SYSTEM PROMPT (NOT CLIENT-FACING)
-    let systemPrompt = `You are EHN AI for EHN One Enterprise ERP System.
-YOUR ROLE IS STRICTLY INTERNAL MANAGEMENT REPORTING FOR STORE MANAGERS AND BUSINESS OWNERS.
-THIS REPORT IS FOR INTERNAL ADMIN REVIEW ONLY - DO NOT ask clients to place orders or include sales pitches.
-Focus on:
-1. Internal Stock & Category-wise Inventory Audit (Hygiene, Liquids, Paper Products, etc.)
-2. Remaining Stock Counts & Low Stock Reorder Suggestions for Management
-3. Financial Summary (Today Sales Revenue, Invoices Created)
-Format cleanly for WhatsApp with *bold*, _italic_, bullet points, and professional structure.`;
+    // STRICT INTERNAL MANAGEMENT SYSTEM PROMPT (100% REAL DATA, NO DUMMY PITCHES)
+    let systemPrompt = `You are EHN AI for EHN One Inventory ERP & Dashboard Management.
+YOUR TASK IS TO AUDIT REAL LIVE SYSTEM DATABASE METRICS FOR STORE MANAGERS AND EXECUTIVE DIRECTORS.
+STRICT RULES:
+1. THIS REPORT IS FOR INTERNAL MANAGEMENT AUDIT ONLY. DO NOT include sales pitches, discount codes, or ask clients to order.
+2. USE REAL DATABASE FIGURES PROVIDED IN CONTEXT DATA ONLY. DO NOT make up fake products, fake inventory numbers, or fake sales figures.
+3. STRUCTURE REPORT CLEARLY BY CATEGORIES, STOCK METRICS, REORDER ALERTS, AND REVENUE.
+Format cleanly with WhatsApp *bold* text, bullets, and clear management recommendations.`;
 
     let userPrompt = customPrompt || `Generate an Internal Management Inventory & Business Audit for ${liveContext.company}.
-Context Data:
-- Date: ${liveContext.date}
-- Total SKUs: ${liveContext.totalSKUs} (In Stock: ${liveContext.inStock})
-- Category Breakdown:
-${liveContext.categorySummary}
-- Low Stock Items: ${liveContext.lowStockItems.join(', ')}
-- Today Sales Revenue: ${liveContext.todayRevenue}`;
-
-    if (reportType === 'stock_summary' || reportType === 'stock_night') {
-      userPrompt = `Generate an Internal Category-wise Stock Audit Report for ${liveContext.company} Management:
-Context:
+Live Context Data:
 - Date: ${liveContext.date} @ ${liveContext.time}
-- In Stock: ${liveContext.inStock}/${liveContext.totalSKUs} SKUs
-- Category Breakdown:
+- Total SKUs in DB: ${liveContext.totalSKUs} (In Stock: ${liveContext.inStock})
+- Category-wise Product Inventory Breakdown:
 ${liveContext.categorySummary}
 - Low Stock Reorder Alerts: ${liveContext.lowStockItems.join(', ')}
-Generate internal reorder advice for store manager.`;
-    } else if (reportType === 'sales_summary' || reportType === 'business_summary') {
-      userPrompt = `Generate a Day-End Executive Financial Report for ${liveContext.company} Management:
-- Date: ${liveContext.date}
+- Out of Stock Items: ${liveContext.outOfStockItems.join(', ')}
 - Today Billing Revenue: ${liveContext.todayRevenue} (${liveContext.invoicesCreated} Invoices Created)
-- Inventory In-Stock SKUs: ${liveContext.inStock}/${liveContext.totalSKUs}`;
+- Outstanding Customer Dues: ${liveContext.totalPendingDues}`;
+
+    if (reportType === 'stock_summary' || reportType === 'stock_night') {
+      userPrompt = `Generate an Internal Category-wise Product Stock Audit for ${liveContext.company} Management based on real database figures:
+Context:
+- Audit Date: ${liveContext.date} @ ${liveContext.time}
+- Total SKUs: ${liveContext.totalSKUs} (In Stock: ${liveContext.inStock})
+- Category Product Breakdown:
+${liveContext.categorySummary}
+- Low Stock Reorder Thresholds: ${liveContext.lowStockItems.join(', ')}
+- Out of Stock Items: ${liveContext.outOfStockItems.join(', ')}
+Provide actionable supplier reorder advice for store management based on real figures above.`;
+    } else if (reportType === 'sales_summary' || reportType === 'business_summary') {
+      userPrompt = `Generate a Day-End Executive Financial & Billing Report for ${liveContext.company} Management:
+Context:
+- Date: ${liveContext.date}
+- Today Sales Revenue: ${liveContext.todayRevenue} (${liveContext.invoicesCreated} Invoices Created)
+- Outstanding Customer Receivables/Dues: ${liveContext.totalPendingDues}
+- Inventory Status: ${liveContext.inStock}/${liveContext.totalSKUs} SKUs In Stock`;
     }
 
     const groqPayload = JSON.stringify({
@@ -220,8 +231,8 @@ Generate internal reorder advice for store manager.`;
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
       ],
-      temperature: 0.5,
-      max_tokens: 500
+      temperature: 0.4,
+      max_tokens: 600
     });
 
     const groqOptions = {
@@ -248,7 +259,7 @@ Generate internal reorder advice for store manager.`;
           aiText = aiText.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
 
           if (!aiText) {
-            aiText = `*INTERNAL MANAGEMENT REPORT*\n*${liveContext.company}*\n*Date:* ${liveContext.date}\n\n*INVENTORY AUDIT BY CATEGORY:*\n${liveContext.categorySummary}\n\n*LOW STOCK ALERTS FOR ADMIN:*\n- ${liveContext.lowStockItems.join('\n- ')}\n\n_EHN AI Internal ERP System_`;
+            aiText = `*INTERNAL MANAGEMENT AUDIT REPORT*\n*${liveContext.company}*\n*Date:* ${liveContext.date}\n\n*REAL INVENTORY AUDIT BY CATEGORY:*\n${liveContext.categorySummary}\n\n*LOW STOCK REORDER ALERTS:*\n- ${liveContext.lowStockItems.join('\n- ')}\n\n*TODAY SALES:* ${liveContext.todayRevenue} (${liveContext.invoicesCreated} Invoices)\n\n_EHN AI Real-Time ERP System_`;
           }
 
           // Automatically dispatch report to WhatsApp if requested
