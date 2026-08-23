@@ -5,6 +5,30 @@ const Invoice = require('../models/Invoice');
 const Product = require('../models/Product');
 const Customer = require('../models/Customer');
 
+// Get India Standard Time (IST - Asia/Kolkata) HH:MM and YYYY-MM-DD
+const getIndiaTimeDetails = () => {
+  const now = new Date();
+  
+  // Format HH:MM 24-hour in IST
+  const timeOptions = { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false };
+  const timeFormatter = new Intl.DateTimeFormat('en-GB', timeOptions);
+  const timeParts = timeFormatter.formatToParts(now);
+  let hh = '00', mm = '00';
+  for (const p of timeParts) {
+    if (p.type === 'hour') hh = p.value;
+    if (p.type === 'minute') mm = p.value;
+  }
+  if (hh === '24') hh = '00';
+  const currentHHMM = `${hh.padStart(2, '0')}:${mm.padStart(2, '0')}`;
+
+  // Format YYYY-MM-DD in IST
+  const dateOptions = { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' };
+  const dateFormatter = new Intl.DateTimeFormat('en-CA', dateOptions);
+  const todayStr = dateFormatter.format(now);
+
+  return { currentHHMM, todayStr, now };
+};
+
 // Send HTTP POST to Meta Graph API
 const dispatchWhatsApp = async (phone, message, config) => {
   const token = config?.apiKey || config?.whatsapp?.apiKey || 'EAAX71GdiWggBSU0GVjd55F7AZB2H0vC8jhELg1y1ASa9EAko9Va8dd07h8SX6sQSiFX7xs9Np0JU7KFkehgGH6rRGSwVeeWRq98jexmRoDrty5XeKZCKN6denWuVXgnL1ABfNJwee4RaZA7AjoFcjdG4DnKpDgZBlldWZAnX03tOZC9oVdSTdMDWWNFooV68xnsQZDZD';
@@ -38,7 +62,7 @@ const dispatchWhatsApp = async (phone, message, config) => {
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
-        console.log(`⏰ [SERVER SCHEDULER] WhatsApp Alert Dispatched to +${cleanPhone}: Status ${res.statusCode}`);
+        console.log(`⏰ [SERVER SCHEDULER DISPATCH] WhatsApp Alert Sent to +${cleanPhone} | Meta Status: ${res.statusCode}`);
         resolve({ success: res.statusCode >= 200 && res.statusCode < 300, data });
       });
     });
@@ -59,7 +83,7 @@ const executeAutomationJob = async (auto) => {
     const settings = await Settings.findOne();
     const config = settings?.whatsappConfig || {};
     const recipientPhone = auto.phone || config?.adminPhone || '919238695500';
-    const todayStr = new Date().toISOString().split('T')[0];
+    const { todayStr } = getIndiaTimeDetails();
     const category = auto.category || auto.type;
 
     let messageContent = '';
@@ -159,19 +183,17 @@ _Automated Server Scheduler - EHN One ERP_`;
   }
 };
 
-// Scheduler Runner (Checks every 20 seconds for 100% server-side execution reliability)
+// Scheduler Runner (Checks every 15 seconds for 100% IST server-side execution reliability)
 let schedulerInterval = null;
 
 const startScheduler = () => {
   if (schedulerInterval) return;
 
-  console.log('🚀 100% Reliable Server-Side WhatsApp Scheduler Service Initialized...');
+  console.log('🚀 100% Reliable IST Server-Side WhatsApp Scheduler Service Initialized...');
 
   schedulerInterval = setInterval(async () => {
     try {
-      const now = new Date();
-      const currentHHMM = now.toTimeString().substring(0, 5); // e.g. "14:30"
-      const todayStr = now.toISOString().split('T')[0];
+      const { currentHHMM, todayStr, now } = getIndiaTimeDetails();
 
       // Query MongoDB Automations
       const automations = await Automation.find({ enabled: true });
@@ -188,7 +210,7 @@ const startScheduler = () => {
         const lastSentKey = `${todayStr}_${currentHHMM}`;
 
         if (isWithinDateRange && isTimeMatch && auto.lastSent !== lastSentKey) {
-          console.log(`⏰ [SERVER SCHEDULER MATCH @ ${currentHHMM}] Executing "${auto.title || auto.name}" for +${auto.phone || 'Admin'}...`);
+          console.log(`⏰ [SERVER SCHEDULER MATCH AT ${currentHHMM} IST] Executing "${auto.title || auto.name}" for +${auto.phone || 'Admin'}...`);
           
           auto.lastSent = lastSentKey;
           auto.lastTriggered = now;
@@ -201,7 +223,7 @@ const startScheduler = () => {
     } catch (err) {
       console.error('Error in Server WhatsApp Scheduler loop:', err);
     }
-  }, 20000); // Check every 20 seconds
+  }, 15000); // Check every 15 seconds
 };
 
 module.exports = {

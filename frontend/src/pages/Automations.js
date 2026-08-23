@@ -166,6 +166,37 @@ export default function Automations() {
     message: '',
   });
 
+  // Sync reminders with Backend DB on mount
+  useEffect(() => {
+    const syncWithBackend = async () => {
+      try {
+        const res = await fetch('/api/automations');
+        if (res.ok) {
+          const result = await res.json();
+          if (result.success && Array.isArray(result.data) && result.data.length > 0) {
+            const dbReminders = result.data.map(item => ({
+              id: item._id || item.id,
+              title: item.title || item.name,
+              category: item.category || item.type || 'meeting',
+              startDate: item.startDate || item.date,
+              endDate: item.endDate || item.startDate || item.date,
+              date: item.startDate || item.date,
+              time: item.time,
+              frequency: item.frequency || 'daily',
+              phone: item.phone,
+              enabled: item.enabled,
+              message: item.message || item.customMessage || ''
+            }));
+            setReminders(dbReminders);
+            localStorage.setItem('ehn_scheduled_reminders', JSON.stringify(dbReminders));
+          }
+        }
+      } catch (e) {}
+    };
+
+    syncWithBackend();
+  }, []);
+
   const saveAdminPhone = (newPhone) => {
     const clean = newPhone.replace(/^[+]+/, '');
     setAdminPhone(`+${clean}`);
@@ -182,38 +213,46 @@ export default function Automations() {
     localStorage.setItem('ehn_custom_automations_list', JSON.stringify(newList));
   };
 
-  const saveRemindersToStorage = async (newReminders) => {
-    setReminders(newReminders);
+  const saveSingleReminderToDb = async (newRem) => {
+    const updated = [newRem, ...reminders.filter(r => r.id !== newRem.id)];
+    setReminders(updated);
     try {
-      localStorage.setItem('ehn_scheduled_reminders', JSON.stringify(newReminders));
+      localStorage.setItem('ehn_scheduled_reminders', JSON.stringify(updated));
     } catch (e) {}
 
-    // POST to MongoDB Backend /api/automations for Server-Side 24/7 Scheduler
     try {
-      const token = localStorage.getItem('token');
-      for (const rem of newReminders) {
-        await fetch('/api/automations', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': token ? `Bearer ${token}` : ''
-          },
-          body: JSON.stringify({
-            title: rem.title,
-            name: rem.title,
-            category: rem.category,
-            type: rem.category || 'stock_report',
-            startDate: rem.startDate || rem.date,
-            endDate: rem.endDate || rem.startDate || rem.date,
-            date: rem.startDate || rem.date,
-            time: rem.time,
-            frequency: rem.frequency,
-            phone: rem.phone,
-            message: rem.message,
-            customMessage: rem.message,
-            enabled: rem.enabled
-          })
-        });
+      await fetch('/api/automations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: newRem.title,
+          name: newRem.title,
+          category: newRem.category,
+          type: newRem.category || 'meeting',
+          startDate: newRem.startDate || newRem.date,
+          endDate: newRem.endDate || newRem.startDate || newRem.date,
+          date: newRem.startDate || newRem.date,
+          time: newRem.time,
+          frequency: newRem.frequency,
+          phone: newRem.phone,
+          message: newRem.message,
+          customMessage: newRem.message,
+          enabled: newRem.enabled
+        })
+      });
+    } catch (e) {}
+  };
+
+  const deleteReminderFromDb = async (id) => {
+    const updated = reminders.filter(r => r.id !== id);
+    setReminders(updated);
+    try {
+      localStorage.setItem('ehn_scheduled_reminders', JSON.stringify(updated));
+    } catch (e) {}
+
+    try {
+      if (id && !id.startsWith('REM-')) {
+        await fetch(`/api/automations/${id}`, { method: 'DELETE' });
       }
     } catch (e) {}
   };
@@ -414,7 +453,7 @@ export default function Automations() {
               <i className="bi bi-cpu me-1"></i> EHN AI POWERED
             </span>
           </div>
-          <small className="text-muted" style={{ fontSize: '0.78rem' }}>AI-driven automated WhatsApp reminders & database audits</small>
+          <small className="text-muted" style={{ fontSize: '0.78rem' }}>AI-driven automated WhatsApp reminders & database audits (IST Timezone)</small>
         </div>
         <div className="d-flex gap-2">
           <button className="btn btn-outline-success btn-sm fw-bold rounded-pill px-3.5 shadow-sm" style={{ fontSize: '0.78rem' }} onClick={() => { setEditRule(null); setAutoForm({ title: '', category: 'auto_reply_keyword', keyword: '', time: '20:00', frequency: 'daily', phone: adminPhone, replyText: '', aiPrompt: '' }); setShowAutoModal(true); }}>
@@ -535,7 +574,7 @@ export default function Automations() {
         <div className="v-card">
           <div className="v-card-header d-flex justify-content-between align-items-center" style={{ background: '#f4fbf5', borderRadius: '12px 12px 0 0' }}>
             <span className="fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '0.88rem' }}>
-              <i className="bi bi-alarm me-1 text-success"></i> SCHEDULED REMINDERS REGISTER (24/7 SERVER SCHEDULER)
+              <i className="bi bi-alarm me-1 text-success"></i> SCHEDULED REMINDERS REGISTER (IST SERVER SCHEDULER)
             </span>
             <span className="badge px-2.5 py-1" style={{ background: '#DAF2DB', color: '#1E4D2B', fontWeight: 600 }}>{reminders.length} REMINDERS</span>
           </div>
@@ -555,7 +594,7 @@ export default function Automations() {
                     <th>REMINDER TITLE & MESSAGE</th>
                     <th>MODULE CATEGORY</th>
                     <th>START DATE $\rightarrow$ END DATE</th>
-                    <th>TIME</th>
+                    <th>TIME (IST)</th>
                     <th>RECIPIENT PHONE</th>
                     <th>STATUS</th>
                     <th className="text-end" style={{ width: 150 }}>ACTIONS</th>
@@ -579,7 +618,7 @@ export default function Automations() {
                       </td>
                       <td>
                         <span className="badge bg-light text-dark border font-monospace fw-bold" style={{ fontSize: '0.75rem' }}>
-                          <i className="bi bi-clock text-success me-1"></i> {r.time} hrs
+                          <i className="bi bi-clock text-success me-1"></i> {r.time} hrs IST
                         </span>
                       </td>
                       <td>
@@ -591,19 +630,16 @@ export default function Automations() {
                         <div className="form-check form-switch mb-0">
                           <input className="form-check-input style-cursor" type="checkbox" checked={r.enabled} onChange={() => {
                             const updated = reminders.map(x => x.id === r.id ? { ...x, enabled: !x.enabled } : x);
-                            saveRemindersToStorage(updated);
+                            saveSingleReminderToDb({ ...r, enabled: !r.enabled });
                           }} />
                         </div>
                       </td>
                       <td className="text-end">
                         <div className="d-flex justify-content-end gap-1">
-                          <button className="btn btn-success btn-sm font-monospace py-0.5 px-2" style={{ fontSize: '0.72rem', background: '#4CAF50', border: 'none' }} onClick={() => handleRunEhnAIReport(r, r.phone)} title="Run EHN AI & Dispatch WhatsApp Now">
+                          <button className="btn btn-success btn-sm font-monospace py-0.5 px-2" style={{ fontSize: '0.72rem', background: '#4CAF50', border: 'none' }} onClick={() => handleSendWhatsAppDirect({ phone: r.phone, message: `*SCHEDULED REMINDER: ${r.title.toUpperCase()}*\n*Kedvass Hygiene Products*\n\n${r.message}\n\n_Manual Trigger Test via EHN One_` })} title="Test Trigger WhatsApp Message Now">
                             <i className="bi bi-send me-1"></i> Send Now
                           </button>
-                          <button className="btn-v outline-danger btn-sm px-2" onClick={() => {
-                            const updated = reminders.filter(x => x.id !== r.id);
-                            saveRemindersToStorage(updated);
-                          }}>
+                          <button className="btn-v outline-danger btn-sm px-2" onClick={() => deleteReminderFromDb(r.id)}>
                             <i className="bi bi-trash"></i>
                           </button>
                         </div>
@@ -952,7 +988,7 @@ export default function Automations() {
               if (!taskForm.title.trim() || !taskForm.phone.trim()) return;
               const cleanPhone = taskForm.phone.replace(/^[+]+/, '');
               const newRem = { id: `REM-${Date.now()}`, ...taskForm, phone: `+${cleanPhone}`, enabled: true };
-              await saveRemindersToStorage([newRem, ...reminders]);
+              await saveSingleReminderToDb(newRem);
               setShowTaskModal(false);
             }}>
               <div className="modal-box-body p-3.5 bg-white">
@@ -1000,7 +1036,7 @@ export default function Automations() {
 
                 <div className="row g-3 mb-3">
                   <div className="col-6">
-                    <label className="form-label fw-bold text-dark" style={{ fontSize: '0.82rem' }}>Trigger Time (24h) <span className="text-danger">*</span></label>
+                    <label className="form-label fw-bold text-dark" style={{ fontSize: '0.82rem' }}>Trigger Time (24h IST) <span className="text-danger">*</span></label>
                     <input type="time" className="form-control fw-bold text-success" value={taskForm.time} onChange={(e) => setTaskForm({ ...taskForm, time: e.target.value })} required />
                   </div>
                   <div className="col-6">
