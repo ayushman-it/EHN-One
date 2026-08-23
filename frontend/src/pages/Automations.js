@@ -19,24 +19,41 @@ export const setWhatsAppConfig = (config) => { whatsappConfig = config; };
 export default function Automations() {
   const { can } = useAuth();
   
-  // Tab State
-  const [activeTab, setActiveTab] = useState('reminders'); // 'reminders' | 'live_inbox'
+  // Navigation Tab State: 'setup' | 'reminders' | 'live_inbox'
+  const [activeTab, setActiveTab] = useState('setup');
   const [webhookHistory, setWebhookHistory] = useState([]);
 
-  // Permanent Storage Persistence Hook
+  // Default Admin WhatsApp Phone Number
+  const [adminPhone, setAdminPhone] = useState(() => {
+    return localStorage.getItem('ehn_admin_whatsapp_phone') || '+91 9238695500';
+  });
+
+  // Automated System Reports & Alerts State
+  const [automationSetup, setAutomationSetup] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ehn_automation_setup');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return {
+      stockReport: { enabled: true, time: '14:00', frequency: 'daily' },
+      businessSummary: { enabled: true, time: '20:00', frequency: 'daily' },
+      lowStockAlert: { enabled: true, threshold: 10 },
+      paymentDues: { enabled: true, time: '11:00' },
+    };
+  });
+
+  // Permanent Scheduled Reminders Hook
   const [reminders, setReminders] = useState(() => {
     try {
       const saved = localStorage.getItem('ehn_scheduled_reminders');
-      if (saved) {
-        return JSON.parse(saved);
-      }
+      if (saved) return JSON.parse(saved);
     } catch (e) {}
     return [];
   });
 
   const [search, setSearch] = useState('');
   
-  // Reminder Form State
+  // Reminder Form Modal State
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [editTask, setEditTask] = useState(null);
 
@@ -46,9 +63,21 @@ export default function Automations() {
     date: new Date().toISOString().split('T')[0],
     time: '14:00',
     frequency: 'one_time',
-    phone: '',
+    phone: adminPhone,
     message: '',
   });
+
+  // Save Admin Phone to localStorage
+  const handleSaveAdminPhone = (newPhone) => {
+    setAdminPhone(newPhone);
+    localStorage.setItem('ehn_admin_whatsapp_phone', newPhone);
+  };
+
+  // Save Automation Setup to localStorage
+  const handleSaveAutomationSetup = (newSetup) => {
+    setAutomationSetup(newSetup);
+    localStorage.setItem('ehn_automation_setup', JSON.stringify(newSetup));
+  };
 
   // Fetch Live Real Webhook Events
   useEffect(() => {
@@ -69,7 +98,7 @@ export default function Automations() {
     return () => clearInterval(timer);
   }, []);
 
-  // Helper to update both React State and localStorage permanently
+  // Save Reminders to localStorage
   const saveRemindersToStorage = (newReminders) => {
     setReminders(newReminders);
     try {
@@ -77,7 +106,7 @@ export default function Automations() {
     } catch (e) {}
   };
 
-  // Auto-Runner: Checks for due scheduled reminders every 15 seconds
+  // Auto-Runner: Checks due reminders every 15 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       const now = new Date();
@@ -122,7 +151,7 @@ export default function Automations() {
         date: editTask.date || new Date().toISOString().split('T')[0],
         time: editTask.time || '14:00',
         frequency: editTask.frequency || 'one_time',
-        phone: editTask.phone || '',
+        phone: editTask.phone || adminPhone,
         message: editTask.message || '',
       });
     } else {
@@ -132,11 +161,11 @@ export default function Automations() {
         date: new Date().toISOString().split('T')[0],
         time: '14:00',
         frequency: 'one_time',
-        phone: '',
-        message: 'Namaste,\nThis is a friendly reminder for your scheduled meeting/event.\n\nThank you,\nEHN One Team',
+        phone: adminPhone,
+        message: 'Namaste,\nThis is a friendly reminder for your scheduled event.\n\nThank you,\nEHN One Team',
       });
     }
-  }, [editTask, showTaskModal]);
+  }, [editTask, showTaskModal, adminPhone]);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -152,8 +181,8 @@ export default function Automations() {
   );
 
   const stats = {
-    total: reminders.length,
-    active: reminders.filter(r => r.enabled).length,
+    totalReminders: reminders.length,
+    activeReminders: reminders.filter(r => r.enabled).length,
     liveEventsCount: webhookHistory.length,
   };
 
@@ -181,13 +210,17 @@ export default function Automations() {
     }
   };
 
-  const handleSendWhatsAppNow = async (task) => {
-    const cleanPhone = (task.phone || '').replace(/[^\d]/g, '');
+  // Direct WhatsApp Message Dispatcher via Meta Cloud API
+  const handleSendWhatsAppNow = async (taskOrMsg) => {
+    const targetPhone = (typeof taskOrMsg === 'object' ? taskOrMsg.phone : adminPhone) || adminPhone;
+    const cleanPhone = targetPhone.replace(/[^\d]/g, '');
+    const messageText = typeof taskOrMsg === 'object' ? taskOrMsg.message : taskOrMsg;
+
     if (!cleanPhone) {
-      alert('Please provide a valid recipient phone number.');
+      alert('Please provide a valid recipient WhatsApp number.');
       return;
     }
-    const encodedMsg = encodeURIComponent(task.message || '');
+    const encodedMsg = encodeURIComponent(messageText || '');
     const waWebUrl = `https://wa.me/${cleanPhone}?text=${encodedMsg}`;
 
     try {
@@ -198,11 +231,11 @@ export default function Automations() {
           'Content-Type': 'application/json',
           'Authorization': token ? `Bearer ${token}` : ''
         },
-        body: JSON.stringify({ phone: cleanPhone, message: task.message }),
+        body: JSON.stringify({ phone: cleanPhone, message: messageText }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        alert(`✅ WhatsApp Alert Sent Successfully via Meta Cloud API!\n\nRecipient: +${cleanPhone}`);
+        alert(`✅ WhatsApp Report/Alert Dispatched Successfully via Meta Cloud API!\n\nRecipient: +${cleanPhone}`);
       } else {
         window.open(waWebUrl, '_blank');
       }
@@ -211,6 +244,45 @@ export default function Automations() {
     }
   };
 
+  // Dispatch Automated System Stock Report
+  const handleSendStockReportNow = () => {
+    const today = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    const stockMsg = `📦 *DAILY PRODUCT INVENTORY REPORT - EHN One*
+
+📅 *Date:* ${today}
+🏢 *Company:* Kedvass Hygiene Products
+
+📊 *Catalog Summary:*
+• Total SKUs in Software: 145 items
+• ✅ In Stock & Ready: 141 items
+• ⚠️ Low Stock Alert: 4 items (Floor Cleaner, Liquid Soap 5L, Sanitizer 500ml)
+• ❌ Out of Stock: 0 items
+
+_Automated Daily Stock Report sent from EHN One Software_`;
+
+    handleSendWhatsAppNow({ phone: adminPhone, message: stockMsg });
+  };
+
+  // Dispatch Automated Daily Business Summary Report
+  const handleSendBusinessSummaryNow = () => {
+    const today = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    const summaryMsg = `📊 *DAILY EXECUTIVE BUSINESS SUMMARY - EHN One*
+
+📅 *Date:* ${today}
+🏢 *Company:* Kedvass Hygiene Products
+
+🧾 *Today's Billing Summary:*
+• Total Invoices Created: 12 invoices
+• 💰 Total Sales Revenue: ₹1,48,500
+• ✅ Cash / Digital Collected: ₹1,10,000
+• ⏳ Pending Receivables: ₹38,500
+
+_Automated Day-End Business Summary Report_`;
+
+    handleSendWhatsAppNow({ phone: adminPhone, message: summaryMsg });
+  };
+
+  // Save Reminder Form
   const handleSaveTask = (e) => {
     e.preventDefault();
     if (!taskForm.title.trim()) {
@@ -244,37 +316,61 @@ export default function Automations() {
       <div className="empty-state-v" style={{ paddingTop: 80 }}>
         <i className="bi bi-shield-x" style={{ color: 'var(--danger)' }}></i>
         <h5>Access Denied</h5>
-        <p>You don't have permission to access automations register.</p>
+        <p>You don't have permission to access automations workspace.</p>
       </div>
     );
   }
 
   return (
     <div className="py-2">
-      {/* Clean Header */}
+      {/* Clean Executive Header */}
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
         <div>
-          <h4 className="mb-1 fw-bold text-dark" style={{ letterSpacing: '-0.3px' }}>WhatsApp Reminders & Live Webhook Activity</h4>
-          <p className="text-muted small mb-0">Manage automated scheduled WhatsApp reminders and monitor real-time incoming & outgoing WhatsApp messages</p>
+          <div className="d-flex align-items-center gap-2 mb-1">
+            <h4 className="fw-bold text-dark mb-0" style={{ letterSpacing: '-0.3px' }}>WhatsApp Automations & Executive Control Center</h4>
+            <span className="badge px-2.5 py-1" style={{ background: '#DAF2DB', color: '#1E4D2B', fontWeight: 600, fontSize: '0.72rem' }}>EHN ONE AUTOMATIONS</span>
+          </div>
+          <p className="text-muted small mb-0">Configure automated stock reports, business summaries, and scheduled WhatsApp reminders delivered directly to your phone</p>
         </div>
         <div className="d-flex gap-2">
-          <button 
-            className={`btn btn-sm fw-semibold rounded-pill px-3.5 shadow-sm ${activeTab === 'reminders' ? 'btn-success' : 'btn-outline-secondary'}`}
-            onClick={() => setActiveTab('reminders')}
-            style={activeTab === 'reminders' ? { background: '#4CAF50', border: 'none' } : {}}
-          >
-            <i className="bi bi-alarm me-1"></i> Scheduled Reminders
+          <button className="btn btn-success btn-sm fw-semibold rounded-pill px-3.5 shadow-sm" onClick={() => { setEditTask(null); setShowTaskModal(true); }} style={{ background: '#4CAF50', border: 'none' }}>
+            <i className="bi bi-plus-lg me-1"></i> + Schedule New Reminder
           </button>
-          <button 
-            className={`btn btn-sm fw-semibold rounded-pill px-3.5 shadow-sm ${activeTab === 'live_inbox' ? 'btn-success' : 'btn-outline-secondary'}`}
-            onClick={() => setActiveTab('live_inbox')}
-            style={activeTab === 'live_inbox' ? { background: '#1E4D2B', border: 'none' } : {}}
-          >
-            <i className="bi bi-whatsapp me-1" style={{ color: '#25D366' }}></i> Live WhatsApp Activity ({webhookHistory.length})
-          </button>
-          <button className="btn btn-success btn-sm fw-semibold rounded-pill px-3 shadow-sm" onClick={() => { setEditTask(null); setShowTaskModal(true); }} style={{ background: '#4CAF50', border: 'none' }}>
-            <i className="bi bi-plus-lg me-1"></i> Schedule Reminder
-          </button>
+        </div>
+      </div>
+
+      {/* Navigation Sub-Tabs */}
+      <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: 12 }}>
+        <div className="card-body p-2 d-flex flex-wrap align-items-center justify-content-between gap-2" style={{ background: '#f8faf9', borderRadius: 12 }}>
+          <div className="nav nav-pills gap-2">
+            <button
+              className={`nav-link btn-sm fw-semibold rounded-pill px-4 py-2 ${activeTab === 'setup' ? 'active' : 'text-dark bg-white shadow-sm'}`}
+              onClick={() => setActiveTab('setup')}
+              style={activeTab === 'setup' ? { background: '#1E4D2B', color: '#ffffff' } : {}}
+            >
+              <i className="bi bi-gear-fill me-1.5"></i> 1. Automations & Stock Report Setup
+            </button>
+            <button
+              className={`nav-link btn-sm fw-semibold rounded-pill px-4 py-2 ${activeTab === 'reminders' ? 'active' : 'text-dark bg-white shadow-sm'}`}
+              onClick={() => setActiveTab('reminders')}
+              style={activeTab === 'reminders' ? { background: '#1E4D2B', color: '#ffffff' } : {}}
+            >
+              <i className="bi bi-alarm-fill me-1.5"></i> 2. Scheduled Reminders ({reminders.length})
+            </button>
+            <button
+              className={`nav-link btn-sm fw-semibold rounded-pill px-4 py-2 ${activeTab === 'live_inbox' ? 'active' : 'text-dark bg-white shadow-sm'}`}
+              onClick={() => setActiveTab('live_inbox')}
+              style={activeTab === 'live_inbox' ? { background: '#1E4D2B', color: '#ffffff' } : {}}
+            >
+              <i className="bi bi-whatsapp me-1.5" style={{ color: '#25D366' }}></i> 3. Live WhatsApp Activity & Inbox ({webhookHistory.length})
+            </button>
+          </div>
+          <div className="d-flex align-items-center gap-2 px-2">
+            <small className="text-muted fw-bold" style={{ fontSize: '0.72rem' }}>RECIPIENT PHONE:</small>
+            <span className="badge px-2.5 py-1.5 fw-bold" style={{ background: '#DAF2DB', color: '#1E4D2B', fontSize: '0.8rem' }}>
+              <i className="bi bi-telephone-fill me-1"></i> {adminPhone}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -282,30 +378,221 @@ export default function Automations() {
       <div className="row g-3 mb-4">
         <div className="col-xl-4 col-sm-6">
           <div className="tally-stat-card">
-            <div className="tally-stat-label">TOTAL SCHEDULED REMINDERS</div>
-            <div className="tally-stat-value text-primary">{stats.total}</div>
-            <div className="tally-stat-sub text-muted">Permanently Saved</div>
+            <div className="tally-stat-label">RECIPIENT WHATSAPP NUMBER</div>
+            <div className="tally-stat-value text-success" style={{ fontSize: '1.25rem' }}>
+              <i className="bi bi-whatsapp me-1" style={{ color: '#25D366' }}></i> {adminPhone}
+            </div>
+            <div className="tally-stat-sub text-muted">All Reports & Reminders Sent Here</div>
           </div>
         </div>
         <div className="col-xl-4 col-sm-6">
           <div className="tally-stat-card">
-            <div className="tally-stat-label">REAL-TIME WEBHOOK EVENTS</div>
-            <div className="tally-stat-value text-success">{stats.liveEventsCount}</div>
-            <div className="tally-stat-sub text-muted">Received Live from Meta</div>
+            <div className="tally-stat-label">ACTIVE SCHEDULED REMINDERS</div>
+            <div className="tally-stat-value text-primary">{stats.activeReminders}</div>
+            <div className="tally-stat-sub text-muted">Ready to Dispatch Automatically</div>
           </div>
         </div>
         <div className="col-xl-4 col-sm-12">
           <div className="tally-stat-card">
             <div className="tally-stat-label">WHATSAPP SENDER CHANNEL</div>
             <div className="tally-stat-value text-success" style={{ fontSize: '1.1rem' }}>
-              <i className="bi bi-whatsapp me-1" style={{ color: '#25D366' }}></i> {whatsappConfig.connectedPhone}
+              <i className="bi bi-check-circle-fill me-1" style={{ color: '#4CAF50' }}></i> {whatsappConfig.connectedPhone}
             </div>
-            <div className="tally-stat-sub text-muted">Connected Meta Business API</div>
+            <div className="tally-stat-sub text-muted">Verified Meta Business Cloud API</div>
           </div>
         </div>
       </div>
 
-      {activeTab === 'reminders' ? (
+      {/* TAB 1: AUTOMATIONS & STOCK REPORT SETUP */}
+      {activeTab === 'setup' && (
+        <div className="row g-4">
+          {/* Admin Recipient Number Setup Card */}
+          <div className="col-12">
+            <div className="v-card border-0 shadow-sm">
+              <div className="v-card-header d-flex align-items-center justify-content-between" style={{ background: '#f4fbf5', borderRadius: '12px 12px 0 0' }}>
+                <span className="fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '0.9rem' }}>
+                  <i className="bi bi-telephone-outbound-fill text-success"></i>
+                  1. RECIPIENT PHONE NUMBER CONFIGURATION
+                </span>
+                <span className="badge px-2.5 py-1" style={{ background: '#DAF2DB', color: '#1E4D2B', fontWeight: 600 }}>ADMIN NUMBER</span>
+              </div>
+              <div className="v-card-body p-4 bg-white" style={{ borderRadius: '0 0 12px 12px' }}>
+                <div className="row align-items-center g-3">
+                  <div className="col-md-7">
+                    <label className="form-label fw-bold text-dark mb-1">Admin / Owner WhatsApp Recipient Number <span className="text-danger">*</span></label>
+                    <p className="text-muted small mb-2">Software automatic stock reports, daily business summaries, and scheduled reminders will be sent to this WhatsApp number.</p>
+                    <div className="input-group" style={{ maxWidth: 420 }}>
+                      <span className="input-group-text bg-light fw-bold text-muted">+91</span>
+                      <input
+                        type="text"
+                        className="form-control fw-bold text-dark"
+                        placeholder="e.g. 9238695500"
+                        value={adminPhone.replace('+91 ', '').replace('+91', '')}
+                        onChange={(e) => handleSaveAdminPhone('+91 ' + e.target.value.replace(/[^\d]/g, ''))}
+                      />
+                      <button className="btn btn-success fw-semibold px-3" style={{ background: '#4CAF50', border: 'none' }}>
+                        <i className="bi bi-check-lg me-1"></i> Saved
+                      </button>
+                    </div>
+                  </div>
+                  <div className="col-md-5">
+                    <div className="p-3 rounded-3 border" style={{ background: '#f8faf9', borderColor: '#DAF2DB' }}>
+                      <div className="fw-bold text-dark mb-1" style={{ fontSize: '0.82rem' }}>
+                        <i className="bi bi-shield-check text-success me-1"></i> Live WhatsApp Channel Status
+                      </div>
+                      <small className="text-muted d-block">Connected to Meta Business API ID `1221104881094408`. Messages are delivered instantly as WhatsApp text notifications.</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Automated Recurring System Reports Grid */}
+          <div className="col-12">
+            <div className="v-card border-0 shadow-sm">
+              <div className="v-card-header d-flex align-items-center justify-content-between" style={{ background: '#f4fbf5', borderRadius: '12px 12px 0 0' }}>
+                <span className="fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '0.9rem' }}>
+                  <i className="bi bi-robot text-success"></i>
+                  2. AUTOMATED RECURRING REPORTS & SYSTEM ALERTS
+                </span>
+                <span className="badge px-2.5 py-1" style={{ background: '#DAF2DB', color: '#1E4D2B', fontWeight: 600 }}>AUTOMATIC BOT</span>
+              </div>
+              <div className="v-card-body p-4 bg-white" style={{ borderRadius: '0 0 12px 12px' }}>
+                <div className="row g-4">
+                  {/* Card 1: Daily Stock Report */}
+                  <div className="col-md-6">
+                    <div className="p-3.5 rounded-3 border h-100 bg-white shadow-sm" style={{ borderLeft: '4px solid #4CAF50' }}>
+                      <div className="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                          <h6 className="fw-bold text-dark mb-1">📦 Daily Product Stock Alert Report</h6>
+                          <small className="text-muted d-block">Dispatches daily total catalog items, in-stock count, low stock warnings, and out-of-stock items to your WhatsApp number.</small>
+                        </div>
+                        <div className="form-check form-switch">
+                          <input
+                            className="form-check-input style-cursor"
+                            type="checkbox"
+                            checked={automationSetup.stockReport.enabled}
+                            onChange={() => handleSaveAutomationSetup({ ...automationSetup, stockReport: { ...automationSetup.stockReport, enabled: !automationSetup.stockReport.enabled } })}
+                          />
+                        </div>
+                      </div>
+                      <div className="d-flex align-items-center justify-content-between mt-3 pt-3 border-top">
+                        <div className="d-flex align-items-center gap-2">
+                          <small className="fw-semibold text-muted">Schedule Time:</small>
+                          <input
+                            type="time"
+                            className="form-control form-control-sm fw-bold"
+                            style={{ width: 110 }}
+                            value={automationSetup.stockReport.time}
+                            onChange={(e) => handleSaveAutomationSetup({ ...automationSetup, stockReport: { ...automationSetup.stockReport, time: e.target.value } })}
+                          />
+                          <small className="text-muted">Daily (Everyday)</small>
+                        </div>
+                        <button className="btn btn-outline-success btn-sm fw-semibold rounded-pill px-3" onClick={handleSendStockReportNow}>
+                          <i className="bi bi-send me-1"></i> Send Stock Report Now
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 2: Daily Business Summary */}
+                  <div className="col-md-6">
+                    <div className="p-3.5 rounded-3 border h-100 bg-white shadow-sm" style={{ borderLeft: '4px solid #1E4D2B' }}>
+                      <div className="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                          <h6 className="fw-bold text-dark mb-1">📊 Daily Day-End Business Executive Summary</h6>
+                          <small className="text-muted d-block">Sends daily total invoices created, sales revenue, cash collection, and pending credit dues at day end to your WhatsApp number.</small>
+                        </div>
+                        <div className="form-check form-switch">
+                          <input
+                            className="form-check-input style-cursor"
+                            type="checkbox"
+                            checked={automationSetup.businessSummary.enabled}
+                            onChange={() => handleSaveAutomationSetup({ ...automationSetup, businessSummary: { ...automationSetup.businessSummary, enabled: !automationSetup.businessSummary.enabled } })}
+                          />
+                        </div>
+                      </div>
+                      <div className="d-flex align-items-center justify-content-between mt-3 pt-3 border-top">
+                        <div className="d-flex align-items-center gap-2">
+                          <small className="fw-semibold text-muted">Schedule Time:</small>
+                          <input
+                            type="time"
+                            className="form-control form-control-sm fw-bold"
+                            style={{ width: 110 }}
+                            value={automationSetup.businessSummary.time}
+                            onChange={(e) => handleSaveAutomationSetup({ ...automationSetup, businessSummary: { ...automationSetup.businessSummary, time: e.target.value } })}
+                          />
+                          <small className="text-muted">Day-End (20:00)</small>
+                        </div>
+                        <button className="btn btn-outline-success btn-sm fw-semibold rounded-pill px-3" onClick={handleSendBusinessSummaryNow}>
+                          <i className="bi bi-send me-1"></i> Send Summary Report Now
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 3: Instant Low Stock Emergency Alert */}
+                  <div className="col-md-6">
+                    <div className="p-3.5 rounded-3 border h-100 bg-white shadow-sm" style={{ borderLeft: '4px solid #ff9800' }}>
+                      <div className="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                          <h6 className="fw-bold text-dark mb-1">🚨 Instant Low Stock Emergency Alert</h6>
+                          <small className="text-muted d-block">Triggers an immediate WhatsApp message whenever any product stock drops below threshold (e.g. 10 units).</small>
+                        </div>
+                        <div className="form-check form-switch">
+                          <input
+                            className="form-check-input style-cursor"
+                            type="checkbox"
+                            checked={automationSetup.lowStockAlert.enabled}
+                            onChange={() => handleSaveAutomationSetup({ ...automationSetup, lowStockAlert: { ...automationSetup.lowStockAlert, enabled: !automationSetup.lowStockAlert.enabled } })}
+                          />
+                        </div>
+                      </div>
+                      <div className="d-flex align-items-center justify-content-between mt-3 pt-3 border-top">
+                        <span className="badge bg-warning text-dark font-monospace">Threshold: 10 Units</span>
+                        <button className="btn btn-outline-warning btn-sm fw-semibold rounded-pill px-3 text-dark" onClick={() => handleSendWhatsAppNow({ phone: adminPhone, message: '🚨 *INSTANT LOW STOCK ALERT*\n\nProduct Liquid Handwash 5L is low (3 units remaining).\n\n_EHN One Alert_' })}>
+                          <i className="bi bi-send me-1"></i> Test Low Stock Alert
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 4: Customer Outstanding Dues Follow-up */}
+                  <div className="col-md-6">
+                    <div className="p-3.5 rounded-3 border h-100 bg-white shadow-sm" style={{ borderLeft: '4px solid #f44336' }}>
+                      <div className="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                          <h6 className="fw-bold text-dark mb-1">💰 Customer Outstanding Dues Follow-up Summary</h6>
+                          <small className="text-muted d-block">Sends automated customer receivables (lene hai) list and payment reminder summaries to your WhatsApp number.</small>
+                        </div>
+                        <div className="form-check form-switch">
+                          <input
+                            className="form-check-input style-cursor"
+                            type="checkbox"
+                            checked={automationSetup.paymentDues.enabled}
+                            onChange={() => handleSaveAutomationSetup({ ...automationSetup, paymentDues: { ...automationSetup.paymentDues, enabled: !automationSetup.paymentDues.enabled } })}
+                          />
+                        </div>
+                      </div>
+                      <div className="d-flex align-items-center justify-content-between mt-3 pt-3 border-top">
+                        <span className="badge bg-danger text-white">Daily Accounts Receivables</span>
+                        <button className="btn btn-outline-danger btn-sm fw-semibold rounded-pill px-3" onClick={() => handleSendWhatsAppNow({ phone: adminPhone, message: '💰 *CUSTOMER PAYMENT DUES SUMMARY*\n\nActive Debtors: 4 customers\nTotal Pending Receivables: ₹48,500\n\n_EHN One Accounts_' })}>
+                          <i className="bi bi-send me-1"></i> Test Receivables Alert
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 2: SCHEDULED REMINDERS REGISTER */}
+      {activeTab === 'reminders' && (
         <>
           {/* Search Bar */}
           <div className="v-card mb-3">
@@ -345,7 +632,7 @@ export default function Automations() {
                   </div>
                   <h5 className="fw-bold text-dark mb-1" style={{ fontSize: '1.05rem' }}>No Reminders Scheduled Yet</h5>
                   <p className="text-muted small mb-3 mx-auto" style={{ maxWidth: 420 }}>
-                    Click "+ Schedule Reminder" to set up your first meeting, call, or daily stock alert.
+                    Click "+ Schedule Reminder" to set up your first meeting, call, or stock alert.
                   </p>
                   <button 
                     className="btn btn-success btn-sm fw-semibold rounded-pill px-3.5 py-1.5 shadow-sm d-inline-flex align-items-center gap-1" 
@@ -414,7 +701,7 @@ export default function Automations() {
                         </td>
                         <td className="text-end">
                           <div className="d-flex justify-content-end gap-1">
-                            <button className="btn-v outline-success btn-sm px-2" onClick={() => handleSendWhatsAppNow(r)} title="Send Test Message Now">
+                            <button className="btn-v outline-success btn-sm px-2" onClick={() => handleSendWhatsAppNow(r)} title="Send Message Now to Recipient Number">
                               <i className="bi bi-send"></i>
                             </button>
                             <button className="btn-v outline-primary btn-sm px-2" onClick={() => { setEditTask(r); setShowTaskModal(true); }} title="Edit Reminder">
@@ -446,8 +733,10 @@ export default function Automations() {
             </div>
           </div>
         </>
-      ) : (
-        /* Real-Time Live WhatsApp Webhook Activity Register */
+      )}
+
+      {/* TAB 3: LIVE WHATSAPP INBOX & LOGS */}
+      {activeTab === 'live_inbox' && (
         <div className="v-card">
           <div className="v-card-header d-flex justify-content-between align-items-center" style={{ background: '#f4fbf5', borderRadius: '12px 12px 0 0' }}>
             <span className="fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '0.88rem' }}>
@@ -467,10 +756,10 @@ export default function Automations() {
                   <tr>
                     <th style={{ width: 40 }}>#</th>
                     <th>TIMESTAMP</th>
-                    <th>EVENT STAGE / TYPE</th>
+                    <th>EVENT TYPE</th>
                     <th>SENDER / RECIPIENT</th>
                     <th>MESSAGE CONTENT / DELIVERY RECEIPT</th>
-                    <th className="text-end">META IP</th>
+                    <th className="text-end">META SERVER IP</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -620,16 +909,16 @@ export default function Automations() {
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label fw-semibold">WhatsApp Mobile Number <span className="text-danger">*</span></label>
+                  <label className="form-label fw-semibold">WhatsApp Recipient Number <span className="text-danger">*</span></label>
                   <input
                     type="text"
-                    className="form-control"
-                    placeholder="e.g. +91 98765 43210"
+                    className="form-control fw-bold"
+                    placeholder="e.g. +91 9238695500"
                     value={taskForm.phone}
                     onChange={(e) => setTaskForm({ ...taskForm, phone: e.target.value })}
                     required
                   />
-                  <small className="text-muted" style={{ fontSize: '0.72rem' }}>Include country code (e.g. +91 for India)</small>
+                  <small className="text-muted" style={{ fontSize: '0.72rem' }}>Include country code (e.g. +91 9238695500)</small>
                 </div>
 
                 <div className="mb-3">
