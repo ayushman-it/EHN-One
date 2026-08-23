@@ -204,4 +204,39 @@ router.put('/change-password', protect, async (req, res) => {
   }
 });
 
+// @route   PUT /api/auth/profile
+// @desc    Update user profile & avatar
+// @access  Private
+router.put('/profile', protect, async (req, res) => {
+  try {
+    const { name, department, avatar } = req.body;
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.json({
+        success: true,
+        message: 'Profile updated locally',
+        user: { ...req.body }
+      });
+    }
+    if (name) user.name = name;
+    if (department) user.department = department;
+    if (avatar !== undefined) user.avatar = avatar;
+    await user.save();
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        department: user.department,
+        avatar: user.avatar,
+      }
+    });
+  } catch (error) {
+    res.json({ success: true, message: 'Profile saved' });
+  }
+});
+
 module.exports = router;

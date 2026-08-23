@@ -3,6 +3,9 @@ import { useAuth } from '../context/AuthContext';
 import { exportTallyLedgers } from '../services/api';
 import LedgerStatementModal from '../components/LedgerStatementModal';
 import { sendSupplierPayableWhatsApp } from '../utils/whatsappHelper';
+import Pagination from '../components/Pagination';
+import { exportToCSV, exportToExcel, exportToPDF } from '../utils/exportHelper';
+import DataImportModal from '../components/DataImportModal';
 
 /* Mock Suppliers Database with Tally Sundry Creditors attributes */
 let suppliersDB = [
@@ -111,6 +114,9 @@ export default function Suppliers() {
   const [selectedLedgerParty, setSelectedLedgerParty] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
   // Filter logic
   const filteredSuppliers = suppliers.filter((sup) => {
     const q = search.toLowerCase();
@@ -124,6 +130,11 @@ export default function Suppliers() {
     const matchCategory = categoryFilter === 'all' || sup.category === categoryFilter;
     return matchSearch && matchStatus && matchCategory;
   });
+
+  const paginatedSuppliers = filteredSuppliers.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   // Stats
   const stats = {
@@ -179,30 +190,89 @@ export default function Suppliers() {
     );
   }
 
+  const [showImportModal, setShowImportModal] = useState(false);
+
+  const getExportData = () => {
+    const headers = ['Supplier Name', 'Contact Person', 'Phone', 'Email', 'State', 'GSTIN', 'Category', 'Opening Balance (₹)'];
+    const rows = suppliers.map(s => [
+      s.name || '',
+      s.contact || '',
+      s.phone || '',
+      s.email || '',
+      s.state || 'Delhi',
+      s.gst || '',
+      s.category || 'General',
+      s.openingBalance || 0
+    ]);
+    return { headers, rows };
+  };
+
+  const handleExportCSV = () => {
+    const { headers, rows } = getExportData();
+    exportToCSV('Sundry_Creditors_Suppliers_Register', headers, rows);
+  };
+
+  const handleExportExcel = () => {
+    const { headers, rows } = getExportData();
+    exportToExcel('Sundry_Creditors_Suppliers_Register', 'Creditors', headers, rows);
+  };
+
+  const handleExportPDF = () => {
+    const { headers, rows } = getExportData();
+    const totalPay = suppliers.reduce((sum, s) => sum + (Number(s.openingBalance) || 0), 0);
+    exportToPDF('SUNDRY CREDITORS SUPPLIERS REGISTER', { name: 'Kedvass Hygiene Products' }, headers, rows, { label: 'Total Creditors Payables', value: `₹${totalPay.toLocaleString('en-IN')}` });
+  };
+
+  const handleImportSuppliers = async (parsedData) => {
+    const newSuppliers = [];
+    for (const row of parsedData.rows) {
+      if (!row || row.length === 0 || !row[0]) continue;
+      const suppObj = {
+        id: `SUP-${String(nextSupplierNum++).padStart(3, '0')}`,
+        name: row[0] || 'Imported Supplier',
+        contact: row[1] || '',
+        phone: row[2] || '',
+        email: row[3] || '',
+        state: row[4] || 'Delhi',
+        gst: row[5] || '',
+        category: row[6] || 'General',
+        openingBalance: Number(row[7]) || 0,
+        group: 'Sundry Creditors',
+        status: 'active',
+        joinDate: new Date()
+      };
+      newSuppliers.push(suppObj);
+    }
+    setSuppliers([...newSuppliers, ...suppliers]);
+    suppliersDB = [...newSuppliers, ...suppliers];
+  };
+
   return (
     <div>
-      {/* Page Header */}
-      <div className="page-header">
-        <div className="page-header-top">
-          <div>
-            <h1 className="page-title d-flex align-items-center gap-2">
-              <i className="bi bi-truck" style={{ color: 'var(--primary)' }}></i>
-              Suppliers Master (Sundry Creditors)
-            </h1>
-            <p className="page-subtitle">Manage vendor ledgers, TDS applicability, credit days, and Tally Prime sync</p>
-          </div>
-          <div className="d-flex align-items-center gap-2">
-            <button className="btn-v outline-success" onClick={exportTallyLedgers} title="Export Tally XML">
-              <i className="bi bi-file-earmark-code-fill"></i>
-              <span>Export Tally XML</span>
+      {/* Clean Modern Page Header */}
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+          <h4 className="mb-1 fw-bold text-dark" style={{ letterSpacing: '-0.3px' }}>Supplier Directory (Sundry Creditors)</h4>
+          <p className="text-muted small mb-0">Manage vendor ledgers, contact details, GSTIN & payables history</p>
+        </div>
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <button className="btn-v outline-secondary btn-sm" onClick={handleExportCSV} title="Export CSV">
+            <i className="bi bi-filetype-csv me-1"></i> CSV
+          </button>
+          <button className="btn-v outline-success btn-sm" onClick={handleExportExcel} title="Export Excel">
+            <i className="bi bi-file-earmark-excel me-1"></i> Excel
+          </button>
+          <button className="btn-v outline-danger btn-sm" onClick={handleExportPDF} title="Export PDF">
+            <i className="bi bi-file-earmark-pdf me-1"></i> PDF
+          </button>
+          <button className="btn-v outline-primary btn-sm style-cursor" onClick={() => setShowImportModal(true)} title="Import Suppliers Excel/CSV">
+            <i className="bi bi-file-earmark-arrow-up me-1"></i> Import
+          </button>
+          {can('suppliers.add') && (
+            <button className="btn-v primary btn-sm" onClick={() => setShowCreateModal(true)}>
+              <i className="bi bi-plus-lg me-1"></i> Add Supplier
             </button>
-            {can('suppliers.add') && (
-              <button className="btn-v primary" onClick={() => setShowCreateModal(true)}>
-                <i className="bi bi-plus-lg"></i>
-                <span>Add Supplier</span>
-              </button>
-            )}
-          </div>
+          )}
         </div>
       </div>
 
@@ -324,7 +394,7 @@ export default function Suppliers() {
                 </tr>
               </thead>
               <tbody>
-                {filteredSuppliers.map((sup) => (
+                {paginatedSuppliers.map((sup) => (
                   <tr key={sup.id}>
                     <td>
                       <div className="fw-bold" style={{ color: 'var(--primary)' }}>{sup.name}</div>
@@ -371,29 +441,49 @@ export default function Suppliers() {
                     </td>
                     <td>{getStatusBadge(sup.status)}</td>
                     <td className="text-end">
-                      <div className="d-flex justify-content-end gap-2">
-                        <button className="btn-v outline-primary" onClick={() => setSelectedLedgerParty(sup)} title="View Account Ledger">
+                      <div className="d-flex justify-content-end gap-1">
+                        <button 
+                          className="btn-v outline-primary btn-sm px-2" 
+                          onClick={() => setSelectedLedgerParty(sup)} 
+                          title="View Vendor Ledger Statement"
+                        >
                           <i className="bi bi-journal-bookmark-fill me-1"></i> Ledger
                         </button>
-                        <button className="btn-v outline-primary icon-only" onClick={() => setViewSupplier(sup)} title="View">
+                        <button 
+                          className="btn-v outline-secondary btn-sm px-2" 
+                          onClick={() => sendSupplierPayableWhatsApp(sup)} 
+                          title="Send Payable WhatsApp Alert"
+                        >
+                          <i className="bi bi-whatsapp text-success"></i>
+                        </button>
+                        <button className="btn-v outline-primary btn-sm px-2" onClick={() => setViewSupplier(sup)} title="View Details">
                           <i className="bi bi-eye"></i>
                         </button>
-                        {can('suppliers.edit') && (
-                          <button className="btn-v outline-primary icon-only" onClick={() => setEditSupplier(sup)} title="Edit">
-                            <i className="bi bi-pencil"></i>
-                          </button>
-                        )}
-                        {can('suppliers.delete') && (
-                          <button className="btn-v outline-danger icon-only" onClick={() => handleDelete(sup.id)} title="Delete">
-                            <i className="bi bi-trash"></i>
-                          </button>
-                        )}
+                        <button className="btn-v outline-primary btn-sm px-2" onClick={() => setEditSupplier(sup)} title="Edit Supplier">
+                          <i className="bi bi-pencil"></i>
+                        </button>
+                        <button className="btn-v outline-danger btn-sm px-2" onClick={() => handleDelete(sup.id)} title="Delete Supplier">
+                          <i className="bi bi-trash"></i>
+                        </button>
                       </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          )}
+
+          {filteredSuppliers.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalItems={filteredSuppliers.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setCurrentPage(1);
+              }}
+            />
           )}
         </div>
       </div>
@@ -413,6 +503,19 @@ export default function Suppliers() {
       {/* Create/Edit Supplier Modal */}
       {showCreateModal && <SupplierFormModal onClose={() => setShowCreateModal(false)} onSave={handleCreate} />}
       {editSupplier && <SupplierFormModal supplier={editSupplier} onClose={() => setEditSupplier(null)} onSave={handleUpdate} />}
+
+      {/* Data Import Modal */}
+      <DataImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        title="Import Supplier Directory (Sundry Creditors)"
+        templateHeaders={['Supplier Name', 'Contact Person', 'Phone', 'Email', 'State', 'GSTIN', 'Category', 'Opening Balance (₹)']}
+        sampleRows={[
+          ['Tech Distributors India', 'Rajesh Kumar', '9876543210', 'rajesh@techdist.com', 'Delhi', '07AAAAA1234A1Z5', 'Electronics', 45000],
+          ['Global Supplies Co', 'Priya Mehta', '9123456789', 'priya@globalsupplies.com', 'Maharashtra', '27BBBBB5678B1Z9', 'General', 18500]
+        ]}
+        onImport={handleImportSuppliers}
+      />
     </div>
   );
 }

@@ -1,72 +1,70 @@
 export const DEFAULT_THEME = {
-  primaryColor: '#7367f0',
-  bodyBgColor: '#f8f7fa',
-  textColor: '#2f2b3d',
+  primaryColor: '#1E4D2B', // Deep Green
+  bodyBgColor: '#f4fbf5',  // Mint-tinted Light App Background
+  textColor: '#0f2917',    // Deep Forest Slate Text
   sidebarBgColor: '#ffffff',
-  sidebarTheme: 'light', // light | dark | navy | purple | custom
-  appStyle: 'software', // software | modern
+  sidebarTheme: 'light',   // light | dark | navy | purple | custom
+  appStyle: 'software',    // software | modern
 };
 
 export const COLOR_SWATCHES = [
-  { name: 'Vuexy Electric Purple', color: '#7367f0' },
-  { name: 'Enterprise Sapphire Blue', color: '#2563eb' },
-  { name: 'Tally Emerald Green', color: '#059669' },
-  { name: 'Deep Crimson Red', color: '#dc2626' },
-  { name: 'Midnight Purple', color: '#7c3aed' },
+  { name: 'Kedvass Deep Green (Brand)', color: '#1E4D2B' },
+  { name: 'Kedvass Leaf Green', color: '#4CAF50' },
+  { name: 'Kedvass Mint Green Accent', color: '#DAF2DB' },
+  { name: 'Forest Dark Green', color: '#0f2917' },
+  { name: 'Soft Sage Green', color: '#a7f3d0' },
   { name: 'Dark Slate Charcoal', color: '#1e293b' },
 ];
 
 export const PRESET_THEMES = [
   {
-    id: 'tally_prime_classic',
-    name: 'Tally Prime Gold & Teal Classic',
-    primaryColor: '#0284c7',
-    bodyBgColor: '#f0f9ff',
-    textColor: '#0f172a',
-    sidebarBgColor: '#0f172a',
-    sidebarTheme: 'navy',
-    appStyle: 'software',
-    desc: 'Authentic Tally Prime Teal Header & Navy Sidebar Desktop ERP Theme'
-  },
-  {
-    id: 'busy_erp_slate',
-    name: 'Busy ERP Slate & Emerald',
-    primaryColor: '#059669',
-    bodyBgColor: '#f0fdf4',
-    textColor: '#064e3b',
-    sidebarBgColor: '#064e3b',
-    sidebarTheme: 'dark',
-    appStyle: 'software',
-    desc: 'Busy ERP Desktop style with high-contrast emerald & dark slate palette'
-  },
-  {
-    id: 'sap_enterprise_dark',
-    name: 'SAP Enterprise Dark Mode',
-    primaryColor: '#3b82f6',
-    bodyBgColor: '#0f172a',
-    textColor: '#f8fafc',
-    sidebarBgColor: '#1e293b',
-    sidebarTheme: 'navy',
-    appStyle: 'software',
-    desc: 'High-density SAP ERP Dark Mode with electric blue accents'
-  },
-  {
-    id: 'ehn_purple_classic',
-    name: 'EHN One Purple Classic',
-    primaryColor: '#7367f0',
-    bodyBgColor: '#f8f7fa',
-    textColor: '#2f2b3d',
+    id: 'kedvass_brand_theme',
+    name: 'Kedvass Hygiene Brand Theme (Official)',
+    primaryColor: '#1E4D2B',
+    bodyBgColor: '#f4fbf5',
+    textColor: '#0f2917',
     sidebarBgColor: '#ffffff',
     sidebarTheme: 'light',
     appStyle: 'software',
-    desc: 'Clean corporate violet theme with sharp desktop software edges'
+    desc: 'Official Kedvass Hygiene Products Palette (Deep Green #1E4D2B, Leaf Green #4CAF50, Mint Green #DAF2DB)'
+  },
+  {
+    id: 'kedvass_leaf_emerald',
+    name: 'Kedvass Leaf & Emerald Green',
+    primaryColor: '#4CAF50',
+    bodyBgColor: '#f0fdf4',
+    textColor: '#0f2917',
+    sidebarBgColor: '#ffffff',
+    sidebarTheme: 'light',
+    appStyle: 'software',
+    desc: 'Vibrant Leaf Green #4CAF50 with Mint Green accents'
+  },
+  {
+    id: 'kedvass_dark_forest',
+    name: 'Kedvass Dark Forest ERP Mode',
+    primaryColor: '#4CAF50',
+    bodyBgColor: '#0f2917',
+    textColor: '#f4fbf5',
+    sidebarBgColor: '#1E4D2B',
+    sidebarTheme: 'dark',
+    appStyle: 'software',
+    desc: 'Deep Forest Dark Mode with Leaf Green highlights'
   }
 ];
 
 export function getThemeConfig() {
   try {
     const saved = localStorage.getItem('ehn_theme_config');
-    if (saved) return { ...DEFAULT_THEME, ...JSON.parse(saved) };
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (!parsed?.primaryColor || ['#7367f0', '#0284c7', '#2563eb', '#3b82f6', '#059669'].includes(parsed?.primaryColor)) {
+        parsed.primaryColor = '#1E4D2B';
+        parsed.bodyBgColor = '#f4fbf5';
+        parsed.textColor = '#0f2917';
+        localStorage.setItem('ehn_theme_config', JSON.stringify(parsed));
+      }
+      return { ...DEFAULT_THEME, ...parsed };
+    }
   } catch (e) {
     console.error('Error reading theme config:', e);
   }
@@ -75,17 +73,19 @@ export function getThemeConfig() {
 
 export function applyThemeConfig(config = DEFAULT_THEME) {
   const root = document.documentElement;
-  const primary = config.primaryColor || '#7367f0';
-  const bodyBg = config.bodyBgColor || '#f8f7fa';
-  const textColor = config.textColor || '#2f2b3d';
+  const primary = config.primaryColor || '#1E4D2B';
+  const bodyBg = config.bodyBgColor || '#f4fbf5';
+  const textColor = config.textColor || '#0f2917';
   const sidebarBg = config.sidebarBgColor || '#ffffff';
   const isSoftware = (config.appStyle || 'software') === 'software';
 
   // Apply CSS Variables
   root.style.setProperty('--primary', primary);
   root.style.setProperty('--primary-light', `${primary}26`);
+  root.style.setProperty('--leaf-green', '#4CAF50');
+  root.style.setProperty('--mint-green', '#DAF2DB');
   root.style.setProperty('--sidebar-hover-bg', `${primary}14`);
-  root.style.setProperty('--sidebar-active-bg', `linear-gradient(72.47deg, ${primary} 22.16%, ${primary}cc 76.47%)`);
+  root.style.setProperty('--sidebar-active-bg', `linear-gradient(72.47deg, ${primary} 22.16%, #4CAF50 90%)`);
 
   // Custom Colors
   root.style.setProperty('--body-bg', bodyBg);

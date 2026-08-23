@@ -19,7 +19,7 @@ const categorySchema = new mongoose.Schema({
   },
   color: {
     type: String,
-    default: '#7367f0',
+    default: '#1E4D2B',
   },
   parent: {
     type: mongoose.Schema.Types.ObjectId,

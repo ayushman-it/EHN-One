@@ -90,6 +90,7 @@ app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/audit-logs', require('./routes/auditLogs'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/tickets', require('./routes/tickets'));
+app.use('/api/webhooks', require('./routes/webhooks'));
 
 // Health check
 app.get('/health', (req, res) => {

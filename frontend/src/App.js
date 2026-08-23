@@ -15,6 +15,7 @@ import Automations  from './pages/Automations';
 import Reports      from './pages/Reports';
 import Settings     from './pages/Settings';
 import Support      from './pages/Support';
+import DocumentCustomizer from './pages/DocumentCustomizer';
 import Login        from './pages/Login';
 import { getThemeConfig, applyThemeConfig } from './utils/themeHelper';
 import { getCustomMenuOrder } from './utils/menuHelper';
@@ -70,6 +71,7 @@ const MENU = [
     icon: 'bi-shield-gear',
     collapsible: true,
     items: [
+      { to: '/document-customizer', icon: 'bi-palette', label: 'Document Customizer', permission: 'settings.view' },
       { to: '/automations', icon: 'bi-lightning-charge',   label: 'Bot Automations',  permission: 'settings.view' },
       { to: '/settings',     icon: 'bi-gear',              label: 'System Settings',  permission: 'settings.view' },
       { to: '/users',        icon: 'bi-people',            label: 'User Security Roles', permission: 'users.view' },
@@ -180,17 +182,17 @@ function Sidebar({ open, onClose }) {
                 <img 
                   src={companyLogo} 
                   alt="Company Logo" 
-                  className="rounded shadow-sm" 
-                  style={{ width: 32, height: 32, objectFit: 'contain', background: '#fff', padding: '2px', border: '1px solid #cbd5e1' }} 
+                  className="rounded-circle shadow-sm" 
+                  style={{ width: 44, height: 44, objectFit: 'contain', background: '#fff', padding: '3px', border: '2px solid #4CAF50', borderRadius: '50%' }} 
                 />
               ) : (
-                <span className="sidebar-logo-icon rounded d-flex align-items-center justify-content-center" style={{ width: 32, height: 32, background: 'var(--primary)', color: '#fff' }}>
-                  <i className="bi bi-box-seam"></i>
+                <span className="sidebar-logo-icon rounded-circle d-flex align-items-center justify-content-center shadow-sm" style={{ width: 44, height: 44, background: '#1E4D2B', color: '#fff', border: '2px solid #4CAF50', borderRadius: '50%' }}>
+                  <i className="bi bi-box-seam" style={{ fontSize: '1.3rem' }}></i>
                 </span>
               )}
               <span className="sidebar-logo-text overflow-hidden">
                 <span className="fw-bold d-block text-uppercase text-truncate" style={{ fontSize: '0.88rem', letterSpacing: '0.5px', lineHeight: 1.1 }}>{companyName}</span>
-                <span className="text-muted small" style={{ fontSize: '0.68rem' }}>EHN One Gateway</span>
+                <span className="text-truncate d-block fw-semibold" style={{ fontSize: '0.68rem', color: '#4CAF50' }}>EHN One Gateway & Automation</span>
               </span>
             </span>
             <button className="sidebar-close-btn d-lg-none" onClick={onClose} aria-label="Close sidebar">
@@ -260,14 +262,18 @@ function Sidebar({ open, onClose }) {
         </nav>
 
         {/* Sidebar Footer User Info */}
-        <div className="sidebar-footer p-2 border-top">
-          <div className="d-flex align-items-center gap-2 px-2 py-1">
-            <div className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm flex-shrink-0" style={{ width: 28, height: 28, background: 'var(--primary)', fontSize: '0.75rem' }}>
-              {user?.name?.charAt(0).toUpperCase()}
+        <div className="sidebar-footer p-2.5 border-top" style={{ background: '#ffffff' }}>
+          <div className="d-flex align-items-center gap-2 px-2 py-1.5 rounded-2" style={{ background: '#ffffff', border: '1px solid rgba(76, 175, 80, 0.18)' }}>
+            <div className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm flex-shrink-0" style={{ width: 32, height: 32, background: 'var(--primary)', fontSize: '0.82rem', overflow: 'hidden' }}>
+              {user?.avatar ? (
+                <img src={user.avatar} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                user?.name?.charAt(0).toUpperCase() || 'A'
+              )}
             </div>
             <div className="sidebar-user-info overflow-hidden">
-              <div className="sidebar-user-name fw-bold text-truncate" style={{ fontSize: '0.8rem' }}>{user?.name}</div>
-              <div className="text-muted text-truncate" style={{ fontSize: '0.68rem' }}>{user?.role?.toUpperCase()} | F.Y. 2026-27</div>
+              <div className="sidebar-user-name fw-bold text-truncate" style={{ fontSize: '0.85rem', color: '#0f2917' }}>{user?.name || 'KDV Admin'}</div>
+              <div className="sidebar-user-role text-truncate" style={{ fontSize: '0.68rem', color: '#1E4D2B' }}>{user?.role?.toUpperCase() || 'ADMIN'} | F.Y. 2026-27</div>
             </div>
           </div>
         </div>
@@ -281,10 +287,6 @@ function Navbar({ onToggle, onOpenCommandPalette }) {
   const { user, logout, roleInfo } = useAuth();
   const navigate = useNavigate();
   const [dropOpen, setDropOpen] = useState(false);
-
-  const today = new Date().toLocaleDateString('en-IN', {
-    weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
-  });
 
   useEffect(() => {
     if (!dropOpen) return;
@@ -300,35 +302,19 @@ function Navbar({ onToggle, onOpenCommandPalette }) {
           <i className="bi bi-list"></i>
         </button>
 
-        {/* Tally Go To Quick Search Command Box */}
+        {/* Modern Quick Search Command Box */}
         <div 
           className="navbar-search style-cursor d-flex align-items-center" 
           onClick={onOpenCommandPalette} 
-          style={{ maxWidth: 320, width: '100%' }}
+          style={{ maxWidth: 360, width: '100%' }}
         >
           <i className="bi bi-search search-icon me-2 text-primary"></i>
           <input 
             type="text" 
-            placeholder="[Alt+G] Go To Search Master / Voucher..." 
+            placeholder="Search Master, Voucher, Ledgers or Reports..." 
             readOnly 
             style={{ cursor: 'pointer', fontSize: '0.82rem' }} 
           />
-        </div>
-
-        {/* Quick Action Navigation Pills */}
-        <div className="tally-top-menu-bar d-none d-lg-flex align-items-center gap-1 ms-2">
-          <button className="tally-top-menu-btn" onClick={() => navigate('/invoices')}>
-            <span className="key">F8</span> Billing
-          </button>
-          <button className="tally-top-menu-btn" onClick={() => navigate('/transactions')}>
-            <span className="key">F7</span> Daybook
-          </button>
-          <button className="tally-top-menu-btn" onClick={() => navigate('/reports')}>
-            <span className="key">F5</span> Reports
-          </button>
-          <button className="tally-top-menu-btn" onClick={() => navigate('/settings')}>
-            <span className="key">F12</span> Settings
-          </button>
         </div>
       </div>
 
@@ -336,10 +322,6 @@ function Navbar({ onToggle, onOpenCommandPalette }) {
       <div className="navbar-right ms-auto d-flex align-items-center gap-2 flex-shrink-0">
         <span className="badge-v secondary d-none d-xl-inline-flex" style={{ fontSize: '0.7rem' }}>
           <i className="bi bi-building me-1"></i> F.Y. 2026-2027
-        </span>
-
-        <span className="d-none d-md-flex align-items-center gap-1 text-muted" style={{ fontSize: '0.75rem' }}>
-          <i className="bi bi-calendar3"></i> {today}
         </span>
 
         <NotificationDropdown />
@@ -360,8 +342,12 @@ function Navbar({ onToggle, onOpenCommandPalette }) {
         {/* Operator Profile Dropdown */}
         <div className="navbar-user-wrap" onMouseDown={(e) => e.stopPropagation()}>
           <button className="navbar-user" onClick={() => setDropOpen((v) => !v)} aria-haspopup="true" aria-expanded={dropOpen}>
-            <div className={`navbar-user-avatar role-avatar-${user?.role}`}>
-              {user?.name?.charAt(0).toUpperCase()}
+            <div className={`navbar-user-avatar role-avatar-${user?.role}`} style={{ overflow: 'hidden', borderRadius: '50%' }}>
+              {user?.avatar ? (
+                <img src={user.avatar} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                user?.name?.charAt(0).toUpperCase()
+              )}
             </div>
             <div className="d-none d-md-block text-start">
               <div className="navbar-user-name fw-bold">{user?.name}</div>
@@ -377,12 +363,16 @@ function Navbar({ onToggle, onOpenCommandPalette }) {
           {dropOpen && (
             <div className="navbar-dropdown">
               <div className="navbar-dropdown-header">
-                <div className={`nd-avatar role-avatar-${user?.role}`}>
-                  {user?.name?.charAt(0).toUpperCase()}
+                <div className={`nd-avatar role-avatar-${user?.role}`} style={{ overflow: 'hidden', borderRadius: '50%' }}>
+                  {user?.avatar ? (
+                    <img src={user.avatar} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    user?.name?.charAt(0).toUpperCase()
+                  )}
                 </div>
-                <div>
-                  <div className="nd-name">{user?.name}</div>
-                  <div className="nd-email">{user?.email}</div>
+                <div className="overflow-hidden min-w-0 flex-grow-1">
+                  <div className="nd-name text-truncate">{user?.name}</div>
+                  <div className="nd-email text-truncate" title={user?.email}>{user?.email}</div>
                   {roleInfo && (
                     <span className={`badge-v ${roleInfo.color} mt-1`} style={{ fontSize: '0.68rem' }}>
                       <i className={`bi ${roleInfo.icon}`}></i> {roleInfo.label}
@@ -477,45 +467,6 @@ function TallyCommandPaletteModal({ onClose }) {
   );
 }
 
-/* Classic Tally Prime Right-Side Function Key Dock (Light Software Style) */
-function TallyRightKeyDock() {
-  const navigate = useNavigate();
-
-  const dockKeys = [
-    { key: 'F2',  label: 'Date / Period',   action: () => navigate('/transactions') },
-    { key: 'F3',  label: 'Select Company', action: () => navigate('/settings') },
-    { key: 'F4',  label: 'Contra / In-Out', action: () => navigate('/stock-in') },
-    { key: 'F5',  label: 'Payment / Ledger',action: () => navigate('/reports') },
-    { key: 'F6',  label: 'Receipt Entry',   action: () => navigate('/transactions') },
-    { key: 'F7',  label: 'Stock Daybook',   action: () => navigate('/transactions') },
-    { key: 'F8',  label: 'Sales Billing',   action: () => navigate('/invoices') },
-    { key: 'F9',  label: 'Purchase Entry',  action: () => navigate('/products') },
-    { key: 'F10', label: 'Other Vouchers',  action: () => navigate('/categories') },
-    { key: 'F11', label: 'ERP Features',    action: () => navigate('/automations') },
-    { key: 'F12', label: 'System Setup',    action: () => navigate('/settings') },
-  ];
-
-  return (
-    <aside className="tally-right-dock border-start bg-light text-dark d-none d-xl-flex flex-column py-2 shadow-sm" aria-label="Tally Action Dock" style={{ width: 180, minWidth: 180, borderColor: '#cbd5e1' }}>
-      <div className="px-2 pb-2 mb-1 border-bottom text-center text-primary fw-bold text-uppercase" style={{ fontSize: '0.68rem', letterSpacing: '0.5px' }}>
-        <i className="bi bi-cpu me-1"></i> ERP ACTION DOCK
-      </div>
-      <div className="vstack gap-1 px-1 overflow-auto flex-1">
-        {dockKeys.map((item) => (
-          <button
-            key={item.key}
-            className="tally-dock-btn d-flex align-items-center justify-content-between p-2 rounded border text-dark w-100 text-start style-cursor transition bg-white shadow-sm"
-            onClick={item.action}
-          >
-            <span className="badge bg-primary text-white fw-bold me-1" style={{ fontSize: '0.65rem' }}>{item.key}</span>
-            <span className="fw-bold text-truncate" style={{ fontSize: '0.72rem', color: '#1e293b' }}>{item.label}</span>
-          </button>
-        ))}
-      </div>
-    </aside>
-  );
-}
-
 /* Tally Prime Software Status Bar Footer (Light Software Style) */
 function TallySoftwareStatusBar() {
   const [companyName, setCompanyName] = useState('EHN One');
@@ -531,20 +482,20 @@ function TallySoftwareStatusBar() {
   }, []);
 
   return (
-    <footer className="tally-software-statusbar d-flex align-items-center justify-content-between px-3 py-1.5 bg-white text-dark border-top shadow-sm" style={{ fontSize: '0.72rem', minHeight: 32, borderColor: '#cbd5e1' }}>
-      <div className="d-flex align-items-center gap-3">
+    <footer className="tally-software-statusbar d-flex flex-wrap align-items-center justify-content-between px-3 py-2 bg-white text-dark border-top shadow-sm gap-2" style={{ fontSize: '0.72rem', minHeight: 32, borderColor: '#cbd5e1' }}>
+      <div className="d-flex flex-wrap align-items-center gap-2">
         <span className="fw-bold text-primary text-uppercase">
           <i className="bi bi-building me-1"></i> {companyName}
         </span>
-        <span className="text-muted">|</span>
-        <span className="fw-semibold text-secondary">GATEWAY LICENSED TO: {companyName.toUpperCase()}</span>
-        <span className="text-muted">|</span>
+        <span className="text-muted d-none d-sm-inline">|</span>
+        <span className="fw-semibold text-secondary d-none d-md-inline">GATEWAY & AUTOMATION LICENSED TO: {companyName.toUpperCase()}</span>
+        <span className="text-muted d-none d-md-inline">|</span>
         <span className="badge bg-success bg-opacity-15 text-success fw-bold">F.Y. 2026-2027</span>
       </div>
-      <div className="d-flex align-items-center gap-3">
-        <span className="text-muted"><i className="bi bi-shield-check text-success me-1"></i>SSL 256-Bit Encrypted</span>
-        <span className="text-muted">|</span>
-        <span className="fw-bold text-primary">EHN One ERP v2.4.0</span>
+      <div className="d-flex flex-wrap align-items-center gap-2 ms-auto">
+        <span className="text-muted d-none d-sm-inline"><i className="bi bi-robot text-success me-1"></i>Bot Engine Active</span>
+        <span className="text-muted d-none d-sm-inline">|</span>
+        <span className="fw-bold text-primary">EHN One Gateway & Automation v2.4.0</span>
       </div>
     </footer>
   );
@@ -557,6 +508,8 @@ function MainLayout() {
   const [hotkeys, setHotkeys] = useState(getCustomHotkeys);
 
   useEffect(() => {
+    applyThemeConfig(getThemeConfig());
+
     const handleHotkeysUpdate = () => {
       setHotkeys(getCustomHotkeys());
     };
@@ -609,13 +562,13 @@ function MainLayout() {
               <Route path="/reports"     element={<ProtectedRoute permission="reports.view"><Reports /></ProtectedRoute>} />
               <Route path="/analytics"   element={<ProtectedRoute permission="analytics.view"><Reports defaultTab="overview" /></ProtectedRoute>} />
               <Route path="/automations" element={<ProtectedRoute permission="settings.view"><Automations /></ProtectedRoute>} />
+              <Route path="/document-customizer" element={<ProtectedRoute permission="settings.view"><DocumentCustomizer /></ProtectedRoute>} />
               <Route path="/settings"    element={<ProtectedRoute permission="settings.view"><Settings /></ProtectedRoute>} />
               <Route path="/users"       element={<ProtectedRoute permission="users.view"><Users /></ProtectedRoute>} />
               <Route path="/support"     element={<Support />} />
               <Route path="*"            element={<Navigate to="/" replace />} />
             </Routes>
           </main>
-          <TallyRightKeyDock />
         </div>
         <TallySoftwareStatusBar />
       </div>

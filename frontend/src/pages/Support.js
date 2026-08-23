@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import Pagination from '../components/Pagination';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
@@ -156,6 +157,9 @@ export default function Support() {
   };
 
   // Filtered List
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
   const filteredTickets = tickets.filter(t => {
     const matchStatus = statusFilter === 'ALL' || t.status === statusFilter;
     const matchPriority = priorityFilter === 'ALL' || t.priority === priorityFilter;
@@ -166,6 +170,11 @@ export default function Support() {
 
     return matchStatus && matchPriority && matchSearch;
   });
+
+  const paginatedTickets = filteredTickets.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   // Metrics
   const stats = {
@@ -190,24 +199,16 @@ export default function Support() {
   };
 
   return (
-    <div>
-      {/* Page Header */}
-      <div className="page-header">
-        <div className="page-header-top">
-          <div>
-            <h1 className="page-title d-flex align-items-center gap-2">
-              <i className="bi bi-headset" style={{ color: 'var(--primary)' }}></i>
-              Helpdesk & Support Ticketing Center
-            </h1>
-            <p className="page-subtitle">Raise technical issues, track support tickets, and resolve staff queries</p>
-          </div>
-          <div>
-            <button className="btn-v primary" onClick={() => setShowCreateModal(true)}>
-              <i className="bi bi-plus-lg"></i>
-              <span>Raise Support Ticket</span>
-            </button>
-          </div>
+    <div className="py-2">
+      {/* Clean Modern Page Header */}
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+          <h4 className="mb-1 fw-bold text-dark" style={{ letterSpacing: '-0.3px' }}>Support & Helpdesk</h4>
+          <p className="text-muted small mb-0">Raise technical support tickets, track issues & contact system helpdesk</p>
         </div>
+        <button className="btn-v primary btn-sm" onClick={() => setShowCreateModal(true)}>
+          <i className="bi bi-plus-lg me-1"></i> Raise Ticket
+        </button>
       </div>
 
       {/* KPI Stats Cards */}
@@ -338,7 +339,7 @@ export default function Support() {
                 </tr>
               </thead>
               <tbody>
-                {filteredTickets.map((t) => (
+                {paginatedTickets.map((t) => (
                   <tr key={t._id}>
                     <td>
                       <code style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{t.ticketNo}</code>
@@ -377,13 +378,26 @@ export default function Support() {
                           });
                         }}
                       >
-                        <i className="bi bi-shield-gear me-1"></i> {isAdmin ? 'Assign / Resolve' : 'View Details'}
+                        <i className="bi bi-gear-fill me-1"></i> Manage
                       </button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          )}
+
+          {filteredTickets.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalItems={filteredTickets.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setCurrentPage(1);
+              }}
+            />
           )}
         </div>
       </div>

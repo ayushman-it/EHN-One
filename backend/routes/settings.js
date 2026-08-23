@@ -52,8 +52,8 @@ router.post('/send-whatsapp', authorize('admin', 'manager'), async (req, res) =>
     }
 
     let settings = await Settings.findOne();
-    const token = settings?.whatsappConfig?.apiKey;
-    const phoneId = settings?.whatsappConfig?.phoneNumberId;
+    const token = settings?.whatsappConfig?.apiKey || settings?.whatsapp?.apiKey || 'EAAX71GdiWggBSVNQf5y7pT71r7SZCC7OU8UDLGvRiDZAABnlo7OAMtayZAsnj5BcTcH7BwPcN6DiJc2EsU3n0uzof31uINkUZBO6hb1kZAog5BElfQzBqZAXpshREnQmZAcVW8nnYe7vOyLajLRG7grw4QD3ivr0J5tQfbBxQDjPNYrR5JXqnw0SrSjI1t5EgIzgwZDZD';
+    const phoneId = settings?.whatsappConfig?.phoneNumberId || settings?.whatsapp?.phoneNumberId || '1221104881094408';
 
     if (!token || !phoneId) {
       return res.status(400).json({ success: false, message: 'WhatsApp API not configured', requiresManualSend: true });
@@ -62,7 +62,7 @@ router.post('/send-whatsapp', authorize('admin', 'manager'), async (req, res) =>
     const postData = JSON.stringify({ messaging_product: 'whatsapp', recipient_type: 'individual', to: phone, type: 'text', text: { body: message } });
     const options = {
       hostname: 'graph.facebook.com', port: 443,
-      path: '/v18.0/' + phoneId + '/messages', method: 'POST',
+      path: '/v25.0/' + phoneId + '/messages', method: 'POST',
       headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(postData) }
     };
 

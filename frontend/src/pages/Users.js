@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth, ROLES } from '../context/AuthContext';
 import { exportToCSV, exportToExcel, exportToPDF } from '../utils/exportHelper';
+import Pagination from '../components/Pagination';
+import DataImportModal from '../components/DataImportModal';
 
 /* Mock users database */
 let usersDB = [
@@ -90,6 +92,9 @@ export default function Users() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [can]);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
   // Filter logic
   const filteredUsers = users.filter((u) => {
     const q = search.toLowerCase();
@@ -98,6 +103,11 @@ export default function Users() {
     const matchStatus = statusFilter === 'all' || u.status === statusFilter;
     return matchSearch && matchRole && matchStatus;
   });
+
+  const paginatedUsers = filteredUsers.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   const stats = {
     total: users.length,
@@ -257,62 +267,60 @@ export default function Users() {
     );
   }
 
-  return (
-    <div>
-      {/* Gateway of Tally Software Header Bar */}
-      <div className="tally-header-bar mb-3 shadow-sm">
-        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
-          <div className="d-flex align-items-center gap-2">
-            <span className="tally-header-badge" style={{ background: 'var(--primary)', color: '#fff' }}>SECURITY</span>
-            <div>
-              <h5 className="mb-0 fw-bold text-uppercase" style={{ fontSize: '0.95rem', letterSpacing: '0.5px' }}>
-                SECURITY & USER ROLES REGISTER &mdash; OPERATOR MASTERS
-              </h5>
-              <div className="text-muted small" style={{ fontSize: '0.72rem' }}>
-                F.Y. 2026-2027 | System Operator Management | EHN One ERP
-              </div>
-            </div>
-          </div>
-          <div className="d-flex align-items-center gap-2">
-            <button className="btn-v outline-secondary btn-sm" onClick={() => setShowAuditLog(true)}>
-              <i className="bi bi-clock-history me-1"></i> [Alt+A] Audit Log
-            </button>
-            <button className="btn-v outline-secondary btn-sm" onClick={handleExportCSV} title="Export CSV">
-              <i className="bi bi-filetype-csv me-1"></i> [Alt+C] CSV
-            </button>
-            <button className="btn-v outline-success btn-sm" onClick={handleExportExcel} title="Export Excel (.xls)">
-              <i className="bi bi-file-earmark-excel me-1"></i> [Alt+X] Excel
-            </button>
-            <button className="btn-v outline-danger btn-sm" onClick={handleExportPDF} title="Export PDF">
-              <i className="bi bi-file-earmark-pdf me-1"></i> [Alt+P] PDF
-            </button>
-            {can('users.manage') && (
-              <button className="btn-v primary btn-sm" onClick={openAdd}>
-                <i className="bi bi-person-plus me-1"></i> [F4] Add Operator Master
-              </button>
-            )}
-          </div>
-        </div>
+  const [showImportModal, setShowImportModal] = useState(false);
 
-        {/* F1-F8 Action Toolbar */}
-        <div className="tally-toolbar mt-2 pt-2 border-top d-flex gap-2 flex-wrap">
-          <button className="tally-shortcut-btn" onClick={() => document.getElementById('user-search-input')?.focus()}>
-            <span className="key">[F2]</span> Search Operator
+  const handleImportUsers = async (parsedData) => {
+    const newUsers = [];
+    for (const row of parsedData.rows) {
+      if (!row || row.length === 0 || !row[0]) continue;
+      const userObj = {
+        id: nextUserId++,
+        name: row[0] || 'Imported Operator',
+        email: row[1] || `user${Math.floor(100+Math.random()*900)}@ehnone.com`,
+        role: (row[2] || 'viewer').toLowerCase(),
+        department: row[3] || 'Operations',
+        phone: row[4] || '',
+        status: 'active',
+        avatar: null,
+        customPermissions: [],
+        createdAt: new Date(),
+        createdBy: user?.name || 'Admin'
+      };
+      newUsers.push(userObj);
+    }
+    setUsers([...newUsers, ...users]);
+    usersDB = [...newUsers, ...usersDB];
+  };
+
+  return (
+    <div className="py-2">
+      {/* Clean Modern Page Header */}
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+          <h4 className="mb-1 fw-bold text-dark" style={{ letterSpacing: '-0.3px' }}>User Security Roles & Access</h4>
+          <p className="text-muted small mb-0">Manage operator user accounts, role permissions & security audit logs</p>
+        </div>
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <button className="btn-v outline-secondary btn-sm" onClick={handleExportCSV} title="Export CSV">
+            <i className="bi bi-filetype-csv me-1"></i> CSV
+          </button>
+          <button className="btn-v outline-success btn-sm" onClick={handleExportExcel} title="Export Excel">
+            <i className="bi bi-file-earmark-excel me-1"></i> Excel
+          </button>
+          <button className="btn-v outline-danger btn-sm" onClick={handleExportPDF} title="Export PDF">
+            <i className="bi bi-file-earmark-pdf me-1"></i> PDF
+          </button>
+          <button className="btn-v outline-primary btn-sm style-cursor" onClick={() => setShowImportModal(true)} title="Import Users Excel/CSV">
+            <i className="bi bi-file-earmark-arrow-up me-1"></i> Import
+          </button>
+          <button className="btn-v outline-secondary btn-sm" onClick={() => setShowAuditLog(true)}>
+            <i className="bi bi-clock-history me-1"></i> Audit Log
           </button>
           {can('users.manage') && (
-            <button className="tally-shortcut-btn" onClick={openAdd}>
-              <span className="key">[F4]</span> New Operator
+            <button className="btn-v primary btn-sm" onClick={openAdd}>
+              <i className="bi bi-person-plus me-1"></i> Add User
             </button>
           )}
-          <button className="tally-shortcut-btn" onClick={() => setUsers([...usersDB])}>
-            <span className="key">[F5]</span> Refresh Register
-          </button>
-          <button className="tally-shortcut-btn" onClick={() => setShowAuditLog(true)}>
-            <span className="key">[Alt+A]</span> Security Audit Log
-          </button>
-          <button className="tally-shortcut-btn" onClick={handleExportCSV}>
-            <span className="key">[Alt+C]</span> Export CSV
-          </button>
         </div>
       </div>
 
@@ -418,9 +426,11 @@ export default function Users() {
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.map((u, i) => (
+                {paginatedUsers.map((u, i) => (
                   <tr key={u.id}>
-                    <td className="text-muted fw-semibold" style={{ fontSize: '0.75rem' }}>{i + 1}</td>
+                    <td className="text-muted fw-semibold" style={{ fontSize: '0.75rem' }}>
+                      {(currentPage - 1) * pageSize + i + 1}
+                    </td>
                     <td>
                       <div className="d-flex align-items-center gap-2">
                         <div 
@@ -451,11 +461,11 @@ export default function Users() {
                         </button>
                         {can('users.manage') && (
                           <>
-                            <button className="btn-v outline-primary btn-sm px-2" onClick={() => openEdit(u)} title="Edit Master">
+                            <button className="btn-v outline-primary btn-sm px-2" onClick={() => openEdit(u)} title="Edit Permissions">
                               <i className="bi bi-pencil"></i>
                             </button>
                             {u.id !== currentUser?.id && (
-                              <button className="btn-v outline-danger btn-sm px-2" onClick={() => setShowDeleteConfirm(u)} title="Delete Master">
+                              <button className="btn-v outline-danger btn-sm px-2" onClick={() => handleDelete(u.id, u.name)} title="Delete User">
                                 <i className="bi bi-trash"></i>
                               </button>
                             )}
@@ -467,6 +477,19 @@ export default function Users() {
                 ))}
               </tbody>
             </table>
+          )}
+
+          {filteredUsers.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalItems={filteredUsers.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setCurrentPage(1);
+              }}
+            />
           )}
         </div>
       </div>
@@ -636,6 +659,19 @@ export default function Users() {
           </div>
         </div>
       )}
+
+      {/* Data Import Modal */}
+      <DataImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        title="Import User Security Accounts Master"
+        templateHeaders={['Full Name', 'Email Address', 'Security Role (admin/manager/viewer)', 'Department', 'Phone Number']}
+        sampleRows={[
+          ['Arjun Sharma', 'admin@ehnone.com', 'admin', 'IT Management', '9876543210'],
+          ['Priya Mehta', 'priya@ehnone.com', 'manager', 'Operations & Stock', '9123456789']
+        ]}
+        onImport={handleImportUsers}
+      />
     </div>
   );
 }

@@ -4,6 +4,8 @@ import { exportToCSV, exportToExcel, exportToPDF } from '../utils/exportHelper';
 import { numberToIndianWords } from '../utils/numberToWords';
 import { getCustomers } from '../services/api';
 import { sendInvoiceWhatsApp } from '../utils/whatsappHelper';
+import Pagination from '../components/Pagination';
+import DataImportModal from '../components/DataImportModal';
 
 function formatInvoiceDate(dateInput) {
   if (!dateInput) return '';
@@ -260,6 +262,8 @@ export default function Invoices() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [viewInvoice, setViewInvoice] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const filteredInvoices = invoices.filter((inv) => {
     const q = search.toLowerCase();
@@ -267,6 +271,11 @@ export default function Invoices() {
     const matchStatus = statusFilter === 'all' || inv.status === statusFilter;
     return matchSearch && matchStatus;
   });
+
+  const paginatedInvoices = filteredInvoices.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   const stats = {
     total: invoices.length,
@@ -358,54 +367,55 @@ export default function Invoices() {
     return <span className={`badge-v ${s.color}`} style={{ fontSize: '0.7rem' }}><i className={`bi ${s.icon} me-1`}></i> {s.label}</span>;
   };
 
-  return (
-    <div>
-      {/* Gateway of Tally Software Module Header Bar */}
-      <div className="tally-header-bar mb-3 shadow-sm">
-        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
-          <div className="d-flex align-items-center gap-2">
-            <span className="tally-header-badge" style={{ background: 'var(--primary)', color: '#fff' }}>BILLING</span>
-            <div>
-              <h5 className="mb-0 fw-bold text-uppercase" style={{ fontSize: '0.95rem', letterSpacing: '0.5px' }}>
-                SALES VOUCHER & BILLING REGISTER &mdash; INVOICE MASTERS
-              </h5>
-              <div className="text-muted small" style={{ fontSize: '0.72rem' }}>
-                F.Y. 2026-2027 | Sales Voucher Register | Kedvass Hygiene Products
-              </div>
-            </div>
-          </div>
-          <div className="d-flex align-items-center gap-2">
-            <button className="btn-v outline-secondary btn-sm" onClick={handleExportCSV} title="Export CSV">
-              <i className="bi bi-filetype-csv me-1"></i> [Alt+C] CSV
-            </button>
-            <button className="btn-v outline-success btn-sm" onClick={handleExportExcel} title="Export Excel (.xls)">
-              <i className="bi bi-file-earmark-excel me-1"></i> [Alt+X] Excel
-            </button>
-            <button className="btn-v outline-danger btn-sm" onClick={handleExportPDF} title="Export PDF Register">
-              <i className="bi bi-file-earmark-pdf me-1"></i> [Alt+P] PDF
-            </button>
-            <button className="btn-v primary btn-sm" onClick={() => setShowCreateModal(true)}>
-              <i className="bi bi-plus-lg me-1"></i> [Alt+I] New Voucher
-            </button>
-          </div>
-        </div>
+  const [showImportModal, setShowImportModal] = useState(false);
 
-        {/* F1-F8 Action Toolbar */}
-        <div className="tally-toolbar mt-2 pt-2 border-top d-flex gap-2 flex-wrap">
-          <button className="tally-shortcut-btn" onClick={() => document.getElementById('invoice-search-input')?.focus()}>
-            <span className="key">[F2]</span> Search Voucher
+  const handleImportInvoices = async (parsedData) => {
+    const newInvoices = [];
+    for (const row of parsedData.rows) {
+      if (!row || row.length === 0 || !row[0]) continue;
+      const invObj = {
+        id: `INV-${Math.floor(1000 + Math.random() * 9000)}`,
+        invoiceNumber: row[0] || `KHP/${Math.floor(100 + Math.random() * 900)}`,
+        date: new Date(),
+        dueDate: new Date(Date.now() + 30 * 86400000),
+        customerName: row[1] || 'Imported Customer',
+        customerPhone: '',
+        customerEmail: '',
+        items: [{ product: row[2] || 'Stock Item', quantity: Number(row[3]) || 1, price: Number(row[4]) || 100, total: (Number(row[3]) || 1) * (Number(row[4]) || 100) }],
+        subtotal: (Number(row[3]) || 1) * (Number(row[4]) || 100),
+        tax: ((Number(row[3]) || 1) * (Number(row[4]) || 100)) * 0.18,
+        total: ((Number(row[3]) || 1) * (Number(row[4]) || 100)) * 1.18,
+        status: (row[5] || 'pending').toLowerCase()
+      };
+      newInvoices.push(invObj);
+    }
+    setInvoices([...newInvoices, ...invoices]);
+    invoicesDB = [...newInvoices, ...invoicesDB];
+  };
+
+  return (
+    <div className="py-2">
+      {/* Clean Modern Page Header */}
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+          <h4 className="mb-1 fw-bold text-dark" style={{ letterSpacing: '-0.3px' }}>Sales Billing & Invoices</h4>
+          <p className="text-muted small mb-0">Create sales billing vouchers, track payments & print statutory GST invoices</p>
+        </div>
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <button className="btn-v outline-secondary btn-sm" onClick={handleExportCSV} title="Export CSV">
+            <i className="bi bi-filetype-csv me-1"></i> CSV
           </button>
-          <button className="tally-shortcut-btn" onClick={() => setShowCreateModal(true)}>
-            <span className="key">[F4]</span> New Invoice (Alt+I)
+          <button className="btn-v outline-success btn-sm" onClick={handleExportExcel} title="Export Excel">
+            <i className="bi bi-file-earmark-excel me-1"></i> Excel
           </button>
-          <button className="tally-shortcut-btn" onClick={() => setInvoices([...invoicesDB])}>
-            <span className="key">[F5]</span> Refresh Register
+          <button className="btn-v outline-danger btn-sm" onClick={handleExportPDF} title="Export PDF">
+            <i className="bi bi-file-earmark-pdf me-1"></i> PDF
           </button>
-          <button className="tally-shortcut-btn" onClick={() => invoices[0] && printInvoiceDocument(invoices[0])}>
-            <span className="key">[Alt+P]</span> Print Voucher
+          <button className="btn-v outline-primary btn-sm style-cursor" onClick={() => setShowImportModal(true)} title="Import Invoices Excel/CSV">
+            <i className="bi bi-file-earmark-arrow-up me-1"></i> Import
           </button>
-          <button className="tally-shortcut-btn" onClick={handleExportCSV}>
-            <span className="key">[Alt+C]</span> Export CSV
+          <button className="btn-v primary btn-sm" onClick={() => setShowCreateModal(true)}>
+            <i className="bi bi-plus-lg me-1"></i> Create Invoice
           </button>
         </div>
       </div>
@@ -506,9 +516,11 @@ export default function Invoices() {
                 </tr>
               </thead>
               <tbody>
-                {filteredInvoices.map((inv, i) => (
+                {paginatedInvoices.map((inv, i) => (
                   <tr key={inv.id}>
-                    <td className="text-muted fw-semibold" style={{ fontSize: '0.75rem' }}>{i + 1}</td>
+                    <td className="text-muted fw-semibold" style={{ fontSize: '0.75rem' }}>
+                      {(currentPage - 1) * pageSize + i + 1}
+                    </td>
                     <td>
                       <div className="fw-bold" style={{ color: 'var(--primary)' }}>{inv.invoiceNumber}</div>
                       <div className="text-muted" style={{ fontSize: '0.7rem' }}>by {inv.createdBy || 'Admin'}</div>
@@ -541,6 +553,19 @@ export default function Invoices() {
               </tbody>
             </table>
           )}
+
+          {filteredInvoices.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalItems={filteredInvoices.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setCurrentPage(1);
+              }}
+            />
+          )}
         </div>
       </div>
 
@@ -558,6 +583,19 @@ export default function Invoices() {
           }}
         />
       )}
+
+      {/* Data Import Modal */}
+      <DataImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        title="Import Sales Billing Invoices Master"
+        templateHeaders={['Voucher No.', 'Customer Name', 'Product Item', 'Quantity', 'Rate (₹)', 'Status (paid/pending)']}
+        sampleRows={[
+          ['KHP/201', 'CITY DENTAL CARE NIHARIKA', 'Disinfectant Fragrance Cleaner 5L', 5, 450, 'paid'],
+          ['KHP/202', 'Quality Hardware Ltd', 'Glass Cleaner Spray 500ml', 12, 120, 'pending']
+        ]}
+        onImport={handleImportInvoices}
+      />
     </div>
   );
 }

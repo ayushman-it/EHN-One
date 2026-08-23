@@ -2,6 +2,8 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { getProducts, addProduct, updateProduct, deleteProduct, exportTallyItems } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { exportToCSV, exportToExcel, exportToPDF } from '../utils/exportHelper';
+import Pagination from '../components/Pagination';
+import DataImportModal from '../components/DataImportModal';
 
 // Import categories from mock data
 const availableCategories = [
@@ -146,6 +148,9 @@ export default function Products() {
     }
   };
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
   const sortedProducts = [...products].sort((a, b) => {
     let aVal = a[sortBy];
     let bVal = b[sortBy];
@@ -159,6 +164,11 @@ export default function Products() {
     if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
     return 0;
   });
+
+  const paginatedProducts = sortedProducts.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   const getSortIcon = (field) => {
     if (sortBy !== field) return <i className="bi bi-arrow-down-up" style={{ opacity: 0.3, fontSize: '0.75rem' }}></i>;
@@ -240,62 +250,52 @@ export default function Products() {
   const totalValuation = products.reduce((acc, p) => acc + ((p.quantity || 0) * (p.price || 0)), 0);
   const lowStockCount = products.filter(p => p.quantity <= (p.lowStockThreshold || 10)).length;
 
-  return (
-    <div>
-      {/* Gateway of Tally Software Module Header Bar */}
-      <div className="tally-header-bar mb-3 shadow-sm">
-        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
-          <div className="d-flex align-items-center gap-2">
-            <span className="tally-header-badge" style={{ background: 'var(--primary)', color: '#fff' }}>MASTERS</span>
-            <div>
-              <h5 className="mb-0 fw-bold text-uppercase" style={{ fontSize: '0.95rem', letterSpacing: '0.5px' }}>
-                STOCK ITEM MASTERS REGISTER &mdash; PRODUCTS CATALOG
-              </h5>
-              <div className="text-muted small" style={{ fontSize: '0.72rem' }}>
-                F.Y. 2026-2027 | Inventory Stock Item Register | Kedvass Hygiene Products
-              </div>
-            </div>
-          </div>
-          <div className="d-flex align-items-center gap-2">
-            <button className="btn-v outline-primary btn-sm" onClick={exportTallyItems} title="Export Tally XML">
-              <i className="bi bi-file-earmark-code me-1"></i> [Alt+E] Tally XML
-            </button>
-            <button className="btn-v outline-secondary btn-sm" onClick={handleExportCSV} title="Export CSV">
-              <i className="bi bi-filetype-csv me-1"></i> [Alt+C] CSV
-            </button>
-            <button className="btn-v outline-success btn-sm" onClick={handleExportExcel} title="Export Excel (.xls)">
-              <i className="bi bi-file-earmark-excel me-1"></i> [Alt+X] Excel
-            </button>
-            <button className="btn-v outline-danger btn-sm" onClick={handleExportPDF} title="Export PDF">
-              <i className="bi bi-file-earmark-pdf me-1"></i> [Alt+P] PDF
-            </button>
-            {can('products.add') && (
-              <button className="btn-v primary btn-sm" onClick={openAdd}>
-                <i className="bi bi-plus-lg me-1"></i> [F4] Add Stock Item
-              </button>
-            )}
-          </div>
-        </div>
+  const [showImportModal, setShowImportModal] = useState(false);
 
-        {/* F1-F8 Action Toolbar */}
-        <div className="tally-toolbar mt-2 pt-2 border-top d-flex gap-2 flex-wrap">
-          <button className="tally-shortcut-btn" onClick={() => document.getElementById('product-search-input')?.focus()}>
-            <span className="key">[F2]</span> Search Item
+  const handleImportProducts = async (parsedData) => {
+    for (const row of parsedData.rows) {
+      if (!row || row.length === 0 || !row[0]) continue;
+      const productObj = {
+        name: row[0] || 'Imported Product',
+        sku: row[1] || `SKU-${Math.floor(1000 + Math.random() * 9000)}`,
+        category: row[2] || 'Hardware',
+        price: Number(row[3]) || 0,
+        quantity: Number(row[4]) || 0,
+        unit: row[5] || 'PCS'
+      };
+      try {
+        await addProduct(productObj);
+      } catch (err) {}
+    }
+    load();
+  };
+
+  return (
+    <div className="py-2">
+      {/* Clean Modern Page Header */}
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+          <h4 className="mb-1 fw-bold text-dark" style={{ letterSpacing: '-0.3px' }}>Stock Items Master</h4>
+          <p className="text-muted small mb-0">Manage product inventory, pricing, SKU codes, HSN & stock thresholds</p>
+        </div>
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <button className="btn-v outline-secondary btn-sm" onClick={handleExportCSV} title="Export CSV">
+            <i className="bi bi-filetype-csv me-1"></i> CSV
+          </button>
+          <button className="btn-v outline-success btn-sm" onClick={handleExportExcel} title="Export Excel">
+            <i className="bi bi-file-earmark-excel me-1"></i> Excel
+          </button>
+          <button className="btn-v outline-danger btn-sm" onClick={handleExportPDF} title="Export PDF">
+            <i className="bi bi-file-earmark-pdf me-1"></i> PDF
+          </button>
+          <button className="btn-v outline-primary btn-sm style-cursor" onClick={() => setShowImportModal(true)} title="Import Products Excel/CSV">
+            <i className="bi bi-file-earmark-arrow-up me-1"></i> Import
           </button>
           {can('products.add') && (
-            <button className="tally-shortcut-btn" onClick={openAdd}>
-              <span className="key">[F4]</span> New Item Master
+            <button className="btn-v primary btn-sm" onClick={openAdd}>
+              <i className="bi bi-plus-lg me-1"></i> Add Stock Item
             </button>
           )}
-          <button className="tally-shortcut-btn" onClick={load}>
-            <span className="key">[F5]</span> Refresh Data
-          </button>
-          <button className="tally-shortcut-btn" onClick={exportTallyItems}>
-            <span className="key">[Alt+E]</span> Export XML
-          </button>
-          <button className="tally-shortcut-btn" onClick={handleExportCSV}>
-            <span className="key">[Alt+C]</span> Export CSV
-          </button>
         </div>
       </div>
 
@@ -402,9 +402,11 @@ export default function Products() {
                 </tr>
               </thead>
               <tbody>
-                {sortedProducts.map((p, i) => (
+                {paginatedProducts.map((p, i) => (
                   <tr key={p._id}>
-                    <td className="text-muted fw-semibold" style={{ fontSize: '0.75rem' }}>{i + 1}</td>
+                    <td className="text-muted fw-semibold" style={{ fontSize: '0.75rem' }}>
+                      {(currentPage - 1) * pageSize + i + 1}
+                    </td>
                     <td>
                       <div className="fw-bold text-dark">{p.name}</div>
                       <small className="text-muted d-block" style={{ fontSize: '0.72rem' }}>
@@ -447,6 +449,19 @@ export default function Products() {
                 ))}
               </tbody>
             </table>
+          )}
+
+          {sortedProducts.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalItems={sortedProducts.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setCurrentPage(1);
+              }}
+            />
           )}
         </div>
       </div>
@@ -604,6 +619,19 @@ export default function Products() {
           </div>
         </div>
       )}
+
+      {/* Data Import Modal */}
+      <DataImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        title="Import Stock Items Master"
+        templateHeaders={['Item Name', 'SKU Code', 'Category', 'Price', 'Quantity', 'Unit']}
+        sampleRows={[
+          ['Disinfectant Fragrance Cleaner 5L', 'K-AIR-5L', 'Hardware', 450, 100, 'PCS'],
+          ['Glass Cleaner Spray 500ml', 'K-AIR-500ML', 'Hardware', 120, 250, 'PCS']
+        ]}
+        onImport={handleImportProducts}
+      />
     </div>
   );
 }

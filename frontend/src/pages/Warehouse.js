@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import Pagination from '../components/Pagination';
+import { exportToCSV, exportToExcel, exportToPDF } from '../utils/exportHelper';
+import DataImportModal from '../components/DataImportModal';
 
 /* Mock Warehouses Database */
 let warehousesDB = [
@@ -107,6 +110,9 @@ export default function Warehouse() {
   const [editWarehouse, setEditWarehouse] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
   // Filter logic
   const filteredWarehouses = warehouses.filter((wh) => {
     const q = search.toLowerCase();
@@ -119,6 +125,11 @@ export default function Warehouse() {
     const matchType = typeFilter === 'all' || wh.type === typeFilter;
     return matchSearch && matchStatus && matchType;
   });
+
+  const paginatedWarehouses = filteredWarehouses.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   // Stats
   const stats = {
@@ -198,22 +209,87 @@ export default function Warehouse() {
     );
   }
 
+  const [showImportModal, setShowImportModal] = useState(false);
+
+  const getExportData = () => {
+    const headers = ['Godown Name', 'Code', 'Location', 'City', 'State', 'Manager', 'Capacity', 'Occupied'];
+    const rows = warehouses.map(w => [
+      w.name || '',
+      w.code || '',
+      w.location || '',
+      w.city || '',
+      w.state || 'Delhi',
+      w.manager || '',
+      w.capacity || 0,
+      w.occupied || 0
+    ]);
+    return { headers, rows };
+  };
+
+  const handleExportCSV = () => {
+    const { headers, rows } = getExportData();
+    exportToCSV('Godowns_Warehouses_Register', headers, rows);
+  };
+
+  const handleExportExcel = () => {
+    const { headers, rows } = getExportData();
+    exportToExcel('Godowns_Warehouses_Register', 'Godowns', headers, rows);
+  };
+
+  const handleExportPDF = () => {
+    const { headers, rows } = getExportData();
+    exportToPDF('GODOWNS & WAREHOUSES REGISTER', { name: 'Kedvass Hygiene Products' }, headers, rows, { label: 'Total Godowns Count', value: `${warehouses.length}` });
+  };
+
+  const handleImportWarehouses = async (parsedData) => {
+    const newWH = [];
+    for (const row of parsedData.rows) {
+      if (!row || row.length === 0 || !row[0]) continue;
+      const whObj = {
+        id: `WH-${String(nextWarehouseNum++).padStart(3, '0')}`,
+        name: row[0] || 'Imported Warehouse',
+        code: row[1] || `WH-${Math.floor(100 + Math.random() * 900)}`,
+        location: row[2] || '',
+        city: row[3] || 'Delhi',
+        state: row[4] || 'Delhi',
+        manager: row[5] || 'Admin Manager',
+        capacity: Number(row[6]) || 50000,
+        occupied: Number(row[7]) || 10000,
+        status: 'active',
+        type: 'Storage',
+        products: 0,
+        establishedDate: new Date()
+      };
+      newWH.push(whObj);
+    }
+    setWarehouses([...newWH, ...warehouses]);
+    warehousesDB = [...newWH, ...warehouses];
+  };
+
   return (
     <div>
-      {/* Page Header */}
-      <div className="page-header">
-        <div className="page-header-top">
-          <div>
-            <h1 className="page-title">
-              <i className="bi bi-building me-2" style={{ color: 'var(--primary)' }}></i>
-              Warehouse Management
-            </h1>
-            <p className="page-subtitle">Manage warehouse locations and capacity</p>
-          </div>
+      {/* Clean Modern Page Header */}
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+          <h4 className="mb-1 fw-bold text-dark" style={{ letterSpacing: '-0.3px' }}>Godowns & Warehouses</h4>
+          <p className="text-muted small mb-0">Track storage facilities, godown locations & inventory capacities</p>
+        </div>
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <button className="btn-v outline-secondary btn-sm" onClick={handleExportCSV} title="Export CSV">
+            <i className="bi bi-filetype-csv me-1"></i> CSV
+          </button>
+          <button className="btn-v outline-success btn-sm" onClick={handleExportExcel} title="Export Excel">
+            <i className="bi bi-file-earmark-excel me-1"></i> Excel
+          </button>
+          <button className="btn-v outline-danger btn-sm" onClick={handleExportPDF} title="Export PDF">
+            <i className="bi bi-file-earmark-pdf me-1"></i> PDF
+          </button>
+          <button className="btn-v outline-primary btn-sm style-cursor" onClick={() => setShowImportModal(true)} title="Import Godowns Excel/CSV">
+            <i className="bi bi-file-earmark-arrow-up me-1"></i> Import
+          </button>
           {can('warehouse.add') && (
-            <button className="btn-v primary" onClick={() => setShowCreateModal(true)}>
-              <i className="bi bi-plus-lg"></i>
-              <span>Add Warehouse</span>
+            <button className="btn-v primary btn-sm" onClick={() => setShowCreateModal(true)}>
+              <i className="bi bi-plus-lg me-1"></i> Add Warehouse
             </button>
           )}
         </div>
@@ -344,7 +420,7 @@ export default function Warehouse() {
                 </tr>
               </thead>
               <tbody>
-                {filteredWarehouses.map((wh) => (
+                {paginatedWarehouses.map((wh) => (
                   <tr key={wh.id}>
                     <td>
                       <div className="fw-bold" style={{ color: 'var(--primary)' }}>{wh.name}</div>
@@ -376,16 +452,16 @@ export default function Warehouse() {
                     <td>{getStatusBadge(wh.status)}</td>
                     <td className="text-end">
                       <div className="d-flex justify-content-end gap-2">
-                        <button className="btn-v outline-primary icon-only" onClick={() => setViewWarehouse(wh)} title="View">
+                        <button className="btn-v outline-primary icon-only" onClick={() => setViewWarehouse(wh)} title="View Details">
                           <i className="bi bi-eye"></i>
                         </button>
                         {can('warehouse.edit') && (
-                          <button className="btn-v outline-primary icon-only" onClick={() => setEditWarehouse(wh)} title="Edit">
+                          <button className="btn-v outline-primary icon-only" onClick={() => setEditWarehouse(wh)} title="Edit Warehouse">
                             <i className="bi bi-pencil"></i>
                           </button>
                         )}
                         {can('warehouse.delete') && (
-                          <button className="btn-v outline-danger icon-only" onClick={() => handleDelete(wh.id)} title="Delete">
+                          <button className="btn-v outline-danger icon-only" onClick={() => handleDelete(wh.id)} title="Delete Warehouse">
                             <i className="bi bi-trash"></i>
                           </button>
                         )}
@@ -396,6 +472,19 @@ export default function Warehouse() {
               </tbody>
             </table>
           )}
+
+          {filteredWarehouses.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalItems={filteredWarehouses.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setCurrentPage(1);
+              }}
+            />
+          )}
         </div>
       </div>
 
@@ -405,6 +494,19 @@ export default function Warehouse() {
       {/* Create/Edit Warehouse Modal */}
       {showCreateModal && <WarehouseFormModal onClose={() => setShowCreateModal(false)} onSave={handleCreate} />}
       {editWarehouse && <WarehouseFormModal warehouse={editWarehouse} onClose={() => setEditWarehouse(null)} onSave={handleUpdate} />}
+
+      {/* Data Import Modal */}
+      <DataImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        title="Import Godowns & Warehouses Master"
+        templateHeaders={['Godown Name', 'Godown Code', 'Location', 'City', 'State', 'Manager', 'Capacity', 'Occupied']}
+        sampleRows={[
+          ['Main Distribution Center', 'MDC-DEL', 'Sector 63 Noida', 'Delhi', 'Delhi', 'Rajesh Kumar', 50000, 35000],
+          ['Mumbai Central Warehouse', 'MCW-MUM', 'Andheri MIDC', 'Mumbai', 'Maharashtra', 'Priya Mehta', 35000, 28000]
+        ]}
+        onImport={handleImportWarehouses}
+      />
     </div>
   );
 }

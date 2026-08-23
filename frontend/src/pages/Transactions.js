@@ -1,6 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { getProducts, getTransactions, stockIn, stockOut } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { exportToCSV, exportToExcel, exportToPDF } from '../utils/exportHelper';
+import DataImportModal from '../components/DataImportModal';
+import Pagination from '../components/Pagination';
 
 export default function Transactions({ defaultType = 'in' }) {
   const [transactions, setTransactions] = useState([]);
@@ -11,6 +14,9 @@ export default function Transactions({ defaultType = 'in' }) {
   const [saving, setSaving]             = useState(false);
   const [error, setError]               = useState('');
   const [success, setSuccess]           = useState('');
+  const [currentPage, setCurrentPage]   = useState(1);
+  const [pageSize, setPageSize]         = useState(10);
+  const [showImportModal, setShowImportModal] = useState(false);
   const { can } = useAuth();
 
   const loadData = useCallback(async () => {
@@ -46,6 +52,48 @@ export default function Transactions({ defaultType = 'in' }) {
     finally { setSaving(false); }
   };
 
+  const getExportData = () => {
+    const headers = ['Voucher Date', 'Type', 'Product Name', 'Quantity', 'Notes'];
+    const rows = transactions.map(t => [
+      t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-IN') : new Date().toLocaleDateString('en-IN'),
+      t.type?.toUpperCase() || 'STOCK IN',
+      t.product?.name || 'Stock Item',
+      t.quantity || 0,
+      t.notes || ''
+    ]);
+    return { headers, rows };
+  };
+
+  const handleExportCSV = () => {
+    const { headers, rows } = getExportData();
+    exportToCSV('Daybook_Stock_Ledger_Transactions', headers, rows);
+  };
+
+  const handleExportExcel = () => {
+    const { headers, rows } = getExportData();
+    exportToExcel('Daybook_Stock_Ledger_Transactions', 'Transactions', headers, rows);
+  };
+
+  const handleExportPDF = () => {
+    const { headers, rows } = getExportData();
+    exportToPDF('DAYBOOK STOCK LEDGER TRANSACTIONS', { name: 'Inventory System' }, headers, rows, { label: 'Total Transactions Count', value: `${transactions.length}` });
+  };
+
+  const handleImportTransactions = async (parsedData) => {
+    for (const row of parsedData.rows) {
+      if (!row || row.length === 0 || !row[0]) continue;
+      const matchedProd = products.find(p => p.name?.toLowerCase() === row[2]?.toLowerCase());
+      if (matchedProd) {
+        const txnType = (row[1] || 'in').toLowerCase().includes('out') ? 'out' : 'in';
+        const data = { productId: matchedProd._id || matchedProd.id, quantity: Number(row[3]) || 1, notes: row[4] || 'Bulk Imported Voucher' };
+        try {
+          if (txnType === 'in') await stockIn(data); else await stockOut(data);
+        } catch (err) {}
+      }
+    }
+    loadData();
+  };
+
   const selectedProduct = Array.isArray(products)
     ? products.find((p) => (p._id || p.id) === form.productId)
     : null;
@@ -54,17 +102,38 @@ export default function Transactions({ defaultType = 'in' }) {
     : null;
 
   return (
-    <div>
-      {/* Header */}
-      <div className="page-header">
-        <div className="page-header-top">
-          <div>
-            <h1 className="page-title">
-              <i className="bi bi-arrow-left-right me-2" style={{ color: 'var(--primary)' }}></i>
-              Transactions
-            </h1>
-            <p className="page-subtitle">Record stock in and stock out movements</p>
-          </div>
+    <div className="py-2">
+      <DataImportModal 
+        isOpen={showImportModal} 
+        onClose={() => setShowImportModal(false)} 
+        title="Import Stock Ledger Transactions (Vouchers)"
+        templateHeaders={['Voucher Date', 'Type (in/out)', 'Product Name', 'Quantity', 'Notes']}
+        sampleRows={[
+          ['23/08/2026', 'in', 'Disinfectant Fragrance Cleaner 5L', 50, 'Opening Stock Import'],
+          ['23/08/2026', 'out', 'Glass Cleaner Spray 500ml', 10, 'Branch Issue V-102']
+        ]}
+        onImport={handleImportTransactions} 
+      />
+      
+      {/* Clean Modern Page Header */}
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+          <h4 className="mb-1 fw-bold text-dark" style={{ letterSpacing: '-0.3px' }}>Stock Ledger & Transactions</h4>
+          <p className="text-muted small mb-0">Record stock in, stock out movements & view complete daybook history</p>
+        </div>
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <button className="btn-v outline-secondary btn-sm" onClick={handleExportCSV} title="Export CSV">
+            <i className="bi bi-filetype-csv me-1"></i> CSV
+          </button>
+          <button className="btn-v outline-success btn-sm" onClick={handleExportExcel} title="Export Excel">
+            <i className="bi bi-file-earmark-excel me-1"></i> Excel
+          </button>
+          <button className="btn-v outline-danger btn-sm" onClick={handleExportPDF} title="Export PDF">
+            <i className="bi bi-file-earmark-pdf me-1"></i> PDF
+          </button>
+          <button className="btn-v outline-primary btn-sm style-cursor" onClick={() => setShowImportModal(true)} title="Import Transactions Excel/CSV">
+            <i className="bi bi-file-earmark-arrow-up me-1"></i> Import
+          </button>
         </div>
       </div>
 
@@ -216,38 +285,53 @@ export default function Transactions({ defaultType = 'in' }) {
               <p>Use the form above to record stock movements</p>
             </div>
           ) : (
-            <table className="v-table">
-              <thead>
-                <tr>
-                  <th>Date & Time</th>
-                  <th>Product</th>
-                  <th>SKU</th>
-                  <th>Type</th>
-                  <th>Quantity</th>
-                  <th>Notes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(transactions || []).map((t) => (
-                  <tr key={t._id || t.id}>
-                    <td>
-                      <div style={{ fontSize: '0.85rem' }}>{new Date(t.createdAt).toLocaleDateString('en-IN')}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{new Date(t.createdAt).toLocaleTimeString('en-IN')}</div>
-                    </td>
-                    <td className="fw-semibold">{t.product?.name}</td>
-                    <td><code style={{ color: 'var(--primary)', fontSize: '0.8rem' }}>{t.product?.sku}</code></td>
-                    <td>
-                      {t.type === 'in'
-                        ? <span className="badge-v success"><i className="bi bi-arrow-down-short"></i>IN</span>
-                        : <span className="badge-v danger"><i className="bi bi-arrow-up-short"></i>OUT</span>
-                      }
-                    </td>
-                    <td className="fw-bold">{t.quantity}</td>
-                    <td style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{t.notes || '—'}</td>
+            <>
+              <table className="v-table">
+                <thead>
+                  <tr>
+                    <th>Date & Time</th>
+                    <th>Product</th>
+                    <th>SKU</th>
+                    <th>Type</th>
+                    <th>Quantity</th>
+                    <th>Notes</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {(transactions || [])
+                    .slice((currentPage - 1) * pageSize, currentPage * pageSize)
+                    .map((t) => (
+                      <tr key={t._id || t.id}>
+                        <td>
+                          <div style={{ fontSize: '0.85rem' }}>{new Date(t.createdAt).toLocaleDateString('en-IN')}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{new Date(t.createdAt).toLocaleTimeString('en-IN')}</div>
+                        </td>
+                        <td className="fw-semibold">{t.product?.name}</td>
+                        <td><code style={{ color: 'var(--primary)', fontSize: '0.8rem' }}>{t.product?.sku}</code></td>
+                        <td>
+                          {t.type === 'in'
+                            ? <span className="badge-v success"><i className="bi bi-arrow-down-short"></i>IN</span>
+                            : <span className="badge-v danger"><i className="bi bi-arrow-up-short"></i>OUT</span>
+                          }
+                        </td>
+                        <td className="fw-bold">{t.quantity}</td>
+                        <td style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{t.notes || '—'}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+
+              <Pagination
+                currentPage={currentPage}
+                totalItems={transactions.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(newSize) => {
+                  setPageSize(newSize);
+                  setCurrentPage(1);
+                }}
+              />
+            </>
           )}
         </div>
       </div>

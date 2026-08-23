@@ -369,8 +369,8 @@ export default function Reports() {
         <style>
           @page { size: A4 portrait; margin: 12mm; }
           body { font-family: 'Segoe UI', Tahoma, sans-serif; font-size: 13px; color: #1e293b; margin: 0; padding: 20px; }
-          .header { border-bottom: 2px solid #7367f0; padding-bottom: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; }
-          .brand { font-size: 20px; font-weight: bold; color: #7367f0; }
+          .header { border-bottom: 2px solid #1E4D2B; padding-bottom: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; }
+          .brand { font-size: 20px; font-weight: bold; color: #1E4D2B; }
           .sub { font-size: 12px; color: #64748b; margin-top: 3px; }
           .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
           .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 12px; text-align: center; }
@@ -398,7 +398,7 @@ export default function Reports() {
         <div class="grid">
           <div class="card">
             <div class="card-title">Total Sales Revenue</div>
-            <div class="card-val" style="color: #7367f0;">₹ ${metrics.sales.totalRevenue.toLocaleString('en-IN')}</div>
+            <div class="card-val" style="color: #1E4D2B;">₹ ${metrics.sales.totalRevenue.toLocaleString('en-IN')}</div>
           </div>
           <div class="card">
             <div class="card-title">Cash Collections</div>
@@ -470,53 +470,22 @@ export default function Reports() {
   }
 
   return (
-    <div>
-      {/* Gateway of Tally Software Module Header Bar */}
-      <div className="tally-header-bar mb-3 shadow-sm">
-        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
-          <div className="d-flex align-items-center gap-2">
-            <span className="tally-header-badge" style={{ background: 'var(--primary)', color: '#fff' }}>STATUTORY</span>
-            <div>
-              <h5 className="mb-0 fw-bold text-uppercase" style={{ fontSize: '0.95rem', letterSpacing: '0.5px' }}>
-                FINANCIAL REPORTS REGISTER &mdash; STATUTORY & GSTR TAX LEDGER
-              </h5>
-              <div className="text-muted small" style={{ fontSize: '0.72rem' }}>
-                F.Y. 2026-2027 | Financial & Inventory Audit Ledger | Kedvass Hygiene Products
-              </div>
-            </div>
-          </div>
-          <div className="d-flex align-items-center gap-2">
-            <button className="btn-v outline-secondary btn-sm" onClick={handleExportCSV} title="Export CSV">
-              <i className="bi bi-filetype-csv me-1"></i> [Alt+C] CSV
-            </button>
-            <button className="btn-v outline-success btn-sm" onClick={handleExportExcel} title="Export Excel (.xls)">
-              <i className="bi bi-file-earmark-excel me-1"></i> [Alt+X] Excel
-            </button>
-            <button className="btn-v outline-danger btn-sm" onClick={handlePrintPDF} title="Print PDF Report">
-              <i className="bi bi-file-earmark-pdf me-1"></i> [Alt+P] PDF Report
-            </button>
-          </div>
+    <div className="py-2">
+      {/* Clean Modern Page Header */}
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+          <h4 className="mb-1 fw-bold text-dark" style={{ letterSpacing: '-0.3px' }}>Financial & GSTR Reports</h4>
+          <p className="text-muted small mb-0">Financial audit statements, GST tax breakdowns, stock valuation & party ledgers</p>
         </div>
-
-        {/* F1-F8 Action Toolbar */}
-        <div className="tally-toolbar mt-2 pt-2 border-top d-flex gap-2 flex-wrap">
-          <button className="tally-shortcut-btn" onClick={() => setDateRange('this_month')}>
-            <span className="key">[F2]</span> Period (Month)
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <button className="btn-v outline-secondary btn-sm" onClick={handleExportCSV} title="Export CSV">
+            <i className="bi bi-filetype-csv me-1"></i> CSV
           </button>
-          <button className="tally-shortcut-btn" onClick={() => setActiveTab('stock')}>
-            <span className="key">[F4]</span> Stock Movement
+          <button className="btn-v outline-success btn-sm" onClick={handleExportExcel} title="Export Excel">
+            <i className="bi bi-file-earmark-excel me-1"></i> Excel
           </button>
-          <button className="tally-shortcut-btn" onClick={() => setActiveTab('gst')}>
-            <span className="key">[F5]</span> GSTR-1 Tax Summary
-          </button>
-          <button className="tally-shortcut-btn" onClick={() => setActiveTab('ledger')}>
-            <span className="key">[F7]</span> Sundry Debtors Ledger
-          </button>
-          <button className="tally-shortcut-btn" onClick={handlePrintPDF}>
-            <span className="key">[Alt+P]</span> Print PDF Report
-          </button>
-          <button className="tally-shortcut-btn" onClick={handleExportCSV}>
-            <span className="key">[Alt+C]</span> Export CSV
+          <button className="btn-v outline-danger btn-sm" onClick={handlePrintPDF} title="Print PDF Report">
+            <i className="bi bi-file-earmark-pdf me-1"></i> PDF
           </button>
         </div>
       </div>
@@ -693,7 +662,7 @@ export default function Reports() {
       {activeTab === 'gst' && (
         <div className="v-card">
           <div className="v-card-header d-flex justify-content-between align-items-center">
-            <span><i className="bi bi-receipt me-2" style={{ color: '#2563eb' }}></i>GSTR-1 STATUTORY TAX LEDGER BREAKDOWN</span>
+            <span><i className="bi bi-receipt me-2" style={{ color: '#1E4D2B' }}></i>GSTR-1 STATUTORY TAX LEDGER BREAKDOWN</span>
             <span className="text-muted small">FORM GSTR-1 AUDIT</span>
           </div>
           <div className="v-card-body p-0" style={{ overflowX: 'auto' }}>
@@ -746,7 +715,7 @@ export default function Reports() {
       {activeTab === 'stock' && (
         <div className="v-card">
           <div className="v-card-header d-flex justify-content-between align-items-center">
-            <span><i className="bi bi-box-seam me-2" style={{ color: '#059669' }}></i>STOCK MOVEMENT & VALUATION REGISTER</span>
+            <span><i className="bi bi-box-seam me-2" style={{ color: '#4CAF50' }}></i>STOCK MOVEMENT & VALUATION REGISTER</span>
             <span className="text-muted small">INVENTORY AUDIT</span>
           </div>
           <div className="v-card-body p-0" style={{ overflowX: 'auto' }}>
@@ -778,7 +747,7 @@ export default function Reports() {
       {activeTab === 'ledger' && (
         <div className="v-card">
           <div className="v-card-header d-flex justify-content-between align-items-center">
-            <span><i className="bi bi-journal-bookmark me-2" style={{ color: '#8b5cf6' }}></i>SUNDRY DEBTORS & CREDITORS LEDGER SUMMARY</span>
+            <span><i className="bi bi-journal-bookmark me-2" style={{ color: '#1E4D2B' }}></i>SUNDRY DEBTORS & CREDITORS LEDGER SUMMARY</span>
             <span className="text-muted small">PARTY BALANCE AUDIT</span>
           </div>
           <div className="v-card-body p-0" style={{ overflowX: 'auto' }}>

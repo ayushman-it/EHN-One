@@ -44,7 +44,7 @@ export function exportToExcel(filename, sheetName, headers, rows) {
  <Styles>
   <Style ss:ID="Header">
    <Font ss:Bold="1" ss:Color="#FFFFFF"/>
-   <Interior ss:Color="#7367F0" ss:Pattern="Solid"/>
+   <Interior ss:Color="#1E4D2B" ss:Pattern="Solid"/>
    <Alignment ss:Horizontal="Center"/>
   </Style>
  </Styles>
@@ -105,8 +105,8 @@ export function exportToPDF(docTitle, companyInfo, headers, rows, totalSummary =
         @page { size: A4 portrait; margin: 12mm; }
         * { box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; font-size: 12px; color: #1e293b; margin: 0; padding: 15px; }
-        .pdf-header { border-bottom: 2.5px solid #7367f0; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-start; }
-        .brand-title { font-size: 18px; font-weight: bold; color: #7367f0; text-transform: uppercase; }
+        .pdf-header { border-bottom: 2.5px solid #1E4D2B; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-start; }
+        .brand-title { font-size: 18px; font-weight: bold; color: #1E4D2B; text-transform: uppercase; }
         .brand-sub { font-size: 11px; color: #64748b; margin-top: 2px; }
         .doc-meta { text-align: right; }
         .doc-title { font-size: 14px; font-weight: bold; color: #0f172a; text-transform: uppercase; }
@@ -167,4 +167,39 @@ export function exportToPDF(docTitle, companyInfo, headers, rows, totalSummary =
   printWin.document.open();
   printWin.document.write(htmlContent);
   printWin.document.close();
+}
+
+/**
+ * Parse uploaded CSV / Excel text file into structured headers and rows
+ */
+export function parseCSVFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target.result;
+        const lines = text.split(/\r\n|\n/).filter(line => line.trim() !== '');
+        if (lines.length === 0) return resolve({ headers: [], rows: [] });
+
+        const headers = lines[0].split(',').map(h => h.replace(/^"(.*)"$/, '$1').trim());
+        const rows = lines.slice(1).map(line => {
+          const cells = line.split(',').map(cell => cell.replace(/^"(.*)"$/, '$1').replace(/""/g, '"').trim());
+          return cells;
+        });
+
+        resolve({ headers, rows });
+      } catch (err) {
+        reject(err);
+      }
+    };
+    reader.onerror = (err) => reject(err);
+    reader.readAsText(file, 'UTF-8');
+  });
+}
+
+/**
+ * Download sample CSV import template file
+ */
+export function downloadSampleTemplate(filename, headers, sampleRows = []) {
+  exportToCSV(`${filename}_Import_Template`, headers, sampleRows);
 }

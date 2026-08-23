@@ -73,7 +73,7 @@ const seedData = async () => {
       slug: 'electronics',
       description: 'Electronic devices and components',
       icon: 'bi-cpu',
-      color: '#7367f0',
+      color: '#1E4D2B',
       status: 'active',
     });
 

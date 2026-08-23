@@ -3,6 +3,9 @@ import { getCustomers, addCustomer, updateCustomer, deleteCustomer, exportTallyL
 import { useAuth } from '../context/AuthContext';
 import LedgerStatementModal from '../components/LedgerStatementModal';
 import { sendCustomerPaymentReminderWhatsApp } from '../utils/whatsappHelper';
+import Pagination from '../components/Pagination';
+import { exportToCSV, exportToExcel, exportToPDF } from '../utils/exportHelper';
+import DataImportModal from '../components/DataImportModal';
 
 const INDIAN_STATES = [
   'Andaman and Nicobar Islands', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar',
@@ -131,12 +134,20 @@ export default function Customers() {
     }
   };
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
   // Filtered List
   const filteredCustomers = customers.filter(c => {
     const matchStatus = statusFilter === 'all' || c.status === statusFilter;
     const matchState = stateFilter === 'all' || c.state === stateFilter;
     return matchStatus && matchState;
   });
+
+  const paginatedCustomers = filteredCustomers.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   // Metrics
   const totalReceivables = customers.reduce((sum, c) => sum + (Number(c.openingBalance) || 0), 0);
@@ -145,6 +156,58 @@ export default function Customers() {
   const getStatusBadge = (status) => {
     if (status === 'active') return <span className="badge-v success"><i className="bi bi-check-circle"></i> Active</span>;
     return <span className="badge-v secondary"><i className="bi bi-dash-circle"></i> Inactive</span>;
+  };
+
+  const [showImportModal, setShowImportModal] = useState(false);
+
+  const getExportData = () => {
+    const headers = ['Name', 'Phone', 'Email', 'State', 'GSTIN', 'Group', 'Opening Balance (₹)'];
+    const rows = customers.map(c => [
+      c.name || '',
+      c.phone || '',
+      c.email || '',
+      c.state || 'Delhi',
+      c.gstin || '',
+      c.group || 'Sundry Debtors',
+      c.openingBalance || 0
+    ]);
+    return { headers, rows };
+  };
+
+  const handleExportCSV = () => {
+    const { headers, rows } = getExportData();
+    exportToCSV('Sundry_Debtors_Customers_Register', headers, rows);
+  };
+
+  const handleExportExcel = () => {
+    const { headers, rows } = getExportData();
+    exportToExcel('Sundry_Debtors_Customers_Register', 'Debtors', headers, rows);
+  };
+
+  const handleExportPDF = () => {
+    const { headers, rows } = getExportData();
+    const totalBal = customers.reduce((sum, c) => sum + (Number(c.openingBalance) || 0), 0);
+    exportToPDF('SUNDRY DEBTORS CUSTOMERS REGISTER', { name: 'Kedvass Hygiene Products' }, headers, rows, { label: 'Total Debtors Balance', value: `₹${totalBal.toLocaleString('en-IN')}` });
+  };
+
+  const handleImportCustomers = async (parsedData) => {
+    for (const row of parsedData.rows) {
+      if (!row || row.length === 0 || !row[0]) continue;
+      const custObj = {
+        ...initialForm,
+        name: row[0] || 'Imported Customer',
+        phone: row[1] || '',
+        email: row[2] || '',
+        state: row[3] || 'Delhi',
+        gstin: row[4] || '',
+        group: row[5] || 'Sundry Debtors',
+        openingBalance: Number(row[6]) || 0
+      };
+      try {
+        await addCustomer(custObj);
+      } catch (err) {}
+    }
+    loadCustomers();
   };
 
   return (
@@ -157,28 +220,30 @@ export default function Customers() {
         </div>
       )}
 
-      {/* Page Header */}
-      <div className="page-header">
-        <div className="page-header-top">
-          <div>
-            <h1 className="page-title d-flex align-items-center gap-2">
-              <i className="bi bi-people" style={{ color: 'var(--primary)' }}></i>
-              Customers Master (Sundry Debtors)
-            </h1>
-            <p className="page-subtitle">Manage client ledgers, GSTIN details, credit periods, bill-by-bill tracking, and EHN One ERP sync</p>
-          </div>
-          <div className="d-flex align-items-center gap-2">
-            <button className="btn-v outline-success" onClick={exportTallyLedgers} title="Export XML">
-              <i className="bi bi-file-earmark-code-fill"></i>
-              <span>Export XML</span>
+      {/* Clean Modern Page Header */}
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+          <h4 className="mb-1 fw-bold text-dark" style={{ letterSpacing: '-0.3px' }}>Customer Ledgers (Sundry Debtors)</h4>
+          <p className="text-muted small mb-0">Manage client ledgers, GSTIN details, contact addresses & outstanding balances</p>
+        </div>
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <button className="btn-v outline-secondary btn-sm" onClick={handleExportCSV} title="Export CSV">
+            <i className="bi bi-filetype-csv me-1"></i> CSV
+          </button>
+          <button className="btn-v outline-success btn-sm" onClick={handleExportExcel} title="Export Excel">
+            <i className="bi bi-file-earmark-excel me-1"></i> Excel
+          </button>
+          <button className="btn-v outline-danger btn-sm" onClick={handleExportPDF} title="Export PDF">
+            <i className="bi bi-file-earmark-pdf me-1"></i> PDF
+          </button>
+          <button className="btn-v outline-primary btn-sm style-cursor" onClick={() => setShowImportModal(true)} title="Import Customers Excel/CSV">
+            <i className="bi bi-file-earmark-arrow-up me-1"></i> Import
+          </button>
+          {can('products.add') && (
+            <button className="btn-v primary btn-sm" onClick={() => handleOpenModal()}>
+              <i className="bi bi-person-plus-fill me-1"></i> Add Customer
             </button>
-            {can('products.add') && (
-              <button className="btn-v primary" onClick={() => handleOpenModal()}>
-                <i className="bi bi-person-plus-fill"></i>
-                <span>Add Customer</span>
-              </button>
-            )}
-          </div>
+          )}
         </div>
       </div>
 
@@ -296,7 +361,7 @@ export default function Customers() {
                 </tr>
               </thead>
               <tbody>
-                {filteredCustomers.map((c) => (
+                {paginatedCustomers.map((c) => (
                   <tr key={c._id}>
                     <td>
                       <div className="fw-bold" style={{ color: 'var(--primary)' }}>{c.name}</div>
@@ -369,6 +434,19 @@ export default function Customers() {
                 ))}
               </tbody>
             </table>
+          )}
+
+          {filteredCustomers.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalItems={filteredCustomers.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setCurrentPage(1);
+              }}
+            />
           )}
         </div>
       </div>
@@ -705,6 +783,19 @@ export default function Customers() {
           onClose={() => setSelectedLedgerParty(null)}
         />
       )}
+
+      {/* Data Import Modal */}
+      <DataImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        title="Import Customer Ledgers (Sundry Debtors)"
+        templateHeaders={['Customer Name', 'Phone Number', 'Email Address', 'State', 'GSTIN', 'Group', 'Opening Balance (₹)']}
+        sampleRows={[
+          ['Quality Hardware Ltd', '9876543210', 'quality@hardware.com', 'Karnataka', '29AAAAA0000A1Z5', 'Sundry Debtors', 25000],
+          ['Metro Retail Store', '9123456789', 'info@metrostore.in', 'Delhi', '07BBBBB1111B1Z2', 'Sundry Debtors', 14500]
+        ]}
+        onImport={handleImportCustomers}
+      />
     </div>
   );
 }

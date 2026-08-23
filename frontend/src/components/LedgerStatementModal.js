@@ -114,8 +114,8 @@ export default function LedgerStatementModal({ party, partyType = 'Debtor', onCl
         <style>
           @page { size: A4 portrait; margin: 12mm; }
           body { font-family: 'Segoe UI', Tahoma, sans-serif; font-size: 13px; color: #1e293b; margin: 0; padding: 15px; }
-          .header { border-bottom: 2px solid #7367f0; padding-bottom: 10px; margin-bottom: 15px; display: flex; justify-content: space-between; }
-          .party-title { font-size: 18px; font-weight: bold; color: #7367f0; }
+          .header { border-bottom: 2px solid #1E4D2B; padding-bottom: 10px; margin-bottom: 15px; display: flex; justify-content: space-between; }
+          .party-title { font-size: 18px; font-weight: bold; color: #1E4D2B; }
           .sub { font-size: 12px; color: #64748b; margin-top: 3px; }
           .summary-box { display: flex; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 15px; margin-bottom: 15px; justify-content: space-between; }
           .sum-item { text-align: center; }
@@ -150,7 +150,7 @@ export default function LedgerStatementModal({ party, partyType = 'Debtor', onCl
           </div>
           <div class="sum-item">
             <div class="sum-label">Total Debit (Dr)</div>
-            <div class="sum-val" style="color: #7367f0;">₹ ${totalDr.toLocaleString('en-IN')}</div>
+            <div class="sum-val" style="color: #1E4D2B;">₹ ${totalDr.toLocaleString('en-IN')}</div>
           </div>
           <div class="sum-item">
             <div class="sum-label">Total Credit (Cr)</div>
@@ -158,7 +158,7 @@ export default function LedgerStatementModal({ party, partyType = 'Debtor', onCl
           </div>
           <div class="sum-item">
             <div class="sum-label">Net Closing Balance</div>
-            <div class="sum-val" style="color: #7367f0;">₹ ${finalNetBalance.toLocaleString('en-IN')} (${finalNetType})</div>
+            <div class="sum-val" style="color: #1E4D2B;">₹ ${finalNetBalance.toLocaleString('en-IN')} (${finalNetType})</div>
           </div>
         </div>
 
@@ -190,7 +190,7 @@ export default function LedgerStatementModal({ party, partyType = 'Debtor', onCl
                 <td>${r.voucherType}</td>
                 <td><strong>${r.voucherNo}</strong></td>
                 <td>${r.particulars}</td>
-                <td class="text-end" style="color: #7367f0;">${r.drAmount ? '₹ ' + r.drAmount.toLocaleString('en-IN') : '-'}</td>
+                <td class="text-end" style="color: #1E4D2B;">${r.drAmount ? '₹ ' + r.drAmount.toLocaleString('en-IN') : '-'}</td>
                 <td class="text-end" style="color: #28c76f;">${r.crAmount ? '₹ ' + r.crAmount.toLocaleString('en-IN') : '-'}</td>
                 <td class="text-end"><strong>₹ ${r.runningBalance.toLocaleString('en-IN')} (${r.balanceType})</strong></td>
               </tr>
@@ -222,12 +222,12 @@ export default function LedgerStatementModal({ party, partyType = 'Debtor', onCl
         {/* Theme Header */}
         <div className="modal-box-header d-flex align-items-center justify-content-between">
           <div className="d-flex align-items-center gap-2">
-            <i className="bi bi-journal-bookmark" style={{ color: 'var(--primary)', fontSize: '1.4rem' }}></i>
+            <i className="bi bi-journal-bookmark" style={{ color: '#ffffff', fontSize: '1.4rem' }}></i>
             <div>
-              <div className="fw-bold" style={{ fontSize: '1.1rem', color: 'var(--text-primary)' }}>
+              <div className="fw-bold" style={{ fontSize: '1.1rem', color: '#ffffff' }}>
                 {party.name}
               </div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+              <div style={{ fontSize: '0.78rem', color: 'rgba(255, 255, 255, 0.85)' }}>
                 Ledger Statement • {party.group || (isDebtor ? 'Sundry Debtors' : 'Sundry Creditors')} • {party.state || 'Delhi'}
               </div>
             </div>

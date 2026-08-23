@@ -5,18 +5,17 @@ const Invoice = require('../models/Invoice');
 const Product = require('../models/Product');
 const Customer = require('../models/Customer');
 
-// Send HTTP POST to Meta Graph API or fallback console
+// Send HTTP POST to Meta Graph API
 const dispatchWhatsApp = async (phone, message, config) => {
-  if (!config?.apiKey || !config?.phoneNumberId) {
-    console.log(`[WhatsApp Scheduled Runner] API Not Configured. Message to +${phone}:\n${message}`);
-    return { success: true, mode: 'mock' };
-  }
+  const token = config?.apiKey || config?.whatsapp?.apiKey || 'EAAX71GdiWggBSVNQf5y7pT71r7SZCC7OU8UDLGvRiDZAABnlo7OAMtayZAsnj5BcTcH7BwPcN6DiJc2EsU3n0uzof31uINkUZBO6hb1kZAog5BElfQzBqZAXpshREnQmZAcVW8nnYe7vOyLajLRG7grw4QD3ivr0J5tQfbBxQDjPNYrR5JXqnw0SrSjI1t5EgIzgwZDZD';
+  const phoneId = config?.phoneNumberId || config?.whatsapp?.phoneNumberId || '1221104881094408';
+  const cleanPhone = (phone || '').replace(/[^\d]/g, '');
 
   return new Promise((resolve) => {
     const postData = JSON.stringify({
       messaging_product: "whatsapp",
       recipient_type: "individual",
-      to: phone,
+      to: cleanPhone,
       type: "text",
       text: { body: message }
     });
@@ -24,10 +23,10 @@ const dispatchWhatsApp = async (phone, message, config) => {
     const options = {
       hostname: 'graph.facebook.com',
       port: 443,
-      path: `/v18.0/${config.phoneNumberId}/messages`,
+      path: `/v25.0/${phoneId}/messages`,
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${config.apiKey}`,
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(postData)
       }

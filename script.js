@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', function() {
     Chart.defaults.font.size = 12;
     Chart.defaults.plugins.legend.display = false;
 
-    const primaryColor = '#7367f0';
+    const primaryColor = '#1E4D2B';
     const successColor = '#28c76f';
     const dangerColor = '#ea5455';
     const warningColor = '#ff9f43';

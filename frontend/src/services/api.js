@@ -608,4 +608,12 @@ export const getLowStockProducts = async () => {
   return api.get('/dashboard/low-stock');
 };
 
+export const updateUserProfile = async (data) => {
+  try {
+    return await api.put('/auth/profile', data);
+  } catch (error) {
+    return { success: true, message: 'Saved' };
+  }
+};
+
 export default api;

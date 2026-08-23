@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import Pagination from '../components/Pagination';
+import { exportToCSV, exportToExcel, exportToPDF } from '../utils/exportHelper';
+import DataImportModal from '../components/DataImportModal';
 
 /* Mock Categories Database */
 let categoriesDB = [
@@ -10,7 +13,7 @@ let categoriesDB = [
     parent: null,
     description: 'Electronic devices and gadgets',
     icon: 'bi-lightning-charge',
-    color: '#7367f0',
+    color: '#1E4D2B',
     products: 145,
     status: 'active',
     createdDate: new Date('2022-01-10'),
@@ -22,7 +25,7 @@ let categoriesDB = [
     parent: 'CAT-001',
     description: 'Laptops, desktops, and accessories',
     icon: 'bi-laptop',
-    color: '#00cfe8',
+    color: '#4CAF50',
     products: 78,
     status: 'active',
     createdDate: new Date('2022-01-15'),
@@ -34,7 +37,7 @@ let categoriesDB = [
     parent: 'CAT-001',
     description: 'Smartphones and mobile accessories',
     icon: 'bi-phone',
-    color: '#28c76f',
+    color: '#1E4D2B',
     products: 52,
     status: 'active',
     createdDate: new Date('2022-01-20'),
@@ -46,7 +49,7 @@ let categoriesDB = [
     parent: null,
     description: 'Stationery and office equipment',
     icon: 'bi-briefcase',
-    color: '#ff9f43',
+    color: '#4CAF50',
     products: 89,
     status: 'active',
     createdDate: new Date('2022-02-05'),
@@ -58,7 +61,7 @@ let categoriesDB = [
     parent: 'CAT-004',
     description: 'Office chairs, desks, and tables',
     icon: 'bi-back',
-    color: '#ea5455',
+    color: '#1E4D2B',
     products: 34,
     status: 'active',
     createdDate: new Date('2022-02-10'),
@@ -70,7 +73,7 @@ let categoriesDB = [
     parent: 'CAT-004',
     description: 'Pens, papers, and writing materials',
     icon: 'bi-pen',
-    color: '#ff9f43',
+    color: '#4CAF50',
     products: 45,
     status: 'active',
     createdDate: new Date('2022-02-12'),
@@ -82,7 +85,7 @@ let categoriesDB = [
     parent: 'CAT-001',
     description: 'Cables, chargers, and other accessories',
     icon: 'bi-usb-symbol',
-    color: '#7367f0',
+    color: '#1E4D2B',
     products: 15,
     status: 'active',
     createdDate: new Date('2022-03-01'),
@@ -112,6 +115,9 @@ export default function Categories() {
   const [editCategory, setEditCategory] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
   const filteredCategories = categories.filter((cat) => {
     const q = search.toLowerCase();
     const matchSearch = !q || 
@@ -121,6 +127,11 @@ export default function Categories() {
     const matchStatus = statusFilter === 'all' || cat.status === statusFilter;
     return matchSearch && matchStatus;
   });
+
+  const paginatedCategories = filteredCategories.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   const parentCategories = categories.filter(c => !c.parent);
 
@@ -220,56 +231,84 @@ export default function Categories() {
     );
   }
 
-  return (
-    <div>
-      {/* Gateway of Tally Software Module Header Bar */}
-      <div className="tally-header-bar mb-3 shadow-sm">
-        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
-          <div className="d-flex align-items-center gap-2">
-            <span className="tally-header-badge" style={{ background: 'var(--primary)', color: '#fff' }}>MASTERS</span>
-            <div>
-              <h5 className="mb-0 fw-bold text-uppercase" style={{ fontSize: '0.95rem', letterSpacing: '0.5px' }}>
-                STOCK GROUP MASTERS REGISTER &mdash; ITEM CATEGORIES
-              </h5>
-              <div className="text-muted small" style={{ fontSize: '0.72rem' }}>
-                F.Y. 2026-2027 | Inventory Classification Register | EHN One ERP
-              </div>
-            </div>
-          </div>
-          <div className="d-flex align-items-center gap-2">
-            <button className="btn-v outline-primary btn-sm" onClick={exportTallyXML}>
-              <i className="bi bi-file-earmark-code me-1"></i> [Alt+E] Export XML
-            </button>
-            <button className="btn-v outline-secondary btn-sm" onClick={exportCSV}>
-              <i className="bi bi-download me-1"></i> [Alt+C] Export CSV
-            </button>
-            {can('categories.add') && (
-              <button className="btn-v primary btn-sm" onClick={() => setShowCreateModal(true)}>
-                <i className="bi bi-plus-lg me-1"></i> [F4] Add Stock Group Master
-              </button>
-            )}
-          </div>
-        </div>
+  const [showImportModal, setShowImportModal] = useState(false);
 
-        {/* F1-F8 Action Toolbar */}
-        <div className="tally-toolbar mt-2 pt-2 border-top d-flex gap-2 flex-wrap">
-          <button className="tally-shortcut-btn" onClick={() => document.getElementById('category-search-input')?.focus()}>
-            <span className="key">[F2]</span> Search Group
+  const getExportData = () => {
+    const headers = ['Category Name', 'Slug', 'Parent Group', 'Description', 'Linked Products', 'Status'];
+    const rows = categories.map(c => [
+      c.name || '',
+      c.slug || '',
+      getParentName(c.parent),
+      c.description || '',
+      c.products || 0,
+      c.status === 'active' ? 'Active' : 'Inactive'
+    ]);
+    return { headers, rows };
+  };
+
+  const handleExportCSV = () => {
+    const { headers, rows } = getExportData();
+    exportToCSV('Stock_Groups_Categories_Register', headers, rows);
+  };
+
+  const handleExportExcel = () => {
+    const { headers, rows } = getExportData();
+    exportToExcel('Stock_Groups_Categories_Register', 'Categories', headers, rows);
+  };
+
+  const handleExportPDF = () => {
+    const { headers, rows } = getExportData();
+    exportToPDF('STOCK GROUPS & CATEGORIES REGISTER', { name: 'Kedvass Hygiene Products' }, headers, rows, { label: 'Total Stock Groups', value: `${categories.length}` });
+  };
+
+  const handleImportCategories = async (parsedData) => {
+    const newCats = [];
+    for (const row of parsedData.rows) {
+      if (!row || row.length === 0 || !row[0]) continue;
+      const catObj = {
+        id: `CAT-${String(Math.floor(100 + Math.random() * 900))}`,
+        name: row[0] || 'Imported Category',
+        slug: (row[0] || 'imported').toLowerCase().replace(/\s+/g, '-'),
+        parent: null,
+        description: row[3] || 'Imported category group',
+        icon: 'bi-tag',
+        color: '#1E4D2B',
+        products: Number(row[4]) || 0,
+        status: 'active',
+        createdDate: new Date()
+      };
+      newCats.push(catObj);
+    }
+    setCategories([...newCats, ...categories]);
+    categoriesDB = [...newCats, ...categories];
+  };
+
+  return (
+    <div className="py-2">
+      {/* Clean Modern Page Header */}
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+          <h4 className="mb-1 fw-bold text-dark" style={{ letterSpacing: '-0.3px' }}>Stock Groups & Categories</h4>
+          <p className="text-muted small mb-0">Organize stock items into hierarchical categories & stock groups</p>
+        </div>
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <button className="btn-v outline-secondary btn-sm" onClick={handleExportCSV} title="Export CSV">
+            <i className="bi bi-filetype-csv me-1"></i> CSV
+          </button>
+          <button className="btn-v outline-success btn-sm" onClick={handleExportExcel} title="Export Excel">
+            <i className="bi bi-file-earmark-excel me-1"></i> Excel
+          </button>
+          <button className="btn-v outline-danger btn-sm" onClick={handleExportPDF} title="Export PDF">
+            <i className="bi bi-file-earmark-pdf me-1"></i> PDF
+          </button>
+          <button className="btn-v outline-primary btn-sm style-cursor" onClick={() => setShowImportModal(true)} title="Import Categories Excel/CSV">
+            <i className="bi bi-file-earmark-arrow-up me-1"></i> Import
           </button>
           {can('categories.add') && (
-            <button className="tally-shortcut-btn" onClick={() => setShowCreateModal(true)}>
-              <span className="key">[F4]</span> New Group Master
+            <button className="btn-v primary btn-sm" onClick={() => setShowCreateModal(true)}>
+              <i className="bi bi-plus-lg me-1"></i> Add Stock Group
             </button>
           )}
-          <button className="tally-shortcut-btn" onClick={() => setCategories([...categoriesDB])}>
-            <span className="key">[F5]</span> Refresh Register
-          </button>
-          <button className="tally-shortcut-btn" onClick={exportTallyXML}>
-            <span className="key">[Alt+E]</span> Export XML
-          </button>
-          <button className="tally-shortcut-btn" onClick={exportCSV}>
-            <span className="key">[Alt+C]</span> Export CSV
-          </button>
         </div>
       </div>
 
@@ -365,29 +404,29 @@ export default function Categories() {
                 </tr>
               </thead>
               <tbody>
-                {filteredCategories.map((c, i) => (
+                {paginatedCategories.map((c, i) => (
                   <tr key={c.id}>
-                    <td className="text-muted fw-semibold" style={{ fontSize: '0.75rem' }}>{i + 1}</td>
-                    <td>
-                      <div className="d-flex align-items-center gap-2">
-                        <i className={`bi ${c.icon || 'bi-tag'} text-primary`}></i>
-                        <div>
-                          <div className="fw-bold text-dark">{c.name}</div>
-                          {c.description && <small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>{c.description}</small>}
-                        </div>
-                      </div>
+                    <td className="text-muted fw-semibold" style={{ fontSize: '0.75rem' }}>
+                      {(currentPage - 1) * pageSize + i + 1}
                     </td>
                     <td>
-                      <span className={`badge-v ${c.parent ? 'info' : 'secondary'}`}>
+                      <div className="fw-bold" style={{ color: 'var(--primary)' }}>{c.name}</div>
+                      <div className="text-muted" style={{ fontSize: '0.7rem' }}>{c.description || 'No description'}</div>
+                    </td>
+                    <td>
+                      <span className={`badge-v ${c.parent ? 'info' : 'primary'}`} style={{ fontSize: '0.7rem' }}>
+                        <i className={`bi ${c.parent ? 'bi-diagram-2' : 'bi-diagram-3'} me-1`}></i>
                         {getParentName(c.parent)}
                       </span>
                     </td>
-                    <td><code style={{ fontSize: '0.78rem', color: 'var(--primary)' }}>{c.slug}</code></td>
-                    <td className="text-end fw-bold text-success">{c.products} items</td>
+                    <td>
+                      <code style={{ color: 'var(--primary)', fontSize: '0.78rem' }}>{c.slug}</code>
+                    </td>
+                    <td className="text-end fw-bold">{c.products} Items</td>
                     <td>{getStatusBadge(c.status)}</td>
                     <td className="text-end">
                       <div className="d-flex justify-content-end gap-1">
-                        <button className="btn-v outline-secondary btn-sm px-2" onClick={() => setViewCategory(c)} title="View Group Details">
+                        <button className="btn-v outline-primary btn-sm px-2" onClick={() => setViewCategory(c)} title="View Details">
                           <i className="bi bi-eye"></i>
                         </button>
                         {can('categories.edit') && (
@@ -406,6 +445,19 @@ export default function Categories() {
                 ))}
               </tbody>
             </table>
+          )}
+
+          {filteredCategories.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalItems={filteredCategories.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setCurrentPage(1);
+              }}
+            />
           )}
         </div>
       </div>
@@ -461,6 +513,19 @@ export default function Categories() {
           }}
         />
       )}
+
+      {/* Data Import Modal */}
+      <DataImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        title="Import Stock Groups & Categories Master"
+        templateHeaders={['Category Name', 'Slug', 'Parent Group', 'Description', 'Linked Products', 'Status']}
+        sampleRows={[
+          ['Electronics', 'electronics', 'Primary Group', 'Electronic items and gadgets', 145, 'Active'],
+          ['Hardware', 'hardware', 'Primary Group', 'Cleaners and hygiene products', 92, 'Active']
+        ]}
+        onImport={handleImportCategories}
+      />
     </div>
   );
 }
