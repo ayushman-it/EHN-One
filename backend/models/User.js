@@ -25,14 +25,14 @@ const userSchema = new mongoose.Schema({
   },
   department: {
     type: String,
-    enum: ['Sales', 'Operations', 'Finance', 'IT', 'HR', 'Warehouse', 'Procurement', 'Management'],
-    default: 'Operations',
+    default: 'General',
   },
   phone: String,
   avatar: String,
+  customPermissions: [String],
   status: {
     type: String,
-    enum: ['active', 'inactive'],
+    enum: ['active', 'inactive', 'suspended'],
     default: 'active',
   },
   lastLogin: Date,
@@ -59,7 +59,7 @@ userSchema.pre('save', async function(next) {
   next();
 });
 
-// Compare entered password with hashed password in DB
+// Match user entered password to hashed password in database
 userSchema.methods.matchPassword = async function(enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };

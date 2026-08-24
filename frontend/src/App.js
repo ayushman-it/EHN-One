@@ -4,8 +4,11 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import NotificationDropdown from './components/NotificationDropdown';
 import Dashboard    from './pages/Dashboard';
 import Products     from './pages/Products';
+import FinishedGoods from './pages/FinishedGoods';
+import RawMaterials  from './pages/RawMaterials';
 import Transactions from './pages/Transactions';
 import Users        from './pages/Users';
+import Orders       from './pages/Orders';
 import Invoices     from './pages/Invoices';
 import Suppliers    from './pages/Suppliers';
 import Customers    from './pages/Customers';
@@ -13,11 +16,13 @@ import Warehouse    from './pages/Warehouse';
 import Categories   from './pages/Categories';
 import Automations  from './pages/Automations';
 import EhnAiAssistant from './pages/EhnAiAssistant';
+import CompanyFirms from './pages/CompanyFirms';
 import Reports      from './pages/Reports';
 import Settings     from './pages/Settings';
 import Support      from './pages/Support';
 import DocumentCustomizer from './pages/DocumentCustomizer';
 import Login        from './pages/Login';
+import PwaInstallPrompt from './components/PwaInstallPrompt';
 import { getThemeConfig, applyThemeConfig } from './utils/themeHelper';
 import { getCustomMenuOrder } from './utils/menuHelper';
 import { getCustomHotkeys } from './utils/hotkeyHelper';
@@ -45,6 +50,7 @@ const MENU = [
       { to: '/customers',   icon: 'bi-people',            label: 'Customer Ledgers',    permission: 'products.view' },
       { to: '/suppliers',   icon: 'bi-truck',             label: 'Supplier Directory', permission: 'suppliers.view' },
       { to: '/warehouse',   icon: 'bi-building',          label: 'Godown Masters',      permission: 'warehouse.view' },
+      { to: '/company-firms', icon: 'bi-building-gear',   label: 'Company Firms Master', permission: 'products.view' },
     ],
   },
   {
@@ -76,7 +82,7 @@ const MENU = [
       { to: '/document-customizer', icon: 'bi-palette', label: 'Document Customizer', permission: 'settings.view' },
       { to: '/automations', icon: 'bi-lightning-charge',   label: 'Bot Automations',  permission: 'settings.view' },
       { to: '/settings',     icon: 'bi-gear',              label: 'System Settings',  permission: 'settings.view' },
-      { to: '/users',        icon: 'bi-people',            label: 'User Security Roles', permission: 'users.view' },
+      { to: '/users',        icon: 'bi-person-lock',       label: 'User Security Roles', permission: 'products.view' },
       { to: '/support',      icon: 'bi-headset',           label: 'Support Helpdesk' },
     ],
   },
@@ -278,6 +284,8 @@ function Sidebar({ open, onClose }) {
               <div className="sidebar-user-role text-truncate" style={{ fontSize: '0.68rem', color: '#1E4D2B' }}>{user?.role?.toUpperCase() || 'ADMIN'} | F.Y. 2026-27</div>
             </div>
           </div>
+          {/* Download Desktop App Button at bottom of sidebar footer */}
+          <PwaInstallPrompt mode="button" />
         </div>
       </aside>
     </>
@@ -552,18 +560,22 @@ function MainLayout() {
             <Routes>
               <Route path="/"            element={<ProtectedRoute permission="dashboard.view"><Dashboard /></ProtectedRoute>} />
               <Route path="/products"    element={<ProtectedRoute permission="products.view"><Products /></ProtectedRoute>} />
+              <Route path="/finished-goods" element={<ProtectedRoute permission="finishedgoods.view"><FinishedGoods /></ProtectedRoute>} />
+              <Route path="/raw-materials" element={<ProtectedRoute permission="rawmaterials.view"><RawMaterials /></ProtectedRoute>} />
               <Route path="/transactions" element={<ProtectedRoute permission="transactions.view"><Transactions /></ProtectedRoute>} />
-              <Route path="/stock-in"    element={<ProtectedRoute permission="transactions.stockin"><Transactions defaultType="stock_in" /></ProtectedRoute>} />
-              <Route path="/stock-out"   element={<ProtectedRoute permission="transactions.stockout"><Transactions defaultType="stock_out" /></ProtectedRoute>} />
+              <Route path="/stock-in"    element={<ProtectedRoute permission="stockin.view"><Transactions defaultType="stock_in" /></ProtectedRoute>} />
+              <Route path="/stock-out"   element={<ProtectedRoute permission="stockout.view"><Transactions defaultType="stock_out" /></ProtectedRoute>} />
               <Route path="/low-stock"   element={<ProtectedRoute permission="lowstock.view"><Dashboard showLowStockOnly /></ProtectedRoute>} />
-              <Route path="/invoices"    element={<ProtectedRoute permission="products.view"><Invoices /></ProtectedRoute>} />
-              <Route path="/customers"   element={<ProtectedRoute permission="products.view"><Customers /></ProtectedRoute>} />
+              <Route path="/orders"      element={<ProtectedRoute permission="orders.view"><Orders /></ProtectedRoute>} />
+              <Route path="/invoices"    element={<ProtectedRoute permission="invoices.view"><Invoices /></ProtectedRoute>} />
+              <Route path="/customers"   element={<ProtectedRoute permission="customers.view"><Customers /></ProtectedRoute>} />
               <Route path="/suppliers"   element={<ProtectedRoute permission="suppliers.view"><Suppliers /></ProtectedRoute>} />
               <Route path="/categories"  element={<ProtectedRoute permission="categories.view"><Categories /></ProtectedRoute>} />
               <Route path="/warehouse"   element={<ProtectedRoute permission="warehouse.view"><Warehouse /></ProtectedRoute>} />
+              <Route path="/company-firms" element={<ProtectedRoute permission="company-firms.view"><CompanyFirms /></ProtectedRoute>} />
               <Route path="/reports"     element={<ProtectedRoute permission="reports.view"><Reports /></ProtectedRoute>} />
               <Route path="/analytics"   element={<ProtectedRoute permission="analytics.view"><Reports defaultTab="overview" /></ProtectedRoute>} />
-              <Route path="/automations" element={<ProtectedRoute permission="settings.view"><Automations /></ProtectedRoute>} />
+              <Route path="/automations" element={<ProtectedRoute permission="automations.view"><Automations /></ProtectedRoute>} />
               <Route path="/ai-assistant" element={<ProtectedRoute permission="dashboard.view"><EhnAiAssistant /></ProtectedRoute>} />
               <Route path="/document-customizer" element={<ProtectedRoute permission="settings.view"><DocumentCustomizer /></ProtectedRoute>} />
               <Route path="/settings"    element={<ProtectedRoute permission="settings.view"><Settings /></ProtectedRoute>} />
@@ -577,6 +589,7 @@ function MainLayout() {
       </div>
 
       {showCommandPalette && <TallyCommandPaletteModal onClose={() => setShowCommandPalette(false)} />}
+      <PwaInstallPrompt />
     </div>
   );
 }

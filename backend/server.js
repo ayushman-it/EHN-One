@@ -81,6 +81,8 @@ app.use('/api/tally', require('./routes/tallyIntegration'));
 app.use('/api/warehouses', require('./routes/warehouses'));
 app.use('/api/transactions', require('./routes/transactions'));
 app.use('/api/invoices', require('./routes/invoices'));
+app.use('/api/orders', require('./routes/orders'));
+app.use('/api/company-firms', require('./routes/companyFirms'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/automations', require('./routes/automations'));
 app.use('/api/settings', require('./routes/settings'));

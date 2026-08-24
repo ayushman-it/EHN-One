@@ -20,6 +20,11 @@ const productSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  itemType: {
+    type: String,
+    enum: ['finished_goods', 'raw_material'],
+    default: 'finished_goods',
+  },
   price: {
     type: Number,
     required: true,

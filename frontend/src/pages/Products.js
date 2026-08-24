@@ -29,6 +29,7 @@ const UQC_UNITS = [
 
 const emptyForm = {
   name: '', category: '', quantity: 0, price: 0, cost: 0,
+  itemType: 'finished_goods',
   sku: '', description: '', lowStockThreshold: 10, unit: 'PCS', uqcUnit: 'PCS-PIECES',
   hsnCode: '', gstRate: 18, taxability: 'Taxable', typeOfSupply: 'Goods',
   openingQuantity: 0, openingRate: 0, openingValue: 0
@@ -37,6 +38,7 @@ const emptyForm = {
 export default function Products() {
   const [products, setProducts]   = useState([]);
   const [search, setSearch]       = useState('');
+  const [itemTypeFilter, setItemTypeFilter] = useState('all'); // 'all', 'finished_goods', 'raw_material'
   const [form, setForm]           = useState(emptyForm);
   const [editId, setEditId]       = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -104,8 +106,9 @@ export default function Products() {
   };
 
   const openEdit = (p) => {
-    setForm({ 
+    setForm({
       name: p.name, category: p.category, quantity: p.quantity,
+      itemType: p.itemType || 'finished_goods',
       price: p.price, cost: p.cost || 0, sku: p.sku, description: p.description || '',
       lowStockThreshold: p.lowStockThreshold || 10, unit: p.unit || 'PCS',
       uqcUnit: p.uqcUnit || 'PCS-PIECES', hsnCode: p.hsnCode || '', gstRate: p.gstRate || 18,
@@ -151,7 +154,13 @@ export default function Products() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const sortedProducts = [...products].sort((a, b) => {
+  const filteredProducts = products.filter(p => {
+    if (itemTypeFilter === 'finished_goods') return (p.itemType || 'finished_goods') === 'finished_goods';
+    if (itemTypeFilter === 'raw_material') return p.itemType === 'raw_material';
+    return true;
+  });
+
+  const sortedProducts = [...filteredProducts].sort((a, b) => {
     let aVal = a[sortBy];
     let bVal = b[sortBy];
     
@@ -334,6 +343,34 @@ export default function Products() {
       {/* Search & Filter Bar */}
       <div className="v-card mb-3">
         <div className="v-card-body p-2">
+          {/* Stock Classification Tabs */}
+          <div className="d-flex align-items-center gap-1 mb-2 border-bottom pb-2">
+            <button
+              type="button"
+              className={`btn btn-xs fw-bold px-3 py-1 rounded-pill style-cursor ${itemTypeFilter === 'all' ? 'btn-primary' : 'btn-outline-secondary'}`}
+              onClick={() => setItemTypeFilter('all')}
+              style={{ fontSize: '0.74rem' }}
+            >
+              <i className="bi bi-grid-fill me-1"></i> ALL STOCK ({products.length})
+            </button>
+            <button
+              type="button"
+              className={`btn btn-xs fw-bold px-3 py-1 rounded-pill style-cursor ${itemTypeFilter === 'finished_goods' ? 'btn-success text-white' : 'btn-outline-success'}`}
+              onClick={() => setItemTypeFilter('finished_goods')}
+              style={{ fontSize: '0.74rem' }}
+            >
+              <i className="bi bi-box-seam-fill me-1"></i> FINISHED GOODS (FG) ({products.filter(p => (p.itemType || 'finished_goods') === 'finished_goods').length})
+            </button>
+            <button
+              type="button"
+              className={`btn btn-xs fw-bold px-3 py-1 rounded-pill style-cursor ${itemTypeFilter === 'raw_material' ? 'btn-warning text-dark' : 'btn-outline-warning text-dark'}`}
+              onClick={() => setItemTypeFilter('raw_material')}
+              style={{ fontSize: '0.74rem' }}
+            >
+              <i className="bi bi-bricks me-1"></i> RAW MATERIAL (RM) ({products.filter(p => p.itemType === 'raw_material').length})
+            </button>
+          </div>
+
           <div className="d-flex align-items-center flex-wrap gap-2">
             <div className="search-box-v flex-grow-1">
               <i className="bi bi-search"></i>
@@ -408,7 +445,18 @@ export default function Products() {
                       {(currentPage - 1) * pageSize + i + 1}
                     </td>
                     <td>
-                      <div className="fw-bold text-dark">{p.name}</div>
+                      <div className="d-flex align-items-center">
+                        <span className="fw-bold text-dark">{p.name}</span>
+                        {p.itemType === 'raw_material' ? (
+                          <span className="badge bg-warning bg-opacity-25 text-dark ms-2 fw-bold" style={{ fontSize: '0.65rem' }}>
+                            <i className="bi bi-bricks me-1"></i> Raw Material
+                          </span>
+                        ) : (
+                          <span className="badge bg-success bg-opacity-15 text-success ms-2 fw-bold" style={{ fontSize: '0.65rem' }}>
+                            <i className="bi bi-box-seam-fill me-1"></i> Finished Goods
+                          </span>
+                        )}
+                      </div>
                       <small className="text-muted d-block" style={{ fontSize: '0.72rem' }}>
                         {p.uqcUnit || 'PCS-PIECES'} &bull; {p.typeOfSupply || 'Goods'}
                       </small>
@@ -487,7 +535,44 @@ export default function Products() {
                   </div>
                 )}
                 
-                <div className="form-section-title mb-2"><i className="bi bi-box-seam me-1"></i> Stock Item Identification</div>
+                <div className="form-section-title mb-2"><i className="bi bi-box-seam me-1"></i> Stock Item Identification & Classification</div>
+                
+                {/* Ultra-Clean Segmented Pill Selector (No Toggle Sliders) */}
+                <div className="col-12 mb-3">
+                  <label className="form-label fw-bold text-dark small mb-1.5">
+                    <i className="bi bi-layers me-1 text-primary"></i> Stock Classification Type *
+                  </label>
+                  <div className="btn-group w-100 p-1 bg-light border rounded-3" role="group">
+                    <button
+                      type="button"
+                      className={`btn btn-sm fw-bold py-2 style-cursor d-flex align-items-center justify-content-center gap-2 border-0 rounded-2 ${
+                        (form.itemType === 'finished_goods' || !form.itemType)
+                          ? 'btn-success text-white shadow-sm'
+                          : 'btn-light text-secondary'
+                      }`}
+                      onClick={() => setForm({ ...form, itemType: 'finished_goods' })}
+                      style={{ fontSize: '0.8rem' }}
+                    >
+                      <i className={`bi ${form.itemType === 'finished_goods' || !form.itemType ? 'bi-check-circle-fill' : 'bi-circle'} me-1`}></i>
+                      📦 FINISHED GOODS (FG) &mdash; Ready for Sale
+                    </button>
+
+                    <button
+                      type="button"
+                      className={`btn btn-sm fw-bold py-2 style-cursor d-flex align-items-center justify-content-center gap-2 border-0 rounded-2 ${
+                        form.itemType === 'raw_material'
+                          ? 'btn-warning text-dark shadow-sm'
+                          : 'btn-light text-secondary'
+                      }`}
+                      onClick={() => setForm({ ...form, itemType: 'raw_material' })}
+                      style={{ fontSize: '0.8rem' }}
+                    >
+                      <i className={`bi ${form.itemType === 'raw_material' ? 'bi-check-circle-fill text-dark' : 'bi-circle'} me-1`}></i>
+                      🧱 RAW MATERIAL (RM) &mdash; Production Ingredient
+                    </button>
+                  </div>
+                </div>
+
                 <div className="row g-2 mb-3">
                   <div className="col-md-6">
                     <label className="form-label">Product Name *</label>

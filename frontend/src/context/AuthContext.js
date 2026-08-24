@@ -90,6 +90,7 @@ export function AuthProvider({ children }) {
       email: u.email,
       role: u.role,
       department: u.department,
+      customPermissions: Array.isArray(u.customPermissions) ? u.customPermissions : [],
       avatar: cachedAvatar || u.avatar || null
     };
 
@@ -110,7 +111,21 @@ export function AuthProvider({ children }) {
 
   const can = (permission) => {
     if (!user) return false;
-    if (permission === 'profile.view') return true;
+    if (!permission || permission === 'profile.view' || permission === 'dashboard.view') return true;
+    if (user.role === 'admin') return true;
+
+    // Strict Operator Rights Evaluation:
+    // Check allowed permissions assigned by admin
+    if (Array.isArray(user.customPermissions) && user.customPermissions.length > 0) {
+      const baseKey = permission.split('.')[0];
+      return (
+        user.customPermissions.includes(permission) ||
+        user.customPermissions.includes(baseKey) ||
+        user.customPermissions.includes(`${baseKey}.view`) ||
+        user.customPermissions.includes(`${baseKey}.edit`)
+      );
+    }
+
     return (ROLES[user.role]?.permissions || []).includes(permission);
   };
 

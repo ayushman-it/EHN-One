@@ -69,17 +69,21 @@ export function printInvoiceDocument(invoice) {
     return;
   }
 
-  const companyName = invoice.company?.name || defaultCompany.name;
-  const companyAddr = invoice.company?.address || defaultCompany.address;
-  const companyPhone1 = invoice.company?.phone1 || defaultCompany.phone1;
+  const companyName = invoice.firmDetails?.name || invoice.company?.name || defaultCompany.name;
+  const companyAddr = invoice.firmDetails?.address || invoice.company?.address || defaultCompany.address;
+  const companyPhone1 = invoice.firmDetails?.phone || invoice.company?.phone1 || defaultCompany.phone1;
   const companyPhone2 = invoice.company?.phone2 || defaultCompany.phone2;
   const signatory = invoice.company?.signatory || defaultCompany.signatory;
+
+  const isGst = invoice.firmDetails?.isGstRegistered !== false && invoice.invoiceType !== 'bill_of_supply';
+  const docTitle = isGst ? 'TAX INVOICE' : 'BILL OF SUPPLY / RETAIL INVOICE';
+  const gstinStr = isGst && invoice.firmDetails?.gstin ? `GSTIN: ${invoice.firmDetails.gstin}` : '';
 
   const htmlContent = `
     <!DOCTYPE html>
     <html>
     <head>
-      <title>Invoice_${invoice.invoiceNumber.replace('/', '_')}</title>
+      <title>Invoice_${(invoice.invoiceNumber || '').replace('/', '_')}</title>
       <style>
         @page { size: A4 portrait; margin: 10mm 15mm 10mm 15mm; }
         * { box-sizing: border-box; }
@@ -91,7 +95,7 @@ export function printInvoiceDocument(invoice) {
         .company-title { font-weight: bold; font-size: 16px; }
         .company-addr, .company-mob { font-size: 13px; }
         .company-mob.underline { text-decoration: underline; }
-        .invoice-main-title { font-size: 18px; font-weight: bold; letter-spacing: 1px; margin-top: 12px; text-align: center; }
+        .invoice-main-title { font-size: 17px; font-weight: bold; letter-spacing: 1px; margin-top: 8px; text-align: center; }
         .invoice-exact-date { font-size: 14px; text-align: right; width: 25%; }
         .invoice-exact-party { margin-top: 10px; margin-bottom: 16px; text-align: center; }
         .party-label { font-size: 15px; }
@@ -130,9 +134,9 @@ export function printInvoiceDocument(invoice) {
           <div class="invoice-exact-company">
             <div class="company-title">${companyName}</div>
             <div class="company-addr">${companyAddr}</div>
+            ${gstinStr ? `<div class="company-mob font-monospace"><strong>${gstinStr}</strong></div>` : ''}
             <div class="company-mob">Mob : ${companyPhone1}</div>
-            <div class="company-mob underline">Mob ; ${companyPhone2}</div>
-            <div class="invoice-main-title">INVOICE</div>
+            <div class="invoice-main-title">${docTitle}</div>
           </div>
           <div class="invoice-exact-date">Dated &nbsp;&nbsp;<strong>${formatInvoiceDate(invoice.issueDate)}</strong></div>
         </div>
@@ -265,9 +269,31 @@ export default function Invoices() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  const fetchInvoices = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/invoices', {
+        headers: { Authorization: token ? `Bearer ${token}` : '' }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+          setInvoices(data.data);
+          invoicesDB = data.data;
+        }
+      }
+    } catch (e) {
+      console.error('Fetch invoices error:', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchInvoices();
+  }, []);
+
   const filteredInvoices = invoices.filter((inv) => {
     const q = search.toLowerCase();
-    const matchSearch = !q || inv.invoiceNumber.toLowerCase().includes(q) || inv.customer.name.toLowerCase().includes(q);
+    const matchSearch = !q || (inv.invoiceNumber || '').toLowerCase().includes(q) || (inv.customer?.name || '').toLowerCase().includes(q);
     const matchStatus = statusFilter === 'all' || inv.status === statusFilter;
     return matchSearch && matchStatus;
   });
@@ -279,9 +305,9 @@ export default function Invoices() {
 
   const stats = {
     total: invoices.length,
-    totalRevenue: invoices.reduce((sum, inv) => sum + inv.total, 0),
-    paid: invoices.filter((inv) => inv.status === 'paid').reduce((sum, inv) => sum + inv.total, 0),
-    pending: invoices.filter((inv) => inv.status === 'pending' || inv.status === 'sent').reduce((sum, inv) => sum + inv.total, 0),
+    totalRevenue: invoices.reduce((sum, inv) => sum + (inv.total || 0), 0),
+    paid: invoices.filter((inv) => inv.status === 'paid').reduce((sum, inv) => sum + (inv.total || 0), 0),
+    pending: invoices.filter((inv) => inv.status === 'pending' || inv.status === 'sent').reduce((sum, inv) => sum + (inv.total || 0), 0),
     overdue: invoices.filter((inv) => inv.status === 'overdue').length,
   };
 
@@ -297,7 +323,7 @@ export default function Invoices() {
         setShowCreateModal(true);
       } else if (e.key === 'F5') {
         e.preventDefault();
-        setInvoices([...invoicesDB]);
+        fetchInvoices();
       } else if (e.altKey && (e.key === 'p' || e.key === 'P')) {
         if (invoices[0]) {
           e.preventDefault();
@@ -313,11 +339,20 @@ export default function Invoices() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [invoices]);
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm('Delete this sales invoice voucher? This cannot be undone.')) {
-      const updated = invoices.filter((inv) => inv.id !== id);
-      setInvoices(updated);
-      invoicesDB = updated;
+      try {
+        const token = localStorage.getItem('token');
+        await fetch(`/api/invoices/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: token ? `Bearer ${token}` : '' }
+        });
+        fetchInvoices();
+      } catch (e) {
+        const updated = invoices.filter((inv) => inv._id !== id && inv.id !== id);
+        setInvoices(updated);
+        invoicesDB = updated;
+      }
     }
   };
 
@@ -576,9 +611,8 @@ export default function Invoices() {
       {showCreateModal && (
         <CreateInvoiceModal
           onClose={() => setShowCreateModal(false)}
-          onSave={(newInv) => {
-            setInvoices([newInv, ...invoices]);
-            invoicesDB = [newInv, ...invoicesDB];
+          onSave={() => {
+            fetchInvoices();
             setShowCreateModal(false);
           }}
         />
@@ -683,22 +717,69 @@ function InvoicePreviewModal({ invoice, onClose }) {
 }
 
 function CreateInvoiceModal({ onClose, onSave }) {
-  const [customers, setCustomers] = useState(customersDB);
-  const [selectedCustId, setSelectedCustId] = useState('CUST-000');
+  const [customers, setCustomers] = useState([]);
+  const [firms, setFirms] = useState([]);
+  const [productList, setProductList] = useState([]);
+  const [selectedFirmId, setSelectedFirmId] = useState('');
+  const [selectedFirm, setSelectedFirm] = useState(null);
+
+  const [selectedCustId, setSelectedCustId] = useState('');
   const [prefix, setPrefix] = useState('KHP/');
-  const [numberOnly, setNumberOnly] = useState('312');
-  const [issueDate, setIssueDate] = useState('2026-08-21');
+  const [numberOnly, setNumberOnly] = useState('101');
+  const [issueDate, setIssueDate] = useState(new Date().toISOString().substring(0, 10));
 
   const [items, setItems] = useState([
     { product: '', quantity: 1, price: 0, unit: 'PCS', total: 0 }
   ]);
 
   useEffect(() => {
+    // Fetch Products catalog with FG/RM classification
+    const token = localStorage.getItem('token');
+    fetch('/api/products', {
+      headers: { Authorization: token ? `Bearer ${token}` : '' }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setProductList(data);
+      })
+      .catch(() => {});
+
+    // Fetch Customers from MongoDB
     getCustomers().then(r => {
       const data = r.data || r;
-      if (Array.isArray(data) && data.length > 0) setCustomers(data);
+      if (Array.isArray(data) && data.length > 0) {
+        setCustomers(data);
+        setSelectedCustId(data[0]._id || data[0].id);
+      }
     }).catch(() => {});
+
+    // Fetch Business Firms from MongoDB
+    fetch('/api/company-firms', {
+      headers: { Authorization: token ? `Bearer ${token}` : '' }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+          setFirms(data.data);
+          const defaultF = data.data.find(f => f.isDefault) || data.data[0];
+          setSelectedFirmId(defaultF._id);
+          setSelectedFirm(defaultF);
+          setPrefix(defaultF.invoicePrefix || 'KHP/');
+          setNumberOnly(String(defaultF.currentInvoiceSequence || 101));
+        }
+      })
+      .catch(() => {});
   }, []);
+
+  const handleFirmSelect = (firmId) => {
+    setSelectedFirmId(firmId);
+    const f = firms.find(item => item._id === firmId);
+    if (f) {
+      setSelectedFirm(f);
+      setPrefix(f.invoicePrefix || 'INV/');
+      setNumberOnly(String(f.currentInvoiceSequence || 101));
+    }
+  };
 
   const handleItemChange = (index, field, val) => {
     const newItems = [...items];
@@ -723,17 +804,33 @@ function CreateInvoiceModal({ onClose, onSave }) {
 
   const subtotal = items.reduce((acc, it) => acc + (it.total || 0), 0);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const custObj = customers.find(c => (c._id || c.id) === selectedCustId) || customers[0];
+    const custObj = customers.find(c => (c._id || c.id) === selectedCustId) || { name: 'Cash Customer' };
     const fullInvNo = `${prefix}${numberOnly}`;
 
+    const firmDetailsSnapshot = selectedFirm ? {
+      name: selectedFirm.name,
+      isGstRegistered: selectedFirm.isGstRegistered,
+      gstin: selectedFirm.gstin,
+      address: selectedFirm.address,
+      state: selectedFirm.state,
+      phone: selectedFirm.phone,
+      email: selectedFirm.email,
+      bankName: selectedFirm.bankName,
+      bankAccountNo: selectedFirm.bankAccountNo,
+      ifscCode: selectedFirm.ifscCode,
+      branchName: selectedFirm.branchName,
+      logoUrl: selectedFirm.logoUrl,
+    } : null;
+
     const newInv = {
-      id: fullInvNo.replace('/', '-'),
       invoiceNumber: fullInvNo,
       prefix,
       numberOnly,
-      company: defaultCompany,
+      firm: selectedFirmId,
+      firmDetails: firmDetailsSnapshot,
+      invoiceType: selectedFirm?.isGstRegistered === false ? 'bill_of_supply' : 'tax_invoice',
       customer: custObj,
       issueDate,
       dueDate: issueDate,
@@ -743,46 +840,91 @@ function CreateInvoiceModal({ onClose, onSave }) {
       tax: 0,
       discount: 0,
       total: subtotal,
-      notes: 'Computer Generated Invoice',
-      createdBy: 'Admin',
-      createdAt: new Date(),
+      notes: selectedFirm?.isGstRegistered === false ? 'Bill of Supply - Non-GST Retail Sale' : 'Tax Invoice - Computer Generated',
     };
+
+    // Save via API to MongoDB
+    try {
+      const token = localStorage.getItem('token');
+      await fetch('/api/invoices', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: token ? `Bearer ${token}` : ''
+        },
+        body: JSON.stringify(newInv)
+      });
+    } catch (e) {}
 
     onSave(newInv);
   };
 
   return (
     <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal-box" style={{ maxWidth: 750 }}>
-        <div className="modal-box-header d-flex align-items-center justify-content-between">
+      <div className="modal-box" style={{ maxWidth: 780, borderRadius: 0 }}>
+        <div className="modal-box-header d-flex align-items-center justify-content-between px-3.5 py-2.5" style={{ background: '#1E4D2B', color: '#ffffff', borderRadius: 0 }}>
           <div className="d-flex align-items-center gap-2">
-            <i className="bi bi-plus-square" style={{ color: 'var(--primary)' }}></i>
-            <span>CREATE NEW SALES VOUCHER</span>
+            <i className="bi bi-receipt-cutoff text-warning"></i>
+            <span className="fw-bold">CREATE NEW SALES BILLING VOUCHER</span>
           </div>
-          <button className="close-btn" onClick={onClose}><i className="bi bi-x-lg"></i></button>
+          <button type="button" className="btn-close btn-close-white" onClick={onClose}></button>
         </div>
         <form onSubmit={handleSubmit}>
-          <div className="modal-box-body p-3" style={{ maxHeight: '72vh', overflowY: 'auto' }}>
-            <div className="form-section-title mb-2"><i className="bi bi-receipt me-1"></i> Voucher Numbering & Party Details</div>
+          <div className="modal-box-body p-3.5 bg-white" style={{ maxHeight: '76vh', overflowY: 'auto' }}>
+            
+            {/* SLEEK PROFESSIONAL MULTI-FIRM BAR */}
+            <div className="row g-2 mb-3 align-items-center bg-light p-2.5 rounded border m-0">
+              <div className="col-md-8">
+                <label className="form-label fw-bold text-dark mb-1" style={{ fontSize: '0.8rem' }}>
+                  <i className="bi bi-building me-1 text-success"></i> Billing Company Firm Master
+                </label>
+                <select
+                  className="form-select form-select-sm fw-bold text-dark style-cursor"
+                  value={selectedFirmId}
+                  onChange={(e) => handleFirmSelect(e.target.value)}
+                >
+                  {firms.map(f => (
+                    <option key={f._id} value={f._id}>
+                      {f.name} {f.isGstRegistered ? `[GST: ${f.gstin || 'Registered'}]` : '[NON-GST / EXEMPT]'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="col-md-4 text-md-end pt-md-3">
+                {selectedFirm?.isGstRegistered !== false ? (
+                  <span className="badge bg-success font-monospace px-2.5 py-1.5" style={{ fontSize: '0.7rem' }}>
+                    <i className="bi bi-patch-check me-1"></i> TAX INVOICE (GST)
+                  </span>
+                ) : (
+                  <span className="badge bg-secondary font-monospace px-2.5 py-1.5" style={{ fontSize: '0.7rem' }}>
+                    <i className="bi bi-info-circle me-1"></i> BILL OF SUPPLY (NON-GST)
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="form-section-title mb-2 fw-bold text-dark" style={{ fontSize: '0.82rem' }}>
+              <i className="bi bi-hash me-1"></i> Voucher Numbering & Party Details
+            </div>
             <div className="row g-2 mb-3">
               <div className="col-md-3">
-                <label className="form-label">Prefix *</label>
-                <input className="form-control" value={prefix} onChange={(e) => setPrefix(e.target.value)} required />
+                <label className="form-label fw-bold text-dark" style={{ fontSize: '0.78rem' }}>Prefix *</label>
+                <input className="form-control font-monospace fw-bold" value={prefix} onChange={(e) => setPrefix(e.target.value)} required />
               </div>
               <div className="col-md-3">
-                <label className="form-label">Voucher No *</label>
-                <input className="form-control" value={numberOnly} onChange={(e) => setNumberOnly(e.target.value)} required />
+                <label className="form-label fw-bold text-dark" style={{ fontSize: '0.78rem' }}>Voucher No *</label>
+                <input className="form-control font-monospace fw-bold text-success" value={numberOnly} onChange={(e) => setNumberOnly(e.target.value)} required />
               </div>
               <div className="col-md-6">
-                <label className="form-label">Issue Date *</label>
-                <input type="date" className="form-control" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} required />
+                <label className="form-label fw-bold text-dark" style={{ fontSize: '0.78rem' }}>Issue Date *</label>
+                <input type="date" className="form-control fw-bold" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} required />
               </div>
               <div className="col-12">
-                <label className="form-label">Party / Customer Master *</label>
-                <select className="form-select" value={selectedCustId} onChange={(e) => setSelectedCustId(e.target.value)}>
+                <label className="form-label fw-bold text-dark" style={{ fontSize: '0.78rem' }}>Party / Customer Master *</label>
+                <select className="form-select fw-bold text-dark" value={selectedCustId} onChange={(e) => setSelectedCustId(e.target.value)}>
                   {customers.map(c => (
                     <option key={c._id || c.id} value={c._id || c.id}>
-                      {c.name} {c.location ? `(${c.location})` : ''}
+                      {c.name} {c.location ? `(${c.location})` : ''} {c.phone ? `— ${c.phone}` : ''}
                     </option>
                   ))}
                 </select>
@@ -792,8 +934,8 @@ function CreateInvoiceModal({ onClose, onSave }) {
             <div className="form-divider mb-3"></div>
 
             <div className="form-section-title mb-2 d-flex justify-content-between align-items-center">
-              <span><i className="bi bi-box-seam me-1"></i> Item Voucher Entry Table</span>
-              <button type="button" className="btn-v outline-primary btn-sm py-0" onClick={addItemRow}>
+              <span className="fw-bold text-dark" style={{ fontSize: '0.82rem' }}><i className="bi bi-box-seam me-1"></i> Item Voucher Entry Table</span>
+              <button type="button" className="btn btn-outline-primary btn-sm py-0 fw-bold" style={{ fontSize: '0.75rem' }} onClick={addItemRow}>
                 <i className="bi bi-plus-lg me-1"></i> Add Line Item
               </button>
             </div>
@@ -804,7 +946,6 @@ function CreateInvoiceModal({ onClose, onSave }) {
                   <tr>
                     <th>PRODUCT DESCRIPTION</th>
                     <th style={{ width: 90 }}>QTY</th>
-                    <style>{`.v-table th { padding: 6px 8px; }`}</style>
                     <th style={{ width: 110 }}>UNIT</th>
                     <th style={{ width: 110 }}>RATE (₹)</th>
                     <th style={{ width: 120 }}>AMOUNT (₹)</th>
@@ -816,17 +957,38 @@ function CreateInvoiceModal({ onClose, onSave }) {
                     <tr key={idx}>
                       <td>
                         <input 
-                          className="form-control form-control-sm" 
-                          placeholder="Product Name" 
+                          list={`product-options-${idx}`}
+                          className="form-control form-control-sm fw-semibold" 
+                          placeholder="Type or select product..." 
                           value={it.product} 
-                          onChange={(e) => handleItemChange(idx, 'product', e.target.value)} 
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const found = productList.find(p => p.name === val);
+                            if (found) {
+                              const newItems = [...items];
+                              newItems[idx].product = found.name;
+                              newItems[idx].price = found.price || 0;
+                              newItems[idx].unit = found.unit || 'PCS';
+                              newItems[idx].total = (newItems[idx].quantity || 1) * (found.price || 0);
+                              setItems(newItems);
+                            } else {
+                              handleItemChange(idx, 'product', val);
+                            }
+                          }} 
                           required 
                         />
+                        <datalist id={`product-options-${idx}`}>
+                          {productList.map((p) => (
+                            <option key={p._id || p.sku} value={p.name}>
+                              {p.name} [{p.itemType === 'raw_material' ? 'RM - Raw Material' : 'FG - Finished Goods'}] - ₹{p.price}
+                            </option>
+                          ))}
+                        </datalist>
                       </td>
                       <td>
                         <input 
                           type="number" 
-                          className="form-control form-control-sm text-center" 
+                          className="form-control form-control-sm text-center fw-bold" 
                           value={it.quantity} 
                           onChange={(e) => handleItemChange(idx, 'quantity', e.target.value)} 
                           required 
@@ -834,7 +996,7 @@ function CreateInvoiceModal({ onClose, onSave }) {
                       </td>
                       <td>
                         <select 
-                          className="form-select form-select-sm" 
+                          className="form-select form-select-sm fw-bold" 
                           value={it.unit} 
                           onChange={(e) => handleItemChange(idx, 'unit', e.target.value)}
                         >
@@ -842,12 +1004,13 @@ function CreateInvoiceModal({ onClose, onSave }) {
                           <option value="JAR">JAR</option>
                           <option value="BOX">BOX</option>
                           <option value="KG">KG</option>
+                          <option value="LTR">LTR</option>
                         </select>
                       </td>
                       <td>
                         <input 
                           type="number" 
-                          className="form-control form-control-sm text-end" 
+                          className="form-control form-control-sm text-end fw-bold" 
                           value={it.price} 
                           onChange={(e) => handleItemChange(idx, 'price', e.target.value)} 
                           required 
@@ -856,7 +1019,7 @@ function CreateInvoiceModal({ onClose, onSave }) {
                       <td className="fw-bold text-end">₹{(it.total || 0).toLocaleString('en-IN')}</td>
                       <td>
                         {items.length > 1 && (
-                          <button type="button" className="btn-v outline-danger btn-sm p-1" onClick={() => removeItemRow(idx)}>
+                          <button type="button" className="btn btn-outline-danger btn-sm p-1" onClick={() => removeItemRow(idx)}>
                             <i className="bi bi-trash"></i>
                           </button>
                         )}
@@ -868,14 +1031,14 @@ function CreateInvoiceModal({ onClose, onSave }) {
             </div>
 
             <div className="p-3 bg-light rounded-2 border d-flex justify-content-between align-items-center">
-              <span className="fw-bold">Total Voucher Amount:</span>
-              <span className="fs-5 fw-bold text-primary">₹{subtotal.toLocaleString('en-IN')}</span>
+              <span className="fw-bold text-dark">Total Voucher Amount:</span>
+              <span className="fs-5 fw-bold text-success">₹{subtotal.toLocaleString('en-IN')}</span>
             </div>
           </div>
 
-          <div className="modal-box-footer d-flex justify-content-end gap-2">
-            <button type="button" className="btn-v outline-secondary btn-sm" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn-v primary btn-sm">
+          <div className="modal-box-footer d-flex justify-content-end gap-2 p-3 bg-light" style={{ borderRadius: 0 }}>
+            <button type="button" className="btn btn-outline-secondary btn-sm fw-semibold" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn btn-success btn-sm fw-bold px-4" style={{ background: '#1E4D2B', border: 'none' }}>
               <i className="bi bi-check-circle me-1"></i> Save Sales Voucher
             </button>
           </div>

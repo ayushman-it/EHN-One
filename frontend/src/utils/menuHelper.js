@@ -17,11 +17,14 @@ export const DEFAULT_MENU_STRUCTURE = [
     icon: 'bi-folder-symlink',
     collapsible: true,
     items: [
-      { id: 'item_products',   to: '/products',     icon: 'bi-box-seam',          label: 'Stock Items Master',  permission: 'products.view' },
-      { id: 'item_categories', to: '/categories',  icon: 'bi-tag',               label: 'Stock Groups',        permission: 'categories.view' },
-      { id: 'item_customers',  to: '/customers',   icon: 'bi-people',            label: 'Customer Ledgers',    permission: 'products.view' },
-      { id: 'item_suppliers',  to: '/suppliers',   icon: 'bi-truck',             label: 'Supplier Directory', permission: 'suppliers.view' },
-      { id: 'item_warehouse',  to: '/warehouse',   icon: 'bi-building',          label: 'Godown Masters',      permission: 'warehouse.view' },
+      { id: 'item_products',       to: '/products',       icon: 'bi-box-seam',          label: 'All Stock Items',     permission: 'products.view' },
+      { id: 'item_finished_goods', to: '/finished-goods', icon: 'bi-box-seam-fill',     label: 'Finished Goods (FG)', permission: 'finishedgoods.view' },
+      { id: 'item_raw_materials',  to: '/raw-materials',  icon: 'bi-bricks',            label: 'Raw Material (RM)',   permission: 'rawmaterials.view' },
+      { id: 'item_categories',     to: '/categories',     icon: 'bi-tag',               label: 'Stock Groups',        permission: 'categories.view' },
+      { id: 'item_customers',      to: '/customers',      icon: 'bi-people',            label: 'Customer Ledgers',    permission: 'customers.view' },
+      { id: 'item_suppliers',      to: '/suppliers',      icon: 'bi-truck',             label: 'Supplier Directory', permission: 'suppliers.view' },
+      { id: 'item_warehouse',      to: '/warehouse',      icon: 'bi-building',          label: 'Godown Masters',      permission: 'warehouse.view' },
+      { id: 'item_company_firms',  to: '/company-firms',  icon: 'bi-building-gear',     label: 'Company Firms Master', permission: 'company-firms.view' },
     ],
   },
   {
@@ -30,10 +33,11 @@ export const DEFAULT_MENU_STRUCTURE = [
     icon: 'bi-boxes',
     collapsible: true,
     items: [
-      { id: 'item_invoices',     to: '/invoices',     icon: 'bi-receipt',           label: 'Sales Billing Voucher', permission: 'products.view' },
+      { id: 'item_orders',       to: '/orders',       icon: 'bi-cart-check',        label: 'Sales Orders Booking', permission: 'orders.view' },
+      { id: 'item_invoices',     to: '/invoices',     icon: 'bi-receipt',           label: 'Sales Billing Voucher', permission: 'invoices.view' },
       { id: 'item_transactions', to: '/transactions', icon: 'bi-arrow-left-right',  label: 'Stock Ledger Daybook', permission: 'transactions.view' },
-      { id: 'item_stockin',      to: '/stock-in',     icon: 'bi-arrow-down-circle', label: 'Stock In Entry',       permission: 'transactions.stockin' },
-      { id: 'item_stockout',     to: '/stock-out',    icon: 'bi-arrow-up-circle',   label: 'Stock Out Entry',      permission: 'transactions.stockout' },
+      { id: 'item_stockin',      to: '/stock-in',     icon: 'bi-arrow-down-circle', label: 'Stock In Entry',       permission: 'stockin.view' },
+      { id: 'item_stockout',     to: '/stock-out',    icon: 'bi-arrow-up-circle',   label: 'Stock Out Entry',      permission: 'stockout.view' },
       { id: 'item_lowstock',     to: '/low-stock',    icon: 'bi-exclamation-triangle', label: 'Low Stock Alerts', permission: 'lowstock.view' },
     ],
   },
@@ -53,9 +57,9 @@ export const DEFAULT_MENU_STRUCTURE = [
     icon: 'bi-shield-gear',
     collapsible: true,
     items: [
-      { id: 'item_automations', to: '/automations', icon: 'bi-lightning-charge',   label: 'Bot Automations',  permission: 'settings.view' },
+      { id: 'item_automations', to: '/automations', icon: 'bi-lightning-charge',   label: 'Bot Automations',  permission: 'automations.view' },
       { id: 'item_settings',    to: '/settings',     icon: 'bi-gear',              label: 'System Settings',  permission: 'settings.view' },
-      { id: 'item_users',       to: '/users',        icon: 'bi-people',            label: 'User Security Roles', permission: 'users.view' },
+      { id: 'item_users',       to: '/users',        icon: 'bi-person-lock',       label: 'User Security Roles', permission: 'users.view' },
       { id: 'item_support',     to: '/support',      icon: 'bi-headset',           label: 'Support Helpdesk' },
     ],
   },
@@ -67,6 +71,25 @@ export function getCustomMenuOrder() {
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
+        // Map 1-to-1 permissions from DEFAULT_MENU_STRUCTURE
+        const permMap = {};
+        DEFAULT_MENU_STRUCTURE.forEach(sec => {
+          if (Array.isArray(sec.items)) {
+            sec.items.forEach(item => {
+              permMap[item.to] = item.permission;
+            });
+          }
+        });
+
+        parsed.forEach(sec => {
+          if (Array.isArray(sec.items)) {
+            sec.items.forEach(item => {
+              if (permMap[item.to]) {
+                item.permission = permMap[item.to];
+              }
+            });
+          }
+        });
         return parsed;
       }
     }
@@ -85,11 +108,10 @@ export function saveCustomMenuOrder(newOrder) {
   }
 }
 
-export function resetCustomMenuOrder() {
-  try {
-    localStorage.removeItem('ehn_custom_menu_order');
-    window.dispatchEvent(new Event('ehn_menu_order_updated'));
-  } catch (e) {
-    console.error('Error resetting custom menu order:', e);
-  }
+export function resetMenuOrder() {
+  localStorage.removeItem('ehn_custom_menu_order');
+  window.dispatchEvent(new Event('ehn_menu_order_updated'));
+  return DEFAULT_MENU_STRUCTURE;
 }
+
+export const resetCustomMenuOrder = resetMenuOrder;

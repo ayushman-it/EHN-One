@@ -4,27 +4,12 @@ import { exportToCSV, exportToExcel, exportToPDF } from '../utils/exportHelper';
 import Pagination from '../components/Pagination';
 import DataImportModal from '../components/DataImportModal';
 
-/* Mock users database */
-let usersDB = [
-  { id: 1, name: 'Arjun Sharma',  email: 'admin@inventrack.com',   role: 'admin',   status: 'active',   phone: '+91 98765 43210', department: 'IT Management', avatar: null, customPermissions: [], lastLogin: new Date('2026-08-21T09:30:00'), createdAt: new Date('2026-01-01'), createdBy: 'System' },
-  { id: 2, name: 'Priya Mehta',   email: 'manager@inventrack.com', role: 'manager', status: 'active',   phone: '+91 98765 43211', department: 'Operations & Stock', avatar: null, customPermissions: [], lastLogin: new Date('2026-08-21T08:15:00'), createdAt: new Date('2026-01-15'), createdBy: 'Arjun Sharma' },
-  { id: 3, name: 'Rahul Verma',   email: 'viewer@inventrack.com',  role: 'viewer',  status: 'active',   phone: '+91 98765 43212', department: 'Accounts & Billing', avatar: null, customPermissions: [], lastLogin: new Date('2026-08-20T16:45:00'), createdAt: new Date('2026-02-01'), createdBy: 'Arjun Sharma' },
-  { id: 4, name: 'Sneha Patel',   email: 'sneha@inventrack.com',   role: 'manager', status: 'active',   phone: '+91 98765 43213', department: 'Warehouse Godown', avatar: null, customPermissions: [], lastLogin: new Date('2026-08-19T14:20:00'), createdAt: new Date('2026-02-10'), createdBy: 'Arjun Sharma' },
-  { id: 5, name: 'Amit Kumar',    email: 'amit@inventrack.com',    role: 'viewer',  status: 'inactive', phone: '+91 98765 43214', department: 'Sales Desk', avatar: null, customPermissions: [], lastLogin: new Date('2026-07-20T11:00:00'), createdAt: new Date('2026-03-01'), createdBy: 'Priya Mehta' },
-  { id: 6, name: 'Neha Singh',    email: 'neha@inventrack.com',    role: 'manager', status: 'suspended', phone: '+91 98765 43215', department: 'Procurement', avatar: null, customPermissions: [], lastLogin: new Date('2026-06-15T10:30:00'), createdAt: new Date('2026-03-15'), createdBy: 'Arjun Sharma' },
-];
-
-let nextUserId = 7;
+/* Live users database */
+let usersDB = [];
 
 /* Audit Log */
-let auditLog = [
-  { id: 1, userId: 2, userName: 'Priya Mehta', userAvatar: null, action: 'user.created', target: 'Sneha Patel', details: 'Created manager account', timestamp: new Date('2026-02-10T10:00:00'), performedBy: 'Arjun Sharma' },
-  { id: 2, userId: 1, userName: 'Arjun Sharma', userAvatar: null, action: 'user.role_changed', target: 'Priya Mehta', details: 'Role changed from viewer to manager', timestamp: new Date('2026-03-01T14:30:00'), performedBy: 'Arjun Sharma' },
-  { id: 3, userId: 1, userName: 'Arjun Sharma', userAvatar: null, action: 'user.suspended', target: 'Neha Singh', details: 'Account suspended due to policy violation', timestamp: new Date('2026-04-15T16:00:00'), performedBy: 'Arjun Sharma' },
-  { id: 4, userId: 2, userName: 'Priya Mehta', userAvatar: null, action: 'user.deactivated', target: 'Amit Kumar', details: 'Account deactivated - resigned', timestamp: new Date('2026-05-20T11:30:00'), performedBy: 'Priya Mehta' },
-];
-
-let nextAuditId = 5;
+let auditLog = [];
+let nextAuditId = 1;
 
 const addAuditLog = (action, target, details, performedBy) => {
   auditLog.unshift({
@@ -50,7 +35,7 @@ const delay = (ms = 200) => new Promise((r) => setTimeout(r, ms));
 
 export default function Users() {
   const { can, user: currentUser } = useAuth();
-  const [users, setUsers] = useState(usersDB);
+  const [users, setUsers] = useState([]);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -78,7 +63,7 @@ export default function Users() {
         }
       } else if (e.key === 'F5') {
         e.preventDefault();
-        setUsers([...usersDB]);
+        fetchUsers();
       } else if (e.altKey && (e.key === 'a' || e.key === 'A')) {
         e.preventDefault();
         setShowAuditLog(true);
@@ -95,10 +80,30 @@ export default function Users() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  // Filter logic
+  const fetchUsers = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/users', {
+        headers: { Authorization: token ? `Bearer ${token}` : '' }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          setUsers(data.data);
+          usersDB = data.data;
+        }
+      }
+    } catch (e) {
+      console.error('Error fetching users:', e);
+    }
+  };  // Filter logic
   const filteredUsers = users.filter((u) => {
+    if (!u) return false;
     const q = search.toLowerCase();
-    const matchSearch = !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || u.department.toLowerCase().includes(q);
+    const matchSearch = !q || 
+      (u.name && u.name.toLowerCase().includes(q)) || 
+      (u.email && u.email.toLowerCase().includes(q)) || 
+      (u.department && typeof u.department === 'string' && u.department.toLowerCase().includes(q));
     const matchRole = roleFilter === 'all' || u.role === roleFilter;
     const matchStatus = statusFilter === 'all' || u.status === statusFilter;
     return matchSearch && matchRole && matchStatus;
@@ -119,14 +124,18 @@ export default function Users() {
     viewers: users.filter((u) => u.role === 'viewer').length,
   };
 
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
   const openAdd = () => { setForm(emptyForm); setEditId(null); setError(''); setShowModal(true); };
   const openEdit = (u) => {
     setForm({ 
-      name: u.name, email: u.email, role: u.role, phone: u.phone, 
-      department: u.department, password: '', avatar: u.avatar, 
-      avatarPreview: u.avatar, customPermissions: u.customPermissions || [] 
+      name: u.name || '', email: u.email || '', role: u.role || 'viewer', phone: u.phone || '', 
+      department: u.department || '', password: '', avatar: u.avatar || null, 
+      avatarPreview: u.avatar || null, customPermissions: u.customPermissions || [] 
     });
-    setEditId(u.id);
+    setEditId(u._id || u.id);
     setError('');
     setShowModal(true);
   };
@@ -135,39 +144,33 @@ export default function Users() {
     e.preventDefault();
     setSaving(true);
     setError('');
-    await delay(300);
 
     try {
-      if (editId) {
-        // Update
-        const idx = users.findIndex((u) => u.id === editId);
-        if (idx === -1) throw new Error('User not found');
-        const oldRole = users[idx].role;
-        users[idx] = { ...users[idx], ...form, email: users[idx].email };
-        usersDB = [...users];
-        
-        if (oldRole !== form.role) {
-          addAuditLog('user.role_changed', users[idx].name, `Role changed from ${oldRole} to ${form.role}`, currentUser?.name);
-        } else {
-          addAuditLog('user.updated', users[idx].name, 'User details updated', currentUser?.name);
-        }
-      } else {
-        // Create
-        const exists = users.find((u) => u.email.toLowerCase() === form.email.toLowerCase());
-        if (exists) throw new Error('Email already exists');
-        const newUser = {
-          id: nextUserId++,
-          ...form,
-          status: 'active',
-          lastLogin: null,
-          createdAt: new Date(),
-          createdBy: currentUser?.name,
-        };
-        users.unshift(newUser);
-        usersDB = [...users];
-        addAuditLog('user.created', newUser.name, `Created new ${newUser.role} account`, currentUser?.name);
+      const token = localStorage.getItem('token');
+      const url = editId ? `/api/users/${editId}` : '/api/users';
+      const method = editId ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: token ? `Bearer ${token}` : ''
+        },
+        body: JSON.stringify(form)
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Error saving user');
       }
-      setUsers([...users]);
+
+      if (editId) {
+        addAuditLog('user.updated', form.name, 'Operator details and rights updated', currentUser?.name);
+      } else {
+        addAuditLog('user.created', form.name, `Created new ${form.role} operator account`, currentUser?.name);
+      }
+
+      await fetchUsers();
       setShowModal(false);
     } catch (err) {
       setError(err.message);
@@ -176,33 +179,49 @@ export default function Users() {
     }
   };
 
-  const handleDelete = async (id) => {
-    const uObj = users.find((u) => u.id === id);
-    await delay(200);
-    const filtered = users.filter((u) => u.id !== id);
-    setUsers(filtered);
-    usersDB = filtered;
-    setShowDeleteConfirm(null);
-    if (uObj) {
-      addAuditLog('user.deleted', uObj.name, `Deleted ${uObj.role} account`, currentUser?.name);
+  const handleDelete = async (targetUser) => {
+    const userId = targetUser?._id || targetUser?.id || targetUser;
+    const userName = targetUser?.name || 'Operator';
+
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`/api/users/${userId}`, {
+        method: 'DELETE',
+        headers: { Authorization: token ? `Bearer ${token}` : '' }
+      });
+      addAuditLog('user.deleted', userName, `Deleted operator account`, currentUser?.name);
+      setShowDeleteConfirm(null);
+      await fetchUsers();
+    } catch (e) {
+      console.error('Error deleting user:', e);
     }
   };
 
-  const handleStatusChange = async (id, newStatus) => {
-    await delay(200);
-    const idx = users.findIndex((u) => u.id === id);
-    if (idx !== -1) {
-      const oldStatus = users[idx].status;
-      users[idx].status = newStatus;
-      setUsers([...users]);
-      usersDB = [...users];
+  const handleStatusChange = async (targetUser, newStatus) => {
+    const userId = targetUser?._id || targetUser?.id || targetUser;
+    const userName = targetUser?.name || 'Operator';
+    const oldStatus = targetUser?.status || 'active';
+
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`/api/users/${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: token ? `Bearer ${token}` : ''
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
       
       const actions = {
         active: 'user.activated',
         inactive: 'user.deactivated',
         suspended: 'user.suspended',
       };
-      addAuditLog(actions[newStatus], users[idx].name, `Status changed from ${oldStatus} to ${newStatus}`, currentUser?.name);
+      addAuditLog(actions[newStatus], userName, `Status changed from ${oldStatus} to ${newStatus}`, currentUser?.name);
+      await fetchUsers();
+    } catch (e) {
+      console.error('Error updating status:', e);
     }
   };
 
@@ -464,8 +483,8 @@ export default function Users() {
                             <button className="btn-v outline-primary btn-sm px-2" onClick={() => openEdit(u)} title="Edit Permissions">
                               <i className="bi bi-pencil"></i>
                             </button>
-                            {u.id !== currentUser?.id && (
-                              <button className="btn-v outline-danger btn-sm px-2" onClick={() => handleDelete(u.id, u.name)} title="Delete User">
+                            {(u._id || u.id) !== (currentUser?._id || currentUser?.id) && (
+                              <button className="btn-v outline-danger btn-sm px-2" onClick={() => handleDelete(u)} title="Delete User">
                                 <i className="bi bi-trash"></i>
                               </button>
                             )}
@@ -497,69 +516,176 @@ export default function Users() {
       {/* Add / Edit Operator Desktop Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}>
-          <div className="modal-box" style={{ maxWidth: 650 }}>
-            <div className="modal-box-header d-flex align-items-center justify-content-between">
+          <div className="modal-box" style={{ maxWidth: 820, width: '95%', borderRadius: 0 }}>
+            <div className="modal-box-header d-flex align-items-center justify-content-between px-3.5 py-2.5" style={{ background: '#1E4D2B', color: '#ffffff', borderRadius: 0 }}>
               <div className="d-flex align-items-center gap-2">
-                <i className={`bi ${editId ? 'bi-pencil-square' : 'bi-person-plus'}`} style={{ color: 'var(--primary)' }}></i>
-                <span>{editId ? 'MODIFY OPERATOR SECURITY MASTER' : 'CREATE NEW OPERATOR MASTER'}</span>
+                <i className={`bi ${editId ? 'bi-pencil-square' : 'bi-person-plus'}`} style={{ color: '#FFD700' }}></i>
+                <span className="fw-bold">{editId ? 'MODIFY OPERATOR SECURITY MASTER' : 'CREATE NEW OPERATOR MASTER'}</span>
               </div>
-              <button className="close-btn" onClick={() => setShowModal(false)} aria-label="Close">
-                <i className="bi bi-x-lg"></i>
-              </button>
+              <button className="btn-close btn-close-white" onClick={() => setShowModal(false)} aria-label="Close"></button>
             </div>
             <form onSubmit={handleSubmit}>
-              <div className="modal-box-body p-3" style={{ maxHeight: '68vh', overflowY: 'auto' }}>
+              <div className="modal-box-body p-3.5 bg-white" style={{ maxHeight: '78vh', overflowY: 'auto' }}>
                 {error && (
-                  <div className="alert-v danger mb-3">
+                  <div className="alert alert-danger mb-3 py-2 small fw-bold">
                     <i className="bi bi-exclamation-circle me-1"></i> {error}
                   </div>
                 )}
 
-                <div className="form-section-title mb-2"><i className="bi bi-person-badge me-1"></i> Operator Identity</div>
+                <div className="form-section-title mb-2 fw-bold text-dark" style={{ fontSize: '0.84rem' }}><i className="bi bi-person-badge me-1 text-success"></i> Operator Identity</div>
                 <div className="row g-2 mb-3">
                   <div className="col-md-6">
-                    <label className="form-label">Full Name *</label>
+                    <label className="form-label fw-bold text-dark small mb-1">Full Name *</label>
                     <input className="form-control" placeholder="e.g. Ramesh Sharma" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
                   </div>
                   <div className="col-md-6">
-                    <label className="form-label">Email Address *</label>
+                    <label className="form-label fw-bold text-dark small mb-1">Email Address *</label>
                     <input className="form-control" type="email" placeholder="ramesh@ehnone.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} disabled={!!editId} required />
                   </div>
                   <div className="col-md-6">
-                    <label className="form-label">Phone Number</label>
+                    <label className="form-label fw-bold text-dark small mb-1">Phone Number</label>
                     <input className="form-control" placeholder="+91 98765 43210" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
                   </div>
                   <div className="col-md-6">
-                    <label className="form-label">Department / Branch</label>
+                    <label className="form-label fw-bold text-dark small mb-1">Department / Branch</label>
                     <input className="form-control" placeholder="e.g. Billing Desk" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} />
                   </div>
                 </div>
 
-                <div className="form-divider mb-3"></div>
+                <div className="border-top my-2.5"></div>
 
-                <div className="form-section-title mb-2"><i className="bi bi-shield-lock me-1"></i> Security Role Level</div>
+                <div className="form-section-title mb-2 fw-bold text-dark" style={{ fontSize: '0.84rem' }}><i className="bi bi-shield-lock me-1 text-success"></i> Security Role & Password</div>
                 <div className="row g-2 mb-3">
                   <div className="col-md-6">
-                    <label className="form-label">Assigned Role Level *</label>
-                    <select className="form-select" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-                      <option value="admin">Administrator (Full Rights)</option>
-                      <option value="manager">Manager (Operations & Stock)</option>
-                      <option value="viewer">Viewer / Billing Operator</option>
+                    <label className="form-label fw-bold text-dark small mb-1">Assigned Role Level *</label>
+                    <select className="form-select fw-bold" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
+                      <option value="admin">Administrator (Full Rights Access)</option>
+                      <option value="manager">Manager (Custom Menu & Edit Rights)</option>
+                      <option value="viewer">Viewer / Operator (Restricted Read Only)</option>
                     </select>
                   </div>
                   {!editId && (
                     <div className="col-md-6">
-                      <label className="form-label">Initial Password *</label>
-                      <input className="form-control" type="password" placeholder="••••••••" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
+                      <label className="form-label fw-bold text-dark small mb-1">Password *</label>
+                      <input className="form-control font-monospace fw-bold" type="password" placeholder="••••••••" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
                     </div>
                   )}
                 </div>
+
+                <div className="border-top my-2.5"></div>
+
+                <div className="d-flex align-items-center justify-content-between mb-2">
+                  <div className="fw-bold text-dark" style={{ fontSize: '0.82rem' }}>
+                    <i className="bi bi-shield-check me-1 text-success"></i> Menu Access & Edit Rights Matrix
+                  </div>
+                  {form.role === 'admin' && (
+                    <span className="badge bg-success font-monospace" style={{ fontSize: '0.68rem' }}>FULL ADMIN ACCESS</span>
+                  )}
+                </div>
+                          {/* RESPONSIVE TOGGLE SWITCHES PERMISSIONS MATRIX */}
+                <div className="border rounded bg-white p-3 mb-2 shadow-sm">
+                  {[
+                    { group: 'MASTERS & DIRECTORIES', icon: 'bi-folder-symlink', items: [
+                      { key: 'products', name: 'All Stock Items', icon: 'bi-box-seam' },
+                      { key: 'finishedgoods', name: 'Finished Goods (FG)', icon: 'bi-box-seam-fill' },
+                      { key: 'rawmaterials', name: 'Raw Material (RM)', icon: 'bi-bricks' },
+                      { key: 'categories', name: 'Stock Groups', icon: 'bi-tag' },
+                      { key: 'customers', name: 'Customer Ledgers', icon: 'bi-people' },
+                      { key: 'suppliers', name: 'Supplier Directory', icon: 'bi-truck' },
+                      { key: 'warehouse', name: 'Godown Masters', icon: 'bi-building' },
+                      { key: 'company-firms', name: 'Company Firms Master', icon: 'bi-building-gear' },
+                    ]},
+                    { group: 'VOUCHERS & TRANSACTIONS', icon: 'bi-boxes', items: [
+                      { key: 'orders', name: 'Sales Orders Booking', icon: 'bi-cart-check' },
+                      { key: 'invoices', name: 'Sales Billing Voucher', icon: 'bi-receipt' },
+                      { key: 'transactions', name: 'Stock Ledger Daybook', icon: 'bi-arrow-left-right' },
+                      { key: 'stockin', name: 'Stock In Entry', icon: 'bi-arrow-down-circle' },
+                      { key: 'stockout', name: 'Stock Out Entry', icon: 'bi-arrow-up-circle' },
+                      { key: 'lowstock', name: 'Low Stock Alerts', icon: 'bi-exclamation-triangle' },
+                    ]},
+                    { group: 'STATUTORY & SYSTEM UTILITIES', icon: 'bi-shield-gear', items: [
+                      { key: 'dashboard', name: 'Gateway Dashboard', icon: 'bi-speedometer2' },
+                      { key: 'reports', name: 'Financial Reports', icon: 'bi-bar-chart-line' },
+                      { key: 'analytics', name: 'Business Analytics', icon: 'bi-graph-up-arrow' },
+                      { key: 'automations', name: 'Bot Automations & Reminders', icon: 'bi-lightning-charge' },
+                      { key: 'settings', name: 'System Settings', icon: 'bi-gear' },
+                      { key: 'users', name: 'User Security Roles', icon: 'bi-person-lock' },
+                    ]}
+                  ].map(sec => (
+                    <div key={sec.group} className="mb-3">
+                      <div className="fw-bold text-uppercase text-secondary mb-2 border-bottom pb-1" style={{ fontSize: '0.74rem', letterSpacing: '0.5px' }}>
+                        <i className={`bi ${sec.icon} me-1.5 text-success`}></i> {sec.group}
+                      </div>
+                      <div className="row g-2">
+                        {sec.items.map(item => {
+                          const viewKey = `${item.key}.view`;
+                          const editKey = `${item.key}.edit`;
+                          const hasView = (form.customPermissions || []).includes(viewKey) || form.role === 'admin';
+                          const hasEdit = (form.customPermissions || []).includes(editKey) || form.role === 'admin';
+
+                          const togglePerm = (permKey) => {
+                            if (form.role === 'admin') return;
+                            const current = form.customPermissions || [];
+                            const updated = current.includes(permKey)
+                              ? current.filter(k => k !== permKey)
+                              : [...current, permKey];
+                            setForm({ ...form, customPermissions: updated });
+                          };
+
+                          return (
+                            <div key={item.key} className="col-12 col-md-6">
+                              <div className="p-2 border rounded bg-light d-flex align-items-center justify-content-between h-100">
+                                <div className="d-flex align-items-center gap-2 me-2 overflow-hidden">
+                                  <i className={`bi ${item.icon} text-success me-1 flex-shrink-0`}></i>
+                                  <span className="fw-bold text-dark small text-truncate" title={item.name}>{item.name}</span>
+                                </div>
+                                <div className="d-flex align-items-center gap-3 flex-shrink-0">
+                                  {/* View Access Switch */}
+                                  <div className="form-check form-switch m-0 d-flex align-items-center gap-1 style-cursor">
+                                    <input
+                                      className="form-check-input style-cursor m-0"
+                                      type="checkbox"
+                                      id={`view-${item.key}`}
+                                      checked={hasView}
+                                      disabled={form.role === 'admin'}
+                                      onChange={() => togglePerm(viewKey)}
+                                      style={{ cursor: 'pointer' }}
+                                    />
+                                    <label className="form-check-label small fw-bold mb-0 style-cursor" htmlFor={`view-${item.key}`} style={{ fontSize: '0.72rem', cursor: 'pointer' }}>
+                                      {hasView ? <span className="text-success">View</span> : <span className="text-muted opacity-75">Off</span>}
+                                    </label>
+                                  </div>
+
+                                  {/* Edit Rights Switch */}
+                                  <div className="form-check form-switch m-0 d-flex align-items-center gap-1 style-cursor">
+                                    <input
+                                      className="form-check-input style-cursor m-0"
+                                      type="checkbox"
+                                      id={`edit-${item.key}`}
+                                      checked={hasEdit}
+                                      disabled={form.role === 'admin' || !hasView}
+                                      onChange={() => togglePerm(editKey)}
+                                      style={{ cursor: 'pointer' }}
+                                    />
+                                    <label className="form-check-label small fw-bold mb-0 style-cursor" htmlFor={`edit-${item.key}`} style={{ fontSize: '0.72rem', cursor: 'pointer' }}>
+                                      {hasEdit ? <span className="text-warning text-dark">Edit</span> : <span className="text-muted opacity-75">Read</span>}
+                                    </label>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              <div className="modal-box-footer d-flex justify-content-end gap-2">
-                <button type="button" className="btn-v outline-secondary btn-sm" onClick={() => setShowModal(false)}>Cancel</button>
-                <button type="submit" className="btn-v primary btn-sm" disabled={saving}>
-                  <i className="bi bi-check-circle me-1"></i> {saving ? 'Saving...' : editId ? 'Update Operator' : 'Create Operator'}
+              <div className="modal-box-footer d-flex justify-content-end gap-2 p-3 bg-light border-top">
+                <button type="button" className="btn btn-outline-secondary btn-sm fw-bold px-3" onClick={() => setShowModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-success btn-sm fw-bold px-3" disabled={saving}>
+                  <i className="bi bi-check-circle me-1"></i> {saving ? 'Saving Rights...' : editId ? 'Update Operator Rights' : 'Create Operator'}
                 </button>
               </div>
             </form>

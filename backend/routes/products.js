@@ -5,7 +5,7 @@ const { protect } = require('../middleware/auth');
 
 router.use(protect);
 
-const ALLOWED_FIELDS = ['name', 'sku', 'description', 'category', 'supplier', 'warehouse', 'quantity', 'price', 'lowStockThreshold', 'status'];
+const ALLOWED_FIELDS = ['name', 'sku', 'description', 'category', 'itemType', 'cost', 'unit', 'uqcUnit', 'hsnCode', 'supplier', 'warehouse', 'quantity', 'price', 'lowStockThreshold', 'status'];
 
 function pick(obj, fields) {
   const result = {};
@@ -19,10 +19,11 @@ function escapeRegex(str) {
 
 router.get('/', async (req, res) => {
   try {
-    const { search, category } = req.query;
+    const { search, category, itemType } = req.query;
     const filter = {};
     if (search) filter.name = { $regex: escapeRegex(search), $options: 'i' };
     if (category) filter.category = category;
+    if (itemType) filter.itemType = itemType;
     const products = await Product.find(filter).sort({ updatedAt: -1 });
     res.json(products);
   } catch (err) {
