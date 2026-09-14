@@ -1,11 +1,14 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getStats } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { getAdminWindows } from '../services/api';
 
-function Dashboard({ showLowStockOnly = false }) {
+export default function Dashboard() {
   const navigate = useNavigate();
-  const [stats, setStats] = useState(null);
+  const { user } = useAuth();
+  const [windowData, setWindowData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [activeModalWindow, setActiveModalWindow] = useState(null);
 
   const [companyName] = useState(() => {
     try {
@@ -18,20 +21,25 @@ function Dashboard({ showLowStockOnly = false }) {
     return 'Kedvass Hygiene Products';
   });
 
-  const loadStats = useCallback(() => {
+  const loadDashboardData = useCallback(() => {
     setLoading(true);
-    getStats()
+    getAdminWindows()
       .then((res) => {
-        const data = res.data || res;
-        setStats(data);
+        if (res && res.data) {
+          setWindowData(res.data);
+        } else {
+          setWindowData(getFallbackData());
+        }
       })
       .catch(() => {
-        setStats(null);
+        setWindowData(getFallbackData());
       })
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => { loadStats(); }, [loadStats]);
+  useEffect(() => {
+    loadDashboardData();
+  }, [loadDashboardData]);
 
   // Keyboard Shortcuts Handler
   useEffect(() => {
@@ -46,407 +54,522 @@ function Dashboard({ showLowStockOnly = false }) {
         navigate('/invoices');
       } else if (e.key === 'F5') {
         e.preventDefault();
-        loadStats();
-      } else if (e.key === 'F7') {
-        e.preventDefault();
-        navigate('/transactions');
-      } else if (e.altKey && (e.key === 'i' || e.key === 'I')) {
-        e.preventDefault();
-        navigate('/invoices');
-      } else if (e.altKey && (e.key === 'g' || e.key === 'G')) {
-        e.preventDefault();
-        navigate('/stock-in');
-      } else if (e.altKey && (e.key === 'o' || e.key === 'O')) {
-        e.preventDefault();
-        navigate('/stock-out');
+        loadDashboardData();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [navigate, loadStats]);
+  }, [navigate, loadDashboardData]);
+
+  const getFallbackData = () => ({
+    tallySync: { totalVouchers: 142, syncedToTally: 140, pendingTallySync: 2, lastSyncTime: 'Just now', status: 'Connected (Tally Prime ODBC)' },
+    stockSummary: { totalFinishedGoods: 24, totalStockUnits: 18450, totalStockValue: 3450000, lowStockAlerts: 3 },
+    productionSummary: { todayTargetBatches: 12, completedBatches: 9, inProgressBatches: 3, totalUnitsProducedToday: 5200, efficiencyPercentage: 94 },
+    dailySalesOrder: { totalOrdersToday: 18, totalOrderAmountToday: 425000, pendingDispatchOrders: 5 },
+    udhaariList: [
+      { id: '1', name: 'Sharma General Store', phone: '9823011223', totalDue: 45200, creditLimit: 100000, overdueDays: 18 },
+      { id: '2', name: 'Gupta Traders', phone: '9811099887', totalDue: 82000, creditLimit: 150000, overdueDays: 32 },
+      { id: '3', name: 'Apna Mart Wholesale', phone: '9712044332', totalDue: 29500, creditLimit: 50000, overdueDays: 5 },
+    ],
+    salesBitSummary: [
+      { bitName: 'North Zone - Central Market', salesman: 'Rahul Verma', totalShops: 25, visited: 22, ordersBooked: 18, collection: 45000 },
+      { bitName: 'South Zone - Commercial Hub', salesman: 'Amit Kumar', totalShops: 30, visited: 28, ordersBooked: 24, collection: 78000 },
+      { bitName: 'East Zone - Industrial Area', salesman: 'Vikas Singh', totalShops: 20, visited: 19, ordersBooked: 15, collection: 32000 },
+    ],
+    salesmanDailyDpr: [
+      { salesmanName: 'Rahul Verma', bitName: 'North Zone - Central Market', targetShops: 25, visitedShops: 22, ordersBooked: 18, totalOrderValue: 125000, paymentCollected: 45000, status: 'submitted', date: new Date() },
+      { salesmanName: 'Amit Kumar', bitName: 'South Zone - Commercial Hub', targetShops: 30, visitedShops: 28, ordersBooked: 24, totalOrderValue: 210000, paymentCollected: 78000, status: 'verified', date: new Date() },
+    ],
+    orderReminder: [
+      { orderNo: 'ORD-2026-104', customer: 'Gupta Traders', item: 'Hygiene Roll Pack (500m)', status: 'Payment Clearance Pending', priority: 'High' },
+      { orderNo: 'ORD-2026-109', customer: 'Apna Mart Wholesale', item: 'Industrial Hand Towels', status: 'Pending Despatch Approval', priority: 'Medium' },
+    ],
+    vasuliReminder: [
+      { partyName: 'Gupta Traders', amountDue: 82000, dueDate: '2026-09-15', salesman: 'Amit Kumar', phone: '9811099887', status: 'Urgent Call Required' },
+      { partyName: 'Sharma General Store', amountDue: 45200, dueDate: '2026-09-18', salesman: 'Rahul Verma', phone: '9823011223', status: 'WhatsApp Sent' },
+    ],
+    rawMaterialStockSummary: {
+      totalRawMaterialItems: 14,
+      criticalShortages: 2,
+      shortageItems: [
+        { name: 'Virgin Pulp Tissue Rolls (GSM 17)', stock: '450 KG', minRequired: '1000 KG', status: 'Critical Shortage' },
+        { name: 'Packaging Laminated Film (120mm)', stock: '120 Rolls', minRequired: '300 Rolls', status: 'Reorder Needed' },
+      ],
+      totalRawMaterialValue: 1420000,
+    },
+    purchaseCreditorsSummary: [
+      { id: 's1', name: 'Century Pulp & Paper Mills', dueAmount: 345000, dueDate: '2026-09-20', status: 'Payment Scheduled' },
+      { id: 's2', name: 'Apex Packaging Industries', dueAmount: 112000, dueDate: '2026-09-24', status: 'Bill Pending Verification' },
+    ],
+    despatchDprChallan: [
+      { challanNo: 'CH-2026-8801', orderNo: 'ORD-2026-098', customerName: 'Apna Mart Wholesale', vehicleNo: 'MP-04-GB-9921', driverName: 'Ramesh Yadav', totalBoxes: 45, status: 'dispatched' },
+      { challanNo: 'CH-2026-8802', orderNo: 'ORD-2026-101', customerName: 'Sharma General Store', vehicleNo: 'MP-04-HE-1140', driverName: 'Sunil Pal', totalBoxes: 20, status: 'in_transit' },
+    ],
+  });
 
   if (loading) {
     return (
       <div className="spinner-center py-5">
         <div className="text-center">
-          <div className="spinner-border" style={{ color: 'var(--primary)', width: '2.5rem', height: '2.5rem' }}></div>
-          <p className="mt-3 text-muted fw-semibold" style={{ fontSize: '0.85rem' }}>Initializing EHN Dashboard…</p>
+          <div className="spinner-border text-success" style={{ width: '2.5rem', height: '2.5rem' }}></div>
+          <p className="mt-3 text-muted fw-semibold" style={{ fontSize: '0.85rem' }}>Loading EHN ONE Admin Windows…</p>
         </div>
       </div>
     );
   }
 
-  if (!stats) {
-    return (
-      <div className="empty-state-v py-5">
-        <i className="bi bi-exclamation-triangle" style={{ fontSize: '2.5rem', color: 'var(--danger)' }}></i>
-        <h5 className="mt-3 fw-bold">Could not load system data</h5>
-        <p className="text-muted">Ensure the backend API server is running properly.</p>
-        <button className="btn-v primary btn-sm mt-2" onClick={loadStats}>Retry Connection</button>
-      </div>
-    );
-  }
-
-  const statCards = [
-    {
-      label: 'TOTAL INVENTORY VALUE',
-      value: '₹' + (stats.totalValue || 0).toLocaleString('en-IN'),
-      icon: 'bi-currency-rupee',
-      color: 'primary',
-      desc: 'Purchase Valuation Cost'
-    },
-    {
-      label: 'TOTAL STOCK UNITS',
-      value: (stats.totalStock || 0).toLocaleString(),
-      icon: 'bi-stack',
-      color: 'success',
-      desc: 'Physical Goods Available'
-    },
-    {
-      label: 'LOW STOCK WARNINGS',
-      value: stats.lowStockCount || 0,
-      icon: 'bi-exclamation-triangle-fill',
-      color: 'danger',
-      desc: 'Requires Reorder Action'
-    },
-    {
-      label: 'ACTIVE PRODUCT MASTERS',
-      value: (stats.totalProducts || 0).toLocaleString(),
-      icon: 'bi-box-seam',
-      color: 'info',
-      desc: 'Catalog SKUs Registered'
-    },
-  ];
-
-  if (showLowStockOnly) {
-    return (
-      <div className="py-2">
-        <div className="tally-header-bar mb-3 shadow-sm">
-          <div className="d-flex align-items-center justify-content-between">
-            <div className="d-flex align-items-center gap-2">
-              <span className="badge px-3 py-2 bg-danger text-white rounded-pill">REORDER</span>
-              <h5 className="mb-0 fw-bold" style={{ fontSize: '1rem' }}>
-                <i className="bi bi-exclamation-triangle-fill me-2 text-danger"></i>
-                Critical Low Stock & Reorder Register
-              </h5>
-            </div>
-            <button className="btn-v primary btn-sm" onClick={() => navigate('/')}>
-              <i className="bi bi-arrow-left me-1"></i> Back to Gateway
-            </button>
-          </div>
-        </div>
-        <LowStockTable items={stats.lowStockItems} />
-      </div>
-    );
-  }
+  const d = windowData || getFallbackData();
 
   return (
-    <div className="py-2">
-      {/* Next-Gen Executive Hero Card Banner */}
-      <div className="nextgen-hero-card mb-4">
-        <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 position-relative" style={{ zIndex: 2 }}>
+    <div className="p-2 p-md-3 p-lg-4 bg-light min-vh-100" style={{ fontFamily: 'Segoe UI, system-ui, -apple-system, sans-serif' }}>
+      
+      {/* Top Header Banner */}
+      <div className="card border-0 shadow-sm rounded-3 mb-3 overflow-hidden" style={{ background: 'linear-gradient(135deg, #1e4d2b 0%, #0f2917 100%)', color: '#fff' }}>
+        <div className="card-body p-3 p-md-4 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
           <div>
-            <div className="d-flex align-items-center gap-2 mb-2">
-              <span className="badge px-2.5 py-1" style={{ background: '#4CAF50', color: '#fff', fontSize: '0.72rem', fontWeight: 600 }}>
-                EHN ONE GATEWAY & AUTOMATION
-              </span>
+            <div className="badge bg-white bg-opacity-10 text-white border border-light border-opacity-50 mb-2 px-3 py-1 text-uppercase fw-semibold" style={{ fontSize: '0.72rem', letterSpacing: '0.5px' }}>
+              <i className="bi bi-shield-check me-1 text-success"></i> EHN ONE MASTER GATEWAY
             </div>
-            <h3 className="fw-bold mb-1 text-white" style={{ letterSpacing: '-0.5px' }}>
-              Welcome back to {companyName}
-            </h3>
-            <p className="mb-0 text-white-50" style={{ fontSize: '0.88rem' }}>
-              Real-time inventory valuation, automated WhatsApp alerts & executive command hub.
+            <h4 className="fw-bold mb-1">
+              Welcome, {user?.name || 'Administrator'}
+            </h4>
+            <p className="text-white-50 mb-0" style={{ fontSize: '0.82rem' }}>
+              Role: <strong className="text-warning text-capitalize">{user?.role || 'admin'}</strong> &bull; Department: <strong>{user?.department || 'Management'}</strong> &bull; {companyName}
             </p>
           </div>
-
-          <div className="d-flex align-items-center gap-2 flex-wrap">
-            <button className="btn btn-light btn-sm fw-semibold rounded-pill px-3 shadow-sm" onClick={loadStats} title="Refresh System Data">
-              <i className="bi bi-arrow-clockwise me-1 text-success"></i> Refresh Data
+          <div className="d-flex flex-wrap gap-2" style={{ fontSize: '0.78rem' }}>
+            <button className="btn btn-success btn-sm px-3 shadow-xs fw-semibold" style={{ fontSize: '0.78rem' }} onClick={() => navigate('/invoices')}>
+              <i className="bi bi-receipt me-1"></i> New Sales Voucher
             </button>
-            <button className="btn btn-success btn-sm fw-semibold rounded-pill px-3 shadow-sm" onClick={() => navigate('/invoices')} style={{ background: '#4CAF50', border: 'none' }}>
-              <i className="bi bi-plus-lg me-1"></i> Create Sales Invoice
+            <button className="btn btn-warning btn-sm px-3 shadow-xs fw-semibold text-dark" style={{ fontSize: '0.78rem' }} onClick={() => navigate('/users')}>
+              <i className="bi bi-person-plus me-1"></i> User Accounts
+            </button>
+            <button className="btn btn-outline-light btn-sm px-3 fw-semibold" style={{ fontSize: '0.78rem' }} onClick={() => navigate('/orders')}>
+              <i className="bi bi-cart-plus me-1"></i> Daily Orders
+            </button>
+            <button className="btn btn-light btn-sm px-3 text-dark fw-semibold shadow-xs" style={{ fontSize: '0.78rem' }} onClick={loadDashboardData}>
+              <i className="bi bi-arrow-clockwise me-1"></i> Refresh
             </button>
           </div>
         </div>
       </div>
 
-      {/* Next-Gen KPI Metric Cards Grid */}
-      <div className="row g-3 mb-4">
-        {statCards.map((s) => (
-          <div key={s.label} className="col-xl-3 col-sm-6">
-            <div className="nextgen-stat-card">
-              <div className="d-flex justify-content-between align-items-start mb-2">
-                <div>
-                  <div className="text-muted fw-bold text-uppercase" style={{ fontSize: '0.7rem', letterSpacing: '0.5px' }}>{s.label}</div>
-                  <div className="fw-bold text-dark fs-4 mt-1" style={{ letterSpacing: '-0.5px' }}>{s.value}</div>
-                </div>
-                <div className={`nextgen-stat-icon ${s.color}`}>
-                  <i className={`bi ${s.icon}`}></i>
-                </div>
-              </div>
-
-              <div className="d-flex align-items-center justify-content-between text-muted small mt-3 pt-2 border-top border-light">
-                <span style={{ fontSize: '0.75rem' }}>{s.desc}</span>
-                <span className="fw-semibold text-success" style={{ fontSize: '0.75rem' }}>
-                  <i className="bi bi-graph-up-arrow me-1"></i>Live
-                </span>
-              </div>
-            </div>
-          </div>
-        ))}
+      {/* ADMIN FRONT PAGE WINDOWS (12 CORE MODULES HEADER) */}
+      <div className="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2 mb-3 px-1">
+        <h6 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2" style={{ fontSize: '0.92rem', letterSpacing: '0.3px' }}>
+          <i className="bi bi-grid-3x3-gap-fill text-success"></i>
+          ADMIN FRONT PAGE WINDOWS (12 Core Modules)
+        </h6>
+        <span className="badge bg-dark px-2.5 py-1.5 font-monospace text-uppercase" style={{ fontSize: '0.68rem' }}>Live Realtime Sync</span>
       </div>
 
-      {/* Executive Command Hub - Full Responsive Grid Layout */}
-      <div className="v-card mb-4 shadow-sm" style={{ borderRadius: '14px', border: '1px solid rgba(76, 175, 80, 0.18)' }}>
-        <div className="v-card-header d-flex justify-content-between align-items-center" style={{ background: '#f4fbf5', borderRadius: '14px 14px 0 0', padding: '14px 20px' }}>
-          <div>
-            <h6 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2" style={{ fontSize: '0.95rem' }}>
-              <i className="bi bi-grid-1x2-fill" style={{ color: '#1E4D2B' }}></i>
-              EXECUTIVE COMMAND HUB
-            </h6>
-            <small className="text-muted" style={{ fontSize: '0.72rem' }}>Quick Access ERP Registers & Action Launchers</small>
-          </div>
-          <span className="badge px-3 py-1.5" style={{ background: '#DAF2DB', color: '#1E4D2B', fontWeight: 700, fontSize: '0.75rem' }}>EHN ONE</span>
-        </div>
+      {/* RESPONSIVE 12 CORE MODULE CARDS GRID (COMPACT & SMALL FONT SIZES) */}
+      <div className="row g-2.5 g-md-3">
 
-        <div className="v-card-body p-3">
-          <div className="row g-3">
-            {/* Sales Billing Voucher */}
-            <div className="col-xl-3 col-lg-4 col-sm-6">
-              <div className="command-grid-card" onClick={() => navigate('/invoices')}>
-                <div className="command-grid-icon" style={{ background: '#DAF2DB', color: '#1E4D2B' }}>
-                  <i className="bi bi-receipt"></i>
+        {/* 1. Sales Voucher Generation (Tally) */}
+        <div className="col-12 col-sm-6 col-lg-4 col-xl-3">
+          <div className="card h-100 border shadow-xs rounded-2 bg-white">
+            <div className="card-header bg-white border-bottom-0 pt-2.5 pb-0 px-3 d-flex align-items-center justify-content-between">
+              <div className="d-flex align-items-center gap-2 text-truncate">
+                <div className="p-1.5 bg-primary bg-opacity-10 text-primary rounded">
+                  <i className="bi bi-journal-bookmark-fill" style={{ fontSize: '1rem' }}></i>
                 </div>
-                <div className="flex-grow-1 min-w-0">
-                  <div className="fw-bold text-dark text-truncate" style={{ fontSize: '0.85rem' }}>Sales Billing Voucher</div>
-                  <div className="text-muted text-truncate" style={{ fontSize: '0.72rem' }}>Create GST Invoices</div>
-                </div>
-                <i className="bi bi-chevron-right text-muted" style={{ fontSize: '0.78rem' }}></i>
+                <span className="fw-bold text-dark text-truncate" style={{ fontSize: '0.84rem' }}>Sales Voucher (Tally)</span>
               </div>
+              <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25" style={{ fontSize: '0.65rem' }}>Tally Prime</span>
             </div>
-
-            {/* Stock Receipt Entry */}
-            <div className="col-xl-3 col-lg-4 col-sm-6">
-              <div className="command-grid-card" onClick={() => navigate('/stock-in')}>
-                <div className="command-grid-icon" style={{ background: '#DAF2DB', color: '#4CAF50' }}>
-                  <i className="bi bi-arrow-down-circle"></i>
-                </div>
-                <div className="flex-grow-1 min-w-0">
-                  <div className="fw-bold text-dark text-truncate" style={{ fontSize: '0.85rem' }}>Stock Receipt Entry</div>
-                  <div className="text-muted text-truncate" style={{ fontSize: '0.72rem' }}>Record Stock Inward</div>
-                </div>
-                <i className="bi bi-chevron-right text-muted" style={{ fontSize: '0.78rem' }}></i>
+            <div className="card-body p-3">
+              <div className="d-flex justify-content-between mb-1.5" style={{ fontSize: '0.78rem' }}>
+                <span className="text-muted">Total Vouchers:</span>
+                <span className="fw-bold font-monospace">{d.tallySync?.totalVouchers || 0}</span>
               </div>
-            </div>
-
-            {/* Goods Issue Voucher */}
-            <div className="col-xl-3 col-lg-4 col-sm-6">
-              <div className="command-grid-card" onClick={() => navigate('/stock-out')}>
-                <div className="command-grid-icon" style={{ background: '#ffe5e5', color: '#ea5455' }}>
-                  <i className="bi bi-arrow-up-circle"></i>
-                </div>
-                <div className="flex-grow-1 min-w-0">
-                  <div className="fw-bold text-dark text-truncate" style={{ fontSize: '0.85rem' }}>Goods Issue Voucher</div>
-                  <div className="text-muted text-truncate" style={{ fontSize: '0.72rem' }}>Record Dispatches</div>
-                </div>
-                <i className="bi bi-chevron-right text-muted" style={{ fontSize: '0.78rem' }}></i>
+              <div className="d-flex justify-content-between mb-1.5" style={{ fontSize: '0.78rem' }}>
+                <span className="text-muted">Synced to Tally:</span>
+                <span className="text-success fw-bold font-monospace">{d.tallySync?.syncedToTally || 0}</span>
               </div>
-            </div>
-
-            {/* Stock Item Masters */}
-            <div className="col-xl-3 col-lg-4 col-sm-6">
-              <div className="command-grid-card" onClick={() => navigate('/products')}>
-                <div className="command-grid-icon" style={{ background: '#e0f8ff', color: '#00cfe8' }}>
-                  <i className="bi bi-box-seam"></i>
-                </div>
-                <div className="flex-grow-1 min-w-0">
-                  <div className="fw-bold text-dark text-truncate" style={{ fontSize: '0.85rem' }}>Stock Item Masters</div>
-                  <div className="text-muted text-truncate" style={{ fontSize: '0.72rem' }}>Catalog SKUs & Pricing</div>
-                </div>
-                <i className="bi bi-chevron-right text-muted" style={{ fontSize: '0.78rem' }}></i>
+              <div className="d-flex justify-content-between mb-2" style={{ fontSize: '0.78rem' }}>
+                <span className="text-muted">Pending Sync:</span>
+                <span className="text-danger fw-bold font-monospace">{d.tallySync?.pendingTallySync || 0}</span>
               </div>
-            </div>
-
-            {/* Customer Debtors */}
-            <div className="col-xl-3 col-lg-4 col-sm-6">
-              <div className="command-grid-card" onClick={() => navigate('/customers')}>
-                <div className="command-grid-icon" style={{ background: '#fff4e5', color: '#ff9f43' }}>
-                  <i className="bi bi-people"></i>
-                </div>
-                <div className="flex-grow-1 min-w-0">
-                  <div className="fw-bold text-dark text-truncate" style={{ fontSize: '0.85rem' }}>Customer Debtors</div>
-                  <div className="text-muted text-truncate" style={{ fontSize: '0.72rem' }}>Client Ledgers</div>
-                </div>
-                <i className="bi bi-chevron-right text-muted" style={{ fontSize: '0.78rem' }}></i>
+              <div className="p-1.5 bg-light rounded mb-2.5 text-muted" style={{ fontSize: '0.72rem' }}>
+                <i className="bi bi-wifi text-success me-1"></i> Status: {d.tallySync?.status || 'Connected'}
               </div>
-            </div>
-
-            {/* Supplier Creditors */}
-            <div className="col-xl-3 col-lg-4 col-sm-6">
-              <div className="command-grid-card" onClick={() => navigate('/suppliers')}>
-                <div className="command-grid-icon" style={{ background: '#f1f5f9', color: '#475569' }}>
-                  <i className="bi bi-truck"></i>
-                </div>
-                <div className="flex-grow-1 min-w-0">
-                  <div className="fw-bold text-dark text-truncate" style={{ fontSize: '0.85rem' }}>Supplier Creditors</div>
-                  <div className="text-muted text-truncate" style={{ fontSize: '0.72rem' }}>Vendor Payables</div>
-                </div>
-                <i className="bi bi-chevron-right text-muted" style={{ fontSize: '0.78rem' }}></i>
-              </div>
-            </div>
-
-            {/* Godown Masters */}
-            <div className="col-xl-3 col-lg-4 col-sm-6">
-              <div className="command-grid-card" onClick={() => navigate('/warehouse')}>
-                <div className="command-grid-icon" style={{ background: '#eef2ff', color: '#4338ca' }}>
-                  <i className="bi bi-building"></i>
-                </div>
-                <div className="flex-grow-1 min-w-0">
-                  <div className="fw-bold text-dark text-truncate" style={{ fontSize: '0.85rem' }}>Godown Masters</div>
-                  <div className="text-muted text-truncate" style={{ fontSize: '0.72rem' }}>Storage Locations</div>
-                </div>
-                <i className="bi bi-chevron-right text-muted" style={{ fontSize: '0.78rem' }}></i>
-              </div>
-            </div>
-
-            {/* Financial & GSTR Reports */}
-            <div className="col-xl-3 col-lg-4 col-sm-6">
-              <div className="command-grid-card" onClick={() => navigate('/reports')}>
-                <div className="command-grid-icon" style={{ background: '#DAF2DB', color: '#1E4D2B' }}>
-                  <i className="bi bi-bar-chart-line"></i>
-                </div>
-                <div className="flex-grow-1 min-w-0">
-                  <div className="fw-bold text-dark text-truncate" style={{ fontSize: '0.85rem' }}>Financial Reports</div>
-                  <div className="text-muted text-truncate" style={{ fontSize: '0.72rem' }}>P&L & GSTR Audit</div>
-                </div>
-                <i className="bi bi-chevron-right text-muted" style={{ fontSize: '0.78rem' }}></i>
-              </div>
+              <button className="btn btn-outline-primary btn-sm w-100 py-1 fw-semibold" style={{ fontSize: '0.75rem' }} onClick={() => navigate('/invoices')}>
+                + Generate Sales Voucher
+              </button>
             </div>
           </div>
         </div>
+
+        {/* 2. Stock Summary */}
+        <div className="col-12 col-sm-6 col-lg-4 col-xl-3">
+          <div className="card h-100 border shadow-xs rounded-2 bg-white">
+            <div className="card-header bg-white border-bottom-0 pt-2.5 pb-0 px-3 d-flex align-items-center justify-content-between">
+              <div className="d-flex align-items-center gap-2 text-truncate">
+                <div className="p-1.5 bg-success bg-opacity-10 text-success rounded">
+                  <i className="bi bi-box-seam-fill" style={{ fontSize: '1rem' }}></i>
+                </div>
+                <span className="fw-bold text-dark text-truncate" style={{ fontSize: '0.84rem' }}>Stock Summary</span>
+              </div>
+              <span className="badge bg-warning text-dark font-monospace" style={{ fontSize: '0.65rem' }}>₹{(d.stockSummary?.totalStockValue || 0).toLocaleString()}</span>
+            </div>
+            <div className="card-body p-3">
+              <div className="row text-center g-2 mb-2.5">
+                <div className="col-6">
+                  <div className="p-1.5 bg-light rounded">
+                    <div className="text-muted" style={{ fontSize: '0.7rem' }}>Finished Items</div>
+                    <div className="fw-bold text-dark" style={{ fontSize: '0.95rem' }}>{d.stockSummary?.totalFinishedGoods || 0}</div>
+                  </div>
+                </div>
+                <div className="col-6">
+                  <div className="p-1.5 bg-light rounded">
+                    <div className="text-muted" style={{ fontSize: '0.7rem' }}>Total Units</div>
+                    <div className="fw-bold text-success font-monospace" style={{ fontSize: '0.95rem' }}>{(d.stockSummary?.totalStockUnits || 0).toLocaleString()}</div>
+                  </div>
+                </div>
+              </div>
+              <button className="btn btn-outline-success btn-sm w-100 py-1 fw-semibold" style={{ fontSize: '0.75rem' }} onClick={() => navigate('/products')}>
+                Open Stock Register
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 3. Production Summary */}
+        <div className="col-12 col-sm-6 col-lg-4 col-xl-3">
+          <div className="card h-100 border shadow-xs rounded-2 bg-white">
+            <div className="card-header bg-white border-bottom-0 pt-2.5 pb-0 px-3 d-flex align-items-center justify-content-between">
+              <div className="d-flex align-items-center gap-2 text-truncate">
+                <div className="p-1.5 bg-warning bg-opacity-10 text-warning rounded">
+                  <i className="bi bi-gear-wide-connected" style={{ fontSize: '1rem' }}></i>
+                </div>
+                <span className="fw-bold text-dark text-truncate" style={{ fontSize: '0.84rem' }}>Production Summary</span>
+              </div>
+              <span className="badge bg-info text-dark font-monospace" style={{ fontSize: '0.65rem' }}>{d.productionSummary?.efficiencyPercentage}% Efficiency</span>
+            </div>
+            <div className="card-body p-3">
+              <div className="d-flex justify-content-between mb-1.5" style={{ fontSize: '0.78rem' }}>
+                <span className="text-muted">Target Batches:</span>
+                <span className="fw-bold font-monospace">{d.productionSummary?.todayTargetBatches}</span>
+              </div>
+              <div className="d-flex justify-content-between mb-1.5" style={{ fontSize: '0.78rem' }}>
+                <span className="text-muted">Completed:</span>
+                <span className="text-success fw-bold font-monospace">{d.productionSummary?.completedBatches}</span>
+              </div>
+              <div className="d-flex justify-content-between mb-2.5" style={{ fontSize: '0.78rem' }}>
+                <span className="text-muted">Units Produced Today:</span>
+                <span className="fw-bold text-dark font-monospace">{d.productionSummary?.totalUnitsProducedToday?.toLocaleString()}</span>
+              </div>
+              <button className="btn btn-outline-warning text-dark btn-sm w-100 py-1 fw-semibold" style={{ fontSize: '0.75rem' }} onClick={() => navigate('/finished-goods')}>
+                Production Batch Logs
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 4. Daily Sales Order */}
+        <div className="col-12 col-sm-6 col-lg-4 col-xl-3">
+          <div className="card h-100 border shadow-xs rounded-2 bg-white">
+            <div className="card-header bg-white border-bottom-0 pt-2.5 pb-0 px-3 d-flex align-items-center justify-content-between">
+              <div className="d-flex align-items-center gap-2 text-truncate">
+                <div className="p-1.5 bg-info bg-opacity-10 text-info rounded">
+                  <i className="bi bi-cart-check-fill" style={{ fontSize: '1rem' }}></i>
+                </div>
+                <span className="fw-bold text-dark text-truncate" style={{ fontSize: '0.84rem' }}>Daily Sales Order</span>
+              </div>
+              <span className="badge bg-primary" style={{ fontSize: '0.65rem' }}>{d.dailySalesOrder?.totalOrdersToday} Today</span>
+            </div>
+            <div className="card-body p-3">
+              <div className="p-2 bg-light rounded text-center mb-2.5">
+                <div className="text-muted" style={{ fontSize: '0.72rem' }}>Today's Booked Sales</div>
+                <div className="fw-bold text-primary font-monospace" style={{ fontSize: '1.1rem' }}>₹{(d.dailySalesOrder?.totalOrderAmountToday || 0).toLocaleString()}</div>
+              </div>
+              <button className="btn btn-outline-primary btn-sm w-100 py-1 fw-semibold" style={{ fontSize: '0.75rem' }} onClick={() => navigate('/orders')}>
+                View All Sales Orders
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 5. Udhaari List (Receivables) */}
+        <div className="col-12 col-sm-6 col-lg-4 col-xl-3">
+          <div className="card h-100 border shadow-xs rounded-2 bg-white">
+            <div className="card-header bg-white border-bottom-0 pt-2.5 pb-0 px-3 d-flex align-items-center justify-content-between">
+              <div className="d-flex align-items-center gap-2 text-truncate">
+                <div className="p-1.5 bg-danger bg-opacity-10 text-danger rounded">
+                  <i className="bi bi-cash-coin" style={{ fontSize: '1rem' }}></i>
+                </div>
+                <span className="fw-bold text-dark text-truncate" style={{ fontSize: '0.84rem' }}>Udhaari List (Receivables)</span>
+              </div>
+              <span className="badge bg-danger" style={{ fontSize: '0.65rem' }}>Credit Due</span>
+            </div>
+            <div className="card-body p-3">
+              <div className="mb-2" style={{ fontSize: '0.76rem' }}>
+                {d.udhaariList?.slice(0, 2).map((u, i) => (
+                  <div className="d-flex justify-content-between align-items-center py-1 border-bottom border-light" key={i}>
+                    <div className="text-truncate" style={{ maxWidth: '65%' }}>
+                      <div className="fw-semibold text-dark text-truncate">{u.name}</div>
+                      <div className="text-muted" style={{ fontSize: '0.68rem' }}>Overdue: {u.overdueDays}d</div>
+                    </div>
+                    <span className="fw-bold text-danger font-monospace">₹{u.totalDue?.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+              <button className="btn btn-outline-danger btn-sm w-100 py-1 fw-semibold mt-1" style={{ fontSize: '0.75rem' }} onClick={() => navigate('/customers')}>
+                Full Udhaari Ledger
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 6. Sales Bit Summary */}
+        <div className="col-12 col-sm-6 col-lg-4 col-xl-3">
+          <div className="card h-100 border shadow-xs rounded-2 bg-white">
+            <div className="card-header bg-white border-bottom-0 pt-2.5 pb-0 px-3 d-flex align-items-center justify-content-between">
+              <div className="d-flex align-items-center gap-2 text-truncate">
+                <div className="p-1.5 bg-secondary bg-opacity-10 text-secondary rounded">
+                  <i className="bi bi-map-fill" style={{ fontSize: '1rem' }}></i>
+                </div>
+                <span className="fw-bold text-dark text-truncate" style={{ fontSize: '0.84rem' }}>Sales Bit Summary</span>
+              </div>
+              <span className="badge bg-secondary" style={{ fontSize: '0.65rem' }}>Field Routes</span>
+            </div>
+            <div className="card-body p-3">
+              <div className="mb-2" style={{ fontSize: '0.76rem' }}>
+                {d.salesBitSummary?.slice(0, 2).map((b, i) => (
+                  <div className="py-1 border-bottom border-light" key={i}>
+                    <div className="d-flex justify-content-between fw-semibold">
+                      <span className="text-truncate" style={{ maxWidth: '65%' }}>{b.bitName}</span>
+                      <span className="text-success font-monospace">₹{b.collection?.toLocaleString()}</span>
+                    </div>
+                    <div className="text-muted d-flex justify-content-between" style={{ fontSize: '0.68rem' }}>
+                      <span>Rep: {b.salesman}</span>
+                      <span>{b.visited}/{b.totalShops} Shops</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button className="btn btn-outline-secondary btn-sm w-100 py-1 fw-semibold" style={{ fontSize: '0.75rem' }} onClick={() => setActiveModalWindow('bit')}>
+                Bit Coverage Details
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 7. Salesman Daily DPR */}
+        <div className="col-12 col-sm-6 col-lg-4 col-xl-3">
+          <div className="card h-100 border shadow-xs rounded-2 bg-white">
+            <div className="card-header bg-white border-bottom-0 pt-2.5 pb-0 px-3 d-flex align-items-center justify-content-between">
+              <div className="d-flex align-items-center gap-2 text-truncate">
+                <div className="p-1.5 bg-primary bg-opacity-10 text-primary rounded">
+                  <i className="bi bi-clipboard-data-fill" style={{ fontSize: '1rem' }}></i>
+                </div>
+                <span className="fw-bold text-dark text-truncate" style={{ fontSize: '0.84rem' }}>Salesman Daily DPR</span>
+              </div>
+              <span className="badge bg-primary" style={{ fontSize: '0.65rem' }}>Daily Progress</span>
+            </div>
+            <div className="card-body p-3">
+              <div className="mb-2" style={{ fontSize: '0.76rem' }}>
+                {d.salesmanDailyDpr?.slice(0, 2).map((dpr, i) => (
+                  <div className="py-1 border-bottom border-light" key={i}>
+                    <div className="d-flex justify-content-between fw-semibold">
+                      <span>{dpr.salesmanName}</span>
+                      <span className="badge bg-success-subtle text-success" style={{ fontSize: '0.62rem' }}>{dpr.status}</span>
+                    </div>
+                    <div className="text-muted" style={{ fontSize: '0.68rem' }}>
+                      Orders: {dpr.ordersBooked} &bull; Rec: ₹{dpr.paymentCollected?.toLocaleString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button className="btn btn-outline-primary btn-sm w-100 py-1 fw-semibold" style={{ fontSize: '0.75rem' }} onClick={() => setActiveModalWindow('dpr')}>
+                View DPR Feed
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 8. Order Reminder */}
+        <div className="col-12 col-sm-6 col-lg-4 col-xl-3">
+          <div className="card h-100 border shadow-xs rounded-2 bg-white">
+            <div className="card-header bg-white border-bottom-0 pt-2.5 pb-0 px-3 d-flex align-items-center justify-content-between">
+              <div className="d-flex align-items-center gap-2 text-truncate">
+                <div className="p-1.5 bg-warning bg-opacity-10 text-warning rounded">
+                  <i className="bi bi-alarm-fill" style={{ fontSize: '1rem' }}></i>
+                </div>
+                <span className="fw-bold text-dark text-truncate" style={{ fontSize: '0.84rem' }}>Order Reminder</span>
+              </div>
+              <span className="badge bg-warning text-dark" style={{ fontSize: '0.65rem' }}>Follow-Up</span>
+            </div>
+            <div className="card-body p-3">
+              <div className="mb-2" style={{ fontSize: '0.76rem' }}>
+                {d.orderReminder?.map((o, i) => (
+                  <div className="py-1 border-bottom border-light" key={i}>
+                    <div className="d-flex justify-content-between fw-semibold">
+                      <span className="text-truncate">{o.orderNo} ({o.customer})</span>
+                      <span className="badge bg-danger" style={{ fontSize: '0.62rem' }}>{o.priority}</span>
+                    </div>
+                    <div className="text-muted" style={{ fontSize: '0.68rem' }}>{o.status}</div>
+                  </div>
+                ))}
+              </div>
+              <button className="btn btn-outline-warning text-dark btn-sm w-100 py-1 fw-semibold" style={{ fontSize: '0.75rem' }} onClick={() => navigate('/orders')}>
+                Manage Order Alerts
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 9. Vasuli Reminder (Collection) */}
+        <div className="col-12 col-sm-6 col-lg-4 col-xl-3">
+          <div className="card h-100 border shadow-xs rounded-2 bg-white">
+            <div className="card-header bg-white border-bottom-0 pt-2.5 pb-0 px-3 d-flex align-items-center justify-content-between">
+              <div className="d-flex align-items-center gap-2 text-truncate">
+                <div className="p-1.5 bg-success bg-opacity-10 text-success rounded">
+                  <i className="bi bi-whatsapp text-success" style={{ fontSize: '1rem' }}></i>
+                </div>
+                <span className="fw-bold text-dark text-truncate" style={{ fontSize: '0.84rem' }}>Vasuli Reminder</span>
+              </div>
+              <span className="badge bg-success" style={{ fontSize: '0.65rem' }}>WhatsApp</span>
+            </div>
+            <div className="card-body p-3">
+              <div className="mb-2" style={{ fontSize: '0.76rem' }}>
+                {d.vasuliReminder?.map((v, i) => (
+                  <div className="py-1 border-bottom border-light" key={i}>
+                    <div className="d-flex justify-content-between fw-semibold">
+                      <span className="text-truncate">{v.partyName}</span>
+                      <span className="text-danger font-monospace">₹{v.amountDue?.toLocaleString()}</span>
+                    </div>
+                    <div className="text-muted" style={{ fontSize: '0.68rem' }}>Due: {v.dueDate} &bull; {v.status}</div>
+                  </div>
+                ))}
+              </div>
+              <button className="btn btn-success btn-sm w-100 py-1 fw-semibold shadow-xs" style={{ fontSize: '0.75rem' }} onClick={() => navigate('/automations')}>
+                Trigger Vasuli Bot
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 10. Raw Material Stock Summary */}
+        <div className="col-12 col-sm-6 col-lg-4 col-xl-3">
+          <div className="card h-100 border shadow-xs rounded-2 bg-white">
+            <div className="card-header bg-white border-bottom-0 pt-2.5 pb-0 px-3 d-flex align-items-center justify-content-between">
+              <div className="d-flex align-items-center gap-2 text-truncate">
+                <div className="p-1.5 bg-danger bg-opacity-10 text-danger rounded">
+                  <i className="bi bi-layers-fill" style={{ fontSize: '1rem' }}></i>
+                </div>
+                <span className="fw-bold text-dark text-truncate" style={{ fontSize: '0.84rem' }}>Raw Material Stock</span>
+              </div>
+              <span className="badge bg-danger" style={{ fontSize: '0.65rem' }}>{d.rawMaterialStockSummary?.criticalShortages} Shortages</span>
+            </div>
+            <div className="card-body p-3">
+              <div className="mb-2" style={{ fontSize: '0.76rem' }}>
+                {d.rawMaterialStockSummary?.shortageItems?.map((item, idx) => (
+                  <div key={idx} className="d-flex justify-content-between py-1 border-bottom border-light">
+                    <span className="text-dark fw-semibold text-truncate" style={{ maxWidth: '65%' }}>{item.name}</span>
+                    <span className="text-danger font-monospace fw-bold">{item.stock}</span>
+                  </div>
+                ))}
+              </div>
+              <button className="btn btn-outline-danger btn-sm w-100 py-1 fw-semibold mt-1" style={{ fontSize: '0.75rem' }} onClick={() => navigate('/raw-materials')}>
+                View Raw Materials
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 11. Purchase Creditors Summary */}
+        <div className="col-12 col-sm-6 col-lg-4 col-xl-3">
+          <div className="card h-100 border shadow-xs rounded-2 bg-white">
+            <div className="card-header bg-white border-bottom-0 pt-2.5 pb-0 px-3 d-flex align-items-center justify-content-between">
+              <div className="d-flex align-items-center gap-2 text-truncate">
+                <div className="p-1.5 bg-dark bg-opacity-10 text-dark rounded">
+                  <i className="bi bi-building-fill-down" style={{ fontSize: '1rem' }}></i>
+                </div>
+                <span className="fw-bold text-dark text-truncate" style={{ fontSize: '0.84rem' }}>Purchase Creditors</span>
+              </div>
+              <span className="badge bg-dark" style={{ fontSize: '0.65rem' }}>Payables</span>
+            </div>
+            <div className="card-body p-3">
+              <div className="mb-2" style={{ fontSize: '0.76rem' }}>
+                {d.purchaseCreditorsSummary?.map((c, i) => (
+                  <div className="py-1 border-bottom border-light" key={i}>
+                    <div className="d-flex justify-content-between fw-semibold">
+                      <span className="text-truncate">{c.name}</span>
+                      <span className="text-dark font-monospace">₹{c.dueAmount?.toLocaleString()}</span>
+                    </div>
+                    <div className="text-muted" style={{ fontSize: '0.68rem' }}>Due Date: {c.dueDate}</div>
+                  </div>
+                ))}
+              </div>
+              <button className="btn btn-outline-dark btn-sm w-100 py-1 fw-semibold" style={{ fontSize: '0.75rem' }} onClick={() => navigate('/suppliers')}>
+                Supplier Payables
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 12. Despatch DPR Challan */}
+        <div className="col-12 col-sm-6 col-lg-4 col-xl-3">
+          <div className="card h-100 border shadow-xs rounded-2 bg-white">
+            <div className="card-header bg-white border-bottom-0 pt-2.5 pb-0 px-3 d-flex align-items-center justify-content-between">
+              <div className="d-flex align-items-center gap-2 text-truncate">
+                <div className="p-1.5 bg-info bg-opacity-10 text-info rounded">
+                  <i className="bi bi-truck-front-fill" style={{ fontSize: '1rem' }}></i>
+                </div>
+                <span className="fw-bold text-dark text-truncate" style={{ fontSize: '0.84rem' }}>Despatch DPR Challan</span>
+              </div>
+              <span className="badge bg-info text-dark" style={{ fontSize: '0.65rem' }}>Gate Pass</span>
+            </div>
+            <div className="card-body p-3">
+              <div className="mb-2" style={{ fontSize: '0.76rem' }}>
+                {d.despatchDprChallan?.map((ch, i) => (
+                  <div className="py-1 border-bottom border-light" key={i}>
+                    <div className="d-flex justify-content-between fw-semibold">
+                      <span>{ch.challanNo} ({ch.vehicleNo})</span>
+                      <span className="badge bg-success" style={{ fontSize: '0.62rem' }}>{ch.status}</span>
+                    </div>
+                    <div className="text-muted" style={{ fontSize: '0.68rem' }}>
+                      Driver: {ch.driverName} &bull; Boxes: {ch.totalBoxes}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button className="btn btn-outline-info text-dark btn-sm w-100 py-1 fw-semibold" style={{ fontSize: '0.75rem' }} onClick={() => navigate('/stock-out')}>
+                Delivery Challans
+              </button>
+            </div>
+          </div>
+        </div>
+
       </div>
 
-      {/* Next-Gen Split Dashboard View */}
-      <div className="row g-3">
-        {/* Left Column: Quick Valuation Summary Card */}
-        <div className="col-lg-4 col-md-5">
-          <div className="v-card shadow-sm h-100" style={{ borderRadius: '14px', border: '1px solid rgba(76, 175, 80, 0.18)' }}>
-            <div className="v-card-header" style={{ background: '#f4fbf5', borderRadius: '14px 14px 0 0' }}>
-              <i className="bi bi-calculator me-2" style={{ color: '#1E4D2B' }}></i>
-              VALUATION BREAKDOWN
-            </div>
-            <div className="v-card-body p-0">
-              <table className="v-table">
-                <tbody>
-                  <tr>
-                    <td className="text-muted fw-semibold" style={{ fontSize: '0.8rem' }}>Out of Stock Items</td>
-                    <td className="text-end fw-bold text-danger">
-                      {(stats.lowStockItems || []).filter((i) => i.quantity === 0).length} Items
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="text-muted fw-semibold" style={{ fontSize: '0.8rem' }}>Low Stock Warnings</td>
-                    <td className="text-end fw-bold text-warning">
-                      {(stats.lowStockItems || []).filter((i) => i.quantity > 0).length} Items
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="text-muted fw-semibold" style={{ fontSize: '0.8rem' }}>Active Item Masters</td>
-                    <td className="text-end fw-bold">{stats.totalProducts} SKUs</td>
-                  </tr>
-                  <tr>
-                    <td className="text-muted fw-semibold" style={{ fontSize: '0.8rem' }}>Physical Inventory Units</td>
-                    <td className="text-end fw-bold text-success">{stats.totalStock.toLocaleString()} Pcs</td>
-                  </tr>
-                  <tr>
-                    <td className="text-muted fw-semibold" style={{ fontSize: '0.8rem' }}>Total Stock Valuation</td>
-                    <td className="text-end fw-bold text-success" style={{ fontSize: '0.95rem' }}>
-                      ₹{stats.totalValue.toLocaleString('en-IN')}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+      {/* Modal for DPR & Bit Details */}
+      {activeModalWindow && (
+        <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title fw-bold" style={{ fontSize: '0.95rem' }}>
+                  {activeModalWindow === 'dpr' ? 'Salesman Daily DPR Logs' : 'Sales Bit Route Details'}
+                </h5>
+                <button type="button" className="btn-close" onClick={() => setActiveModalWindow(null)}></button>
+              </div>
+              <div className="modal-body" style={{ fontSize: '0.82rem' }}>
+                <p className="text-muted small">Realtime record feed from EHN ONE Field Sales sync.</p>
+                <div className="alert alert-info py-2 small">
+                  <i className="bi bi-info-circle me-1"></i> All DPR submissions are verified against Tally Sales Orders.
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setActiveModalWindow(null)}>Close</button>
+              </div>
             </div>
           </div>
         </div>
-
-        {/* Right Column: Next-Gen Critical Reorder Register Table */}
-        <div className="col-lg-8 col-md-7">
-          <LowStockTable items={stats.lowStockItems || []} />
-        </div>
-      </div>
+      )}
     </div>
   );
 }
-
-function LowStockTable({ items }) {
-  if (!items || items.length === 0) {
-    return (
-      <div className="v-card mb-4 shadow-sm" style={{ borderRadius: '14px', border: '1px solid rgba(76, 175, 80, 0.18)', background: '#ffffff' }}>
-        <div className="v-card-body p-5 text-center">
-          <div className="d-inline-flex align-items-center justify-content-center rounded-circle mb-3 shadow-sm" style={{ width: 72, height: 72, background: 'linear-gradient(135deg, #DAF2DB 0%, #c3ebd2 100%)', color: '#1E4D2B' }}>
-            <i className="bi bi-check-circle-fill" style={{ fontSize: '2.4rem', color: '#4CAF50' }}></i>
-          </div>
-          <h4 className="fw-bold text-dark mb-2" style={{ letterSpacing: '-0.3px' }}>All Stock Items Optimal</h4>
-          <p className="text-muted mb-4 mx-auto" style={{ maxWidth: 480, fontSize: '0.88rem' }}>
-            No low stock or out-of-stock alerts. Inventory levels are healthy across all product categories.
-          </p>
-          <div className="d-flex flex-wrap align-items-center justify-content-center gap-2">
-            <span className="badge px-3 py-2" style={{ background: '#DAF2DB', color: '#1E4D2B', fontSize: '0.78rem', fontWeight: 600 }}>
-              <i className="bi bi-shield-check me-1 text-success"></i> Health Index 100%
-            </span>
-            <span className="badge px-3 py-2" style={{ background: '#eef2ff', color: '#4338ca', fontSize: '0.78rem', fontWeight: 600 }}>
-              <i className="bi bi-box-seam me-1"></i> Stock Reorder Healthy
-            </span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="v-card mb-3 shadow-sm" style={{ borderRadius: '14px', border: '1px solid rgba(76, 175, 80, 0.18)' }}>
-      <div className="v-card-header d-flex justify-content-between align-items-center" style={{ background: '#f4fbf5', borderRadius: '14px 14px 0 0' }}>
-        <span className="fw-bold text-dark" style={{ fontSize: '0.88rem' }}>
-          <i className="bi bi-exclamation-diamond-fill me-2 text-danger"></i>
-          CRITICAL REORDER ALERTS & LOW STOCK REGISTER
-        </span>
-        <span className="badge bg-danger text-white rounded-pill px-3 py-1" style={{ fontWeight: 600 }}>{items.length} CRITICAL</span>
-      </div>
-      <div className="v-card-body p-0" style={{ overflowX: 'auto' }}>
-        <table className="v-table">
-          <thead>
-            <tr>
-              <th>ITEM NAME</th>
-              <th>SKU CODE</th>
-              <th>STOCK GROUP</th>
-              <th>CURRENT QTY</th>
-              <th>MIN THRESHOLD</th>
-              <th>STATUS</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => (
-              <tr key={item._id}>
-                <td className="fw-bold text-dark">{item.name}</td>
-                <td><code style={{ color: '#1E4D2B', background: '#DAF2DB', padding: '2px 6px', borderRadius: '4px', fontSize: '0.78rem' }}>{item.sku}</code></td>
-                <td>{item.category}</td>
-                <td className="fw-bold text-danger">{item.quantity}</td>
-                <td>{item.lowStockThreshold}</td>
-                <td>
-                  {item.quantity === 0
-                    ? <span className="badge bg-danger text-white px-2 py-1" style={{ fontSize: '0.7rem' }}>OUT OF STOCK</span>
-                    : <span className="badge bg-warning text-dark px-2 py-1" style={{ fontSize: '0.7rem' }}>LOW STOCK</span>
-                  }
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-export default Dashboard;

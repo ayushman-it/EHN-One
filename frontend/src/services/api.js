@@ -581,6 +581,15 @@ export const clearAllNotifications = async () => {
    DASHBOARD STATS API
    ═══════════════════════════════════════════════════════════ */
 
+export const getAdminWindows = async () => {
+  try {
+    return await api.get('/dashboard/admin-windows');
+  } catch (error) {
+    await delay();
+    return { success: false, message: 'Backend unavailable' };
+  }
+};
+
 export const getStats = async () => {
   try {
     return await api.get('/dashboard/stats');
